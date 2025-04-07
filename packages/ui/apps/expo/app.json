@@ -1,0 +1,65 @@
+{
+  "expo": {
+    "name": "skyhitz",
+    "slug": "skyhitz",
+    "version": "1.1.6",
+    "scheme": "skyhitz",
+    "orientation": "portrait",
+    "icon": "./icon.png",
+    "splash": {
+      "image": "./splash.png",
+      "backgroundColor": "#1A1B1F"
+    },
+    "platforms": ["ios", "android"],
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you upload beats."
+        }
+      ],
+      [
+        "expo-document-picker",
+        {
+          "appleTeamId": "GUHNL23262",
+          "iCloudContainerEnvironment": "Production"
+        }
+      ]
+    ],
+    "ios": {
+      "bundleIdentifier": "io.skyhitz.skyhitz",
+      "buildNumber": "1.1.6",
+      "associatedDomains": [
+        "applinks:skyhitz.io",
+        "applinks:skyhitz-expo-next.vercel.app"
+      ],
+      "usesIcloudStorage": true
+    },
+    "android": {
+      "package": "io.skyhitz.skyhitz",
+      "versionCode": 8,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "https",
+              "host": "skyhitz.io"
+            },
+            {
+              "scheme": "https",
+              "host": "skyhitz-expo-next.vercel.app"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
+    },
+    "owner": "skyhitz",
+    "extra": {
+      "eas": {
+        "projectId": "3e16a450-cf3f-11e7-9580-7f3555e72bdc"
+      }
+    }
+  }
+}

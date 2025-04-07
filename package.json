@@ -1,0 +1,14 @@
+{
+  "name": "skyhitz",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "yarn workspaces run dev",
+    "build": "yarn workspaces run build",
+    "api:dev": "yarn workspace @skyhitz/api dev",
+    "ui:dev": "yarn workspace @skyhitz/ui dev",
+    "deploy": "yarn workspace @skyhitz/api deploy"
+  }
+}

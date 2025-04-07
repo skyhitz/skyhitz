@@ -1,0 +1,32 @@
+{
+  "name": "appdir",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build --debug",
+    "start": "next start",
+    "analyze": "ANALYZE=true yarn build",
+    "build:cf": "npx @cloudflare/next-on-pages@1",
+    "preview": "npx wrangler pages dev .vercel/output/static --compatibility-flags='nodejs_compat'",
+    "build:preview": "yarn build:cf && yarn preview"
+  },
+  "dependencies": {
+    "app": "*",
+    "dotenv": "^16.0.2",
+    "next": "^14.2.3",
+    "raf": "^3.4.1",
+    "setimmediate": "^1.0.5",
+    "sharp": "^0.33.4"
+  },
+  "devDependencies": {
+    "@cloudflare/next-on-pages": "^1.13.7",
+    "@next/bundle-analyzer": "^14.2.3",
+    "@types/node": "20.2.5",
+    "tailwindcss": "^3.4.3",
+    "vercel": "39.1.1"
+  },
+  "overrides": {
+    "vercel": "$vercel"
+  }
+}

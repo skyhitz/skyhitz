@@ -1,0 +1,32 @@
+{
+  "name": "@skyhitz/ui",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "devDependencies": {
+    "@types/react": "^18.2.21",
+    "@types/react-native": "^0.72.2",
+    "eslint": "^8.21.0",
+    "prettier": "^3.0.3",
+    "prettier-plugin-tailwindcss": "^0.5.4",
+    "turbo": "^1.4.2",
+    "typescript": "^5.2.2"
+  },
+  "scripts": {
+    "native": "cd apps/expo && yarn start",
+    "web": "cd apps/appdir && yarn next"
+  },
+  "resolutions": {
+    "metro": "~0.76.7",
+    "metro-resolver": "~0.76.7",
+    "@react-native/assets-registry@^0.72.0": "patch:@react-native/assets-registry@npm%3A0.73.1#./.yarn/patches/@react-native-assets-registry-npm-0.73.1-6ddee188d1.patch",
+    "@react-native/assets-registry@0.73.1": "patch:@react-native/assets-registry@npm%3A0.73.1#./.yarn/patches/@react-native-assets-registry-npm-0.73.1-6ddee188d1.patch"
+  },
+  "nohoist": [
+    "**/expo-router",
+    "**/expo-router/**"
+  ],
+  "packageManager": "yarn@3.4.1"
+}

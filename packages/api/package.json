@@ -1,0 +1,41 @@
+{
+	"name": "@skyhitz/api",
+	"version": "0.0.0",
+	"private": true,
+	"scripts": {
+		"deploy": "wrangler deploy",
+		"dev": "wrangler dev --port 8000",
+		"start": "wrangler dev",
+		"test": "vitest",
+		"cf-typegen": "wrangler types",
+		"testnet:contract:setup": "./contract/init.sh ${NETWORK:-testnet}",
+		"testnet:contract:upgrade": "./contract/upgrade.sh ${NETWORK:-testnet}",
+		"testnet:contract:redeploy": "rm -r ./contract/.vars && npm run contract:setup",
+		"mainnet:contract:setup": "./contract/init.sh ${NETWORK:-mainnet}",
+		"mainnet:contract:upgrade": "./contract/upgrade.sh ${NETWORK:-mainnet}",
+		"mainnet:contract:bindings": "./contract/bindings.sh ${NETWORK:-mainnet}"
+	},
+	"devDependencies": {
+		"@cloudflare/vitest-pool-workers": "^0.1.0",
+		"@cloudflare/workers-types": "^4.20240614.0",
+		"@types/node": "^22.5.4",
+		"axios": "^1.6.7",
+		"typescript": "^5.0.4",
+		"vitest": "1.3.0",
+		"wrangler": "^4.7.0"
+	},
+	"dependencies": {
+		"@algolia/requester-fetch": "^4.23.3",
+		"@apollo/server": "^4.10.4",
+		"@as-integrations/cloudflare-workers": "^1.0.2",
+		"@sendgrid/mail": "^8.1.3",
+		"@stellar/stellar-sdk": "^13.1.0",
+		"@tsndr/cloudflare-worker-jwt": "^2.5.3",
+		"algoliasearch": "^4.23.3",
+		"axios": "^1.6.7",
+		"graphql": "^16.8.2",
+		"stripe": "^17.5.0",
+		"yup": "^0.32.11"
+	},
+	"packageManager": "yarn@4.3.1"
+}
