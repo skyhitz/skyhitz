@@ -3987,9 +3987,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-native/assets-registry@patch:@react-native/assets-registry@npm%3A0.73.1#./.yarn/patches/@react-native-assets-registry-npm-0.73.1-6ddee188d1.patch::locator=skyhitz-tailwind%40workspace%3A.":
+"@react-native/assets-registry@patch:@react-native/assets-registry@npm%3A0.73.1#./.yarn/patches/@react-native-assets-registry-npm-0.73.1-6ddee188d1.patch::locator=%40skyhitz%2Fui%40workspace%3A.":
   version: 0.73.1
-  resolution: "@react-native/assets-registry@patch:@react-native/assets-registry@npm%3A0.73.1#./.yarn/patches/@react-native-assets-registry-npm-0.73.1-6ddee188d1.patch::version=0.73.1&hash=bd2fa4&locator=skyhitz-tailwind%40workspace%3A."
+  resolution: "@react-native/assets-registry@patch:@react-native/assets-registry@npm%3A0.73.1#./.yarn/patches/@react-native-assets-registry-npm-0.73.1-6ddee188d1.patch::version=0.73.1&hash=bd2fa4&locator=%40skyhitz%2Fui%40workspace%3A."
   checksum: d4828b0fbb07cac7fe2c4abbb13485ca2b9663bd2ffc4b649cb9b1da7632fe2ef44df6c2efd507d289e81cbdc13f59b8f68022b376df221e5dadb932817c8b4c
   languageName: node
   linkType: hard
@@ -4393,6 +4393,20 @@ __metadata:
   checksum: c62aa98e7cefda8dedc101ce227abc888dc46b8ff9706c5f0a8dfd9c3ada97d0a5611384738d9ba0b26b59f99c2ba24efece8e779bb08329e9e87358fa309824
   languageName: node
   linkType: hard
+
+"@skyhitz/ui@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "@skyhitz/ui@workspace:."
+  dependencies:
+    "@types/react": ^18.2.21
+    "@types/react-native": ^0.72.2
+    eslint: ^8.21.0
+    prettier: ^3.0.3
+    prettier-plugin-tailwindcss: ^0.5.4
+    turbo: ^1.4.2
+    typescript: ^5.2.2
+  languageName: unknown
+  linkType: soft
 
 "@stripe/react-stripe-js@npm:^3.1.1":
   version: 3.1.1
@@ -14044,20 +14058,6 @@ __metadata:
   checksum: aba6438f46d2bfcef94cf112c835ab395172c75f67453fe05c340c770d3c402363018ae1ab4172a1026a90c47eaccf3af7b6ff6fa749a680c2929bd7fa2b37a4
   languageName: node
   linkType: hard
-
-"skyhitz-tailwind@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "skyhitz-tailwind@workspace:."
-  dependencies:
-    "@types/react": ^18.2.21
-    "@types/react-native": ^0.72.2
-    eslint: ^8.21.0
-    prettier: ^3.0.3
-    prettier-plugin-tailwindcss: ^0.5.4
-    turbo: ^1.4.2
-    typescript: ^5.2.2
-  languageName: unknown
-  linkType: soft
 
 "slash@npm:^3.0.0":
   version: 3.0.0

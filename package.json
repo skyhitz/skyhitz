@@ -9,6 +9,17 @@
     "build": "yarn workspaces run build",
     "api:dev": "yarn workspace @skyhitz/api dev",
     "ui:dev": "yarn workspace @skyhitz/ui dev",
-    "deploy": "yarn workspace @skyhitz/api deploy"
+    "deploy": "yarn workspace @skyhitz/api deploy",
+    "dev:test": "concurrently \"yarn api:dev:test\" \"yarn ui:dev:test\"",
+    "dev:local-prod": "concurrently \"yarn api:dev:prod\" \"yarn ui:dev:local-prod\"",
+    "dev:prod": "yarn ui:dev:prod",
+    "api:dev:test": "yarn workspace @skyhitz/api dev:test",
+    "api:dev:prod": "yarn workspace @skyhitz/api dev:prod",
+    "ui:dev:test": "NEXT_PUBLIC_EXPO_SKYHITZ_ENV=test yarn workspace @skyhitz/ui web",
+    "ui:dev:local-prod": "NEXT_PUBLIC_EXPO_SKYHITZ_ENV=local-prod yarn workspace @skyhitz/ui web",
+    "ui:dev:prod": "NEXT_PUBLIC_EXPO_SKYHITZ_ENV=production yarn workspace @skyhitz/ui web"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
   }
 }
