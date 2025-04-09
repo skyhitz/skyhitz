@@ -75,6 +75,8 @@ module.exports = {
     'react-native-reanimated',
     'moti',
     'react-native-gesture-handler',
+    'nativewind',
+    'react-native-css-interop',
   ],
 
   compiler: {

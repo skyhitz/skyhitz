@@ -13,6 +13,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
+    "jsxImportSource": "nativewind",
     "incremental": true,
     "plugins": [
       {
@@ -30,6 +31,7 @@
     "**/*.ts",
     "**/*.tsx",
     "next.config.js",
+    "nativewind-env.d.ts",
     ".next/types/**/*.ts"
   ],
   "exclude": ["node_modules"]

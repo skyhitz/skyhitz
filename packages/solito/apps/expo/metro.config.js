@@ -4,6 +4,7 @@
  * @type {import('expo/metro-config')}
  */
 const { getDefaultConfig } = require('expo/metro-config')
+const { withNativeWind } = require('nativewind/metro')
 const path = require('path')
 
 const projectRoot = __dirname
@@ -25,4 +26,4 @@ config.transformer.getTransformOptions = async () => ({
   },
 })
 
-module.exports = config
+module.exports = withNativeWind(config, { input: './globals.css' })

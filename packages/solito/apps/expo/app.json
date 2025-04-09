@@ -12,6 +12,9 @@
     "experiments": {
       "reactCanary": true,
       "reactCompiler": true
+    },
+    "web": {
+      "bundler": "metro"
     }
   }
 }
