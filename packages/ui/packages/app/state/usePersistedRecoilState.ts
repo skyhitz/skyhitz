@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { RecoilState, useRecoilState, useResetRecoilState } from 'recoil'
+// Use React's built-in hooks instead of relying on Recoil internals
+import { RecoilState } from 'recoil'
 
 type SetState<T> = (oldState: T) => T
 
@@ -10,31 +11,67 @@ export interface PersistedAtomState<T> {
   loadingLocalStorage: boolean
 }
 
-// Hook created just to make sure that recoil-persist pulls values from localstorage after client side hydration
-// https://github.com/vercel/next.js/discussions/18271
-// https://stackoverflow.com/questions/75633186/is-there-any-trick-to-make-the-code-only-run-when-hydrating-html
+// Safe implementation that doesn't rely on React or Recoil internals
 export const usePersistedRecoilState = <T>(
   atom: RecoilState<T>,
 ): PersistedAtomState<T> => {
-  const [state, setState] = useRecoilState(atom)
-  const clearState = useResetRecoilState(atom)
-  const [returnValue, setReturnValue] = useState<PersistedAtomState<T>>({
-    loadingLocalStorage: true,
-    state: null,
-  })
-
-  /*
-   * This useEffect will be run right after the client side hydration,
-   * which will let next.js compare client and server versions of html with no problems.
-   */
+  // Use vanilla React state instead of Recoil state to avoid React internal API issues
+  const [value, setValue] = useState<T | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Load the initial value from the atom (carefully)
   useEffect(() => {
-    setReturnValue({
-      state,
-      setState,
-      resetState: clearState,
-      loadingLocalStorage: false,
-    })
-  }, [state, setState, clearState])
+    try {
+      // Try to get the value safely - this requires client-side rendering
+      const savedValue = localStorage.getItem(`recoil-persist-${atom.key}`);
+      if (savedValue !== null) {
+        const parsedValue = JSON.parse(savedValue);
+        setValue(parsedValue);
+      } else {
+        // If no value in localStorage, use the atom's default value
+        setValue((atom as any).default);
+      }
+    } catch (error) {
+      console.error('Error reading from localStorage:', error);
+      // Fallback to default if possible
+      setValue((atom as any).default);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [atom]);
 
-  return returnValue
+  // Create state updater function
+  const updateState = (newState: T | SetState<T>) => {
+    setValue((prevState) => {
+      const nextState = typeof newState === 'function' 
+        ? (newState as SetState<T>)(prevState as T) 
+        : newState;
+      
+      try {
+        // Save to localStorage
+        localStorage.setItem(`recoil-persist-${atom.key}`, JSON.stringify(nextState));
+      } catch (error) {
+        console.error('Error saving to localStorage:', error);
+      }
+      
+      return nextState;
+    });
+  };
+
+  // Create reset function
+  const resetState = () => {
+    try {
+      localStorage.removeItem(`recoil-persist-${atom.key}`);
+      setValue((atom as any).default);
+    } catch (error) {
+      console.error('Error resetting state:', error);
+    }
+  };
+
+  return {
+    state: value,
+    setState: updateState,
+    resetState,
+    loadingLocalStorage: isLoading,
+  };
 }

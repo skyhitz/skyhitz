@@ -10,7 +10,10 @@
       "image": "./splash.png",
       "backgroundColor": "#1A1B1F"
     },
-    "platforms": ["ios", "android"],
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "plugins": [
       [
         "expo-image-picker",
@@ -24,7 +27,9 @@
           "appleTeamId": "GUHNL23262",
           "iCloudContainerEnvironment": "Production"
         }
-      ]
+      ],
+      "expo-router",
+      "expo-secure-store"
     ],
     "ios": {
       "bundleIdentifier": "io.skyhitz.skyhitz",
@@ -51,7 +56,10 @@
               "host": "skyhitz-expo-next.vercel.app"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },

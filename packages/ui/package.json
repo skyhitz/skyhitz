@@ -22,8 +22,7 @@
   "resolutions": {
     "metro": "~0.76.7",
     "metro-resolver": "~0.76.7",
-    "@react-native/assets-registry@^0.72.0": "patch:@react-native/assets-registry@npm%3A0.73.1#./.yarn/patches/@react-native-assets-registry-npm-0.73.1-6ddee188d1.patch",
-    "@react-native/assets-registry@0.73.1": "patch:@react-native/assets-registry@npm%3A0.73.1#./.yarn/patches/@react-native-assets-registry-npm-0.73.1-6ddee188d1.patch"
+    "@react-native/assets-registry@^0.72.0": "patch:@react-native/assets-registry@npm%3A0.73.1#./.yarn/patches/@react-native-assets-registry-npm-0.73.1-6ddee188d1.patch"
   },
   "nohoist": [
     "**/expo-router",
