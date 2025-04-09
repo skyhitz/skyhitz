@@ -19,6 +19,7 @@ config.resolver.nodeModulesPaths = [
 ]
 config.resolver.disableHierarchicalLookup = true
 
+// Set transform options
 config.transformer.getTransformOptions = async () => ({
   transform: {
     experimentalImportSupport: false,
@@ -26,4 +27,5 @@ config.transformer.getTransformOptions = async () => ({
   },
 })
 
-module.exports = withNativeWind(config, { input: './globals.css' })
+// Export the config with NativeWind support
+module.exports = withNativeWind(config, { input: '../next/app/globals.css' })
