@@ -28,4 +28,6 @@ config.transformer.getTransformOptions = async () => ({
 })
 
 // Export the config with NativeWind support
-module.exports = withNativeWind(config, { input: '../next/app/globals.css' })
+// Use absolute path to ensure Metro can find the CSS file
+const cssPath = path.resolve(workspaceRoot, 'packages/app/design/global.css')
+module.exports = withNativeWind(config, { input: cssPath })

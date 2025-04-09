@@ -1,3 +1,4 @@
+import 'app/design/global.css'
 import { NativeNavigation } from 'app/navigation/native'
 import { Provider } from 'app/provider'
 

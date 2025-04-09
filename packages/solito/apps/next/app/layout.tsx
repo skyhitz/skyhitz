@@ -1,5 +1,5 @@
 import { StylesProvider } from './styles-provider'
-import './globals.css'
+import 'app/design/global.css'
 
 export const metadata = {
   title: 'Create Solito App',

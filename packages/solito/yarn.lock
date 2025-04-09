@@ -5278,7 +5278,6 @@ __metadata:
     expo-linking: "npm:~7.0.5"
     expo-splash-screen: "npm:~0.29.22"
     expo-status-bar: "npm:~2.0.1"
-    moti: "npm:^0.30.0"
     react-compiler-runtime: "npm:19.0.0-beta-3229e95-20250315"
     react-native: "npm:0.76.9"
     react-native-gesture-handler: "npm:~2.20.2"
