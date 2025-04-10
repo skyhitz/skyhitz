@@ -63,5 +63,9 @@ export function HomeScreen() {
 }
 
 const H1 = ({ children }: { children: React.ReactNode }) => {
-  return <Text className="text-black font-bold text-6xl">{children}</Text>
+  return (
+    <Text className="text-black font-bold text-6xl font-unbounded">
+      {children}
+    </Text>
+  )
 }
