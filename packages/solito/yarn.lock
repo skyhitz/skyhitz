@@ -1304,6 +1304,27 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@expo-google-fonts/inter@npm:^0.3.0":
+  version: 0.3.0
+  resolution: "@expo-google-fonts/inter@npm:0.3.0"
+  checksum: 10/43e5ff6cd70c18fe19cbdc651c6557322633f9c8692691e98d29abc0c7e7bf4219b6d61e2c16cc76c869e360eaf5df7a375d670ca81ce45de2e18f406feadf98
+  languageName: node
+  linkType: hard
+
+"@expo-google-fonts/raleway@npm:^0.3.0":
+  version: 0.3.0
+  resolution: "@expo-google-fonts/raleway@npm:0.3.0"
+  checksum: 10/06099ef289b552103cbe95ce8e67afec93488351055d8f702787b6fe0d56f710b7465161b224c5ffbbf35d23860aa476227758314260b97fe45397a13ea9813c
+  languageName: node
+  linkType: hard
+
+"@expo-google-fonts/unbounded@npm:^0.3.0":
+  version: 0.3.0
+  resolution: "@expo-google-fonts/unbounded@npm:0.3.0"
+  checksum: 10/bfb4cdc72dc26307b66c9db4b9d78fbb6cdc12c0e53061b11f949b925213560215d4f360debd9244aceb8d0a288e8046524504bf0841bc71d0bb16727b423749
+  languageName: node
+  linkType: hard
+
 "@expo/bunyan@npm:^4.0.0":
   version: 4.0.1
   resolution: "@expo/bunyan@npm:4.0.1"
@@ -5269,10 +5290,14 @@ __metadata:
   resolution: "expo-app@workspace:apps/expo"
   dependencies:
     "@babel/core": "npm:^7.24.0"
+    "@expo-google-fonts/inter": "npm:^0.3.0"
+    "@expo-google-fonts/raleway": "npm:^0.3.0"
+    "@expo-google-fonts/unbounded": "npm:^0.3.0"
     "@types/react": "npm:~18.3.12"
     app: "npm:*"
     babel-plugin-react-compiler: "npm:19.0.0-beta-3229e95-20250315"
     expo: "npm:~52.0.42"
+    expo-font: "npm:~13.0.4"
     expo-image: "npm:~2.0.7"
     expo-linear-gradient: "npm:~14.0.2"
     expo-linking: "npm:~7.0.5"

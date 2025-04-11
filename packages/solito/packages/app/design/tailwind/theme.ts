@@ -1,13 +1,56 @@
+const { platformSelect } = require('nativewind/theme')
+
 /** @type {import('tailwindcss').Config['theme']} */
 export const theme = {
   // edit your tailwind theme here!
   // https://tailwindcss.com/docs/adding-custom-styles
   extend: {
     fontFamily: {
-      // Use a different approach that works for both web and native
-      inter: 'var(--font-inter)',
-      raleway: 'var(--font-raleway)',
-      unbounded: 'var(--font-unbounded)',
+      inter: platformSelect({
+        ios: 'Inter-Regular',
+        android: 'Inter_400Regular',
+        default: 'Inter_400Regular',
+      }),
+      'inter-semibold': platformSelect({
+        ios: 'Inter-SemiBold',
+        android: 'Inter_600SemiBold',
+        default: 'Inter_600SemiBold',
+      }),
+      'inter-bold': platformSelect({
+        ios: 'Inter-Bold',
+        android: 'Inter_700Bold',
+        default: 'Inter_700Bold',
+      }),
+      raleway: platformSelect({
+        ios: 'Raleway-Regular',
+        android: 'Raleway_400Regular',
+        default: 'Raleway_400Regular',
+      }),
+      'raleway-light': platformSelect({
+        ios: 'Raleway-Light',
+        android: 'Raleway_300Light',
+        default: 'Raleway_300Light',
+      }),
+      'raleway-medium': platformSelect({
+        ios: 'Raleway-Medium',
+        android: 'Raleway_500Medium',
+        default: 'Raleway_500Medium',
+      }),
+      'raleway-semibold': platformSelect({
+        ios: 'Raleway-SemiBold',
+        android: 'Raleway_600SemiBold',
+        default: 'Raleway_600SemiBold',
+      }),
+      'raleway-bold': platformSelect({
+        ios: 'Raleway-Bold',
+        android: 'Raleway_700Bold',
+        default: 'Raleway_700Bold',
+      }),
+      unbounded: platformSelect({
+        ios: 'Unbounded-SemiBold',
+        android: 'Unbounded_600SemiBold',
+        default: 'Unbounded_600SemiBold',
+      }),
     },
     colors: {
       blue: {

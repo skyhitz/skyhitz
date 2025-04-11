@@ -9,7 +9,7 @@ export function HomeScreen() {
     <View className="flex-1 items-center justify-center gap-8 p-4">
       <H1>Welcome to Solito.</H1>
       <View className="max-w-[600px] gap-4">
-        <Text className="text-center">
+        <Text className="text-center text-blue">
           Here is a basic starter to show you how you can navigate from one
           screen to another. This screen uses the same code on Next.js and React
           Native.
@@ -63,9 +63,5 @@ export function HomeScreen() {
 }
 
 const H1 = ({ children }: { children: React.ReactNode }) => {
-  return (
-    <Text className="text-black font-bold text-6xl font-unbounded">
-      {children}
-    </Text>
-  )
+  return <Text className="text-black text-6xl font-raleway">{children}</Text>
 }
