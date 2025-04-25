@@ -37,7 +37,6 @@ export default {
 		if (request.method === 'OPTIONS') {
 			return new Response(null, {
 				headers: response.headers,
-				status: 204, // Explicitly set status code for OPTIONS
 			});
 		}
 

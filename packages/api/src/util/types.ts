@@ -17,6 +17,14 @@ export type User = {
 	twitter: string;
 	instagram: string;
 	minBalance?: number;
+	claimEarnings?: {
+		success: boolean;
+		totalClaimedAmount: number;
+		claimedEntries: Array<{
+			entryId: string;
+			amount: number;
+		}>;
+	};
 };
 
 export type Entry = {

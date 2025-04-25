@@ -101,24 +101,49 @@ class ContractClient {
 		return { ...tx.result, apr: Number(tx.result.apr), escrow: Number(tx.result.escrow), tvl: Number(tx.result.tvl) };
 	};
 
-	public claimEarnings = async (user: string, id: string) => {
-		const tx = await this.contract.claim_earnings({ user, id }, this.defaultOptions);
-		const res = await tx.signAndSend();
-		console.log(res);
-		
+	public claimEarnings = async (userPublicKey: string, id: string, secret?: string) => {
+		// If no secret is provided, we can't claim on behalf of the user
+		if (!secret) {
+			throw new Error('User secret key required to claim earnings');
+		}
+
+		const userKeys = Keypair.fromSecret(secret);
+		// Make sure the public key matches the one derived from the secret
+		if (userKeys.publicKey() !== userPublicKey) {
+			throw new Error('Provided public key does not match the secret key');
+		}
+
+		const tx = await this.contract.claim_earnings(
+			{
+				user: userPublicKey,
+				id,
+			},
+			this.defaultOptions
+		);
+
+		const jsonFromRoot = tx.toJSON();
+		const userClient = this.getClientForKeypair(userKeys);
+		const txUser = userClient.fromJSON['claim_earnings'](jsonFromRoot);
+		const ledger = (await this.fetchCurrentLedger()) + 100;
+		await txUser.signAuthEntries({ expiration: ledger });
+		const jsonFromUser = txUser.toJSON();
+		const txRoot = this.contract.fromJSON['claim_earnings'](jsonFromUser);
+
 		try {
+			const result = await txRoot.signAndSend();
+			console.log('Claim earnings result:', result);
+
 			// Extract the claimed amount directly from the return value
-			// The contract now returns the claimed amount as i128
-			const claimedAmount = Number(res.result);
+			const claimedAmount = Number(result.result);
 			return {
-				...res,
-				claimedAmount: claimedAmount || 0
+				...result,
+				claimedAmount: claimedAmount || 0,
 			};
 		} catch (error) {
-			console.error('Error extracting claimed amount:', error);
+			console.error('Error claiming earnings:', error);
 			return {
-				...res,
-				claimedAmount: 0
+				claimedAmount: 0,
+				error,
 			};
 		}
 	};

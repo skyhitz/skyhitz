@@ -197,6 +197,8 @@ type ClaimEarningsResponse {
     success: Boolean!
     totalClaimedAmount: Float!
     claimedEntries: [ClaimedEntry!]!
+    message: String
+    lastClaimTime: String
 }
 
 type ClaimedEntry {
