@@ -16,6 +16,10 @@ export const metadata: Metadata = {
   },
 }
 
+// Disable Next.js cache for this route
+export const revalidate = 0
+export const dynamic = 'force-dynamic'
+
 const getChart = async () => {
   const res = await ratingEntriesIndex.search<Entry>('', {
     attributesToRetrieve: ['*'],
