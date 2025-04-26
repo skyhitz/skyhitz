@@ -9,47 +9,47 @@ export const theme = {
       inter: platformSelect({
         ios: 'Inter-Regular',
         android: 'Inter_400Regular',
-        default: 'Inter_400Regular',
+        default: 'var(--font-inter)',
       }),
       'inter-semibold': platformSelect({
         ios: 'Inter-SemiBold',
         android: 'Inter_600SemiBold',
-        default: 'Inter_600SemiBold',
+        default: 'var(--font-inter)',
       }),
       'inter-bold': platformSelect({
         ios: 'Inter-Bold',
         android: 'Inter_700Bold',
-        default: 'Inter_700Bold',
+        default: 'var(--font-inter)',
       }),
       raleway: platformSelect({
         ios: 'Raleway-Regular',
         android: 'Raleway_400Regular',
-        default: 'Raleway_400Regular',
+        default: 'var(--font-raleway)',
       }),
       'raleway-light': platformSelect({
         ios: 'Raleway-Light',
         android: 'Raleway_300Light',
-        default: 'Raleway_300Light',
+        default: 'var(--font-raleway)',
       }),
       'raleway-medium': platformSelect({
         ios: 'Raleway-Medium',
         android: 'Raleway_500Medium',
-        default: 'Raleway_500Medium',
+        default: 'var(--font-raleway)',
       }),
       'raleway-semibold': platformSelect({
         ios: 'Raleway-SemiBold',
         android: 'Raleway_600SemiBold',
-        default: 'Raleway_600SemiBold',
+        default: 'var(--font-raleway)',
       }),
       'raleway-bold': platformSelect({
         ios: 'Raleway-Bold',
         android: 'Raleway_700Bold',
-        default: 'Raleway_700Bold',
+        default: 'var(--font-raleway)',
       }),
       unbounded: platformSelect({
         ios: 'Unbounded-SemiBold',
         android: 'Unbounded_600SemiBold',
-        default: 'Unbounded_600SemiBold',
+        default: 'var(--font-unbounded)',
       }),
     },
     colors: {

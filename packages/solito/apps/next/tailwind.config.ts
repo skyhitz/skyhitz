@@ -1,4 +1,5 @@
-import { theme } from 'app/design/tailwind/theme'
+// Use shared Tailwind config
+
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
@@ -6,9 +7,5 @@ module.exports = {
     './app/**/*.{js,jsx,ts,tsx}',
     '../../packages/**/*.{js,jsx,ts,tsx}',
   ],
-  presets: [require('nativewind/preset')],
-  important: 'html',
-  theme: {
-    ...theme,
-  },
+  ...require('app/design/tailwind/tailwind-shared-config').default,
 }
