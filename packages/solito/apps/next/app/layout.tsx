@@ -1,6 +1,7 @@
 import { StylesProvider } from './styles-provider'
 import 'app/design/global.css'
 import { inter, raleway, unbounded } from './fonts'
+import { Provider } from 'app/provider/index'
 
 export const metadata = {
   title: 'Skyhitz',
@@ -18,7 +19,9 @@ export default function RootLayout({
       className={`${inter.variable} ${raleway.variable} ${unbounded.variable} font-sans`}
     >
       <body>
-        <StylesProvider>{children}</StylesProvider>
+        <StylesProvider>
+          <Provider>{children}</Provider>
+        </StylesProvider>
       </body>
     </html>
   )
