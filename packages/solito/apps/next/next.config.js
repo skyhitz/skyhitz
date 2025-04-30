@@ -31,6 +31,7 @@ module.exports = {
     'app',
     // SVG needs special handling
     'react-native-svg',
+    'react-native-htmlview',
     '@react-native-community',
   ],
   images: {
