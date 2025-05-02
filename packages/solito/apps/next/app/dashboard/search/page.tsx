@@ -1,4 +1,3 @@
-'use client'
 import { SearchScreen } from 'app/features/dashboard/search'
 import { Metadata } from 'next'
 import { Config } from 'app/config'

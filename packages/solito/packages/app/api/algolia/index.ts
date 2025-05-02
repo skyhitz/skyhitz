@@ -68,6 +68,18 @@ export const entriesIndex = {
   },
 }
 
+// Rating entries index for the chart functionality
+export const ratingEntriesIndex = {
+  search: async <T>(query: string, options: any = {}) => {
+    const result = await searchIndex(indexNames.entriesRatingDesc, query, options)
+    return result
+  },
+  getObject: async <T>(objectID: string) => {
+    const result = await getObject(indexNames.entriesRatingDesc, objectID)
+    return result as T
+  },
+}
+
 export const blogIndex = {
   search: async <T>(query: string, options: any = {}) => {
     const result = await searchIndex(indexNames.blog, query, options)

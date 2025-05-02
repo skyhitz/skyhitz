@@ -5,6 +5,9 @@ export interface Entry {
   title: string
   id: string
   artist: string
+  tvl?: number
+  apr?: number
+  escrow?: number
 }
 
 export interface EntryDetail extends Entry {

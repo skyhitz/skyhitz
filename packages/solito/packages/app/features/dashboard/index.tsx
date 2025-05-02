@@ -6,10 +6,12 @@ import { H1, H2, P } from 'app/design/typography'
 import { Button } from 'app/design/button'
 import { useLogOut } from 'app/hooks/useLogIn'
 import { useUserState } from 'app/state/user/hooks'
+import { useRouter } from 'solito/navigation'
 
 function DashboardScreen() {
   const logOut = useLogOut()
   const { user } = useUserState()
+  const { push } = useRouter()
   
   console.log('Dashboard user state:', user)
 
@@ -41,7 +43,7 @@ function DashboardScreen() {
         <View className="mt-2 flex flex-row justify-around">
           <Button
             text="Search"
-            onPress={() => {}}
+            onPress={() => push('/dashboard/search')}
             variant="primary"
             className="flex-1 mx-1"
           />

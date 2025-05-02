@@ -73,32 +73,6 @@ export const CREATE_USER_WITH_EMAIL = gql`
 `
 
 // User data queries
-export const AUTHENTICATED_USER = gql`
-  query AuthenticatedUser {
-    authenticatedUser {
-      avatarUrl
-      backgroundUrl
-      displayName
-      email
-      username
-      id
-      jwt
-      description
-      publicKey
-      managed
-      twitter
-      instagram
-      lastPlayedEntry {
-        imageUrl
-        videoUrl
-        description
-        title
-        id
-        artist
-      }
-    }
-  }
-`
 
 export const USER_CREDITS = gql`
   query UserCredits {
@@ -115,9 +89,6 @@ export const USER_COLLECTION = gql`
       title
       id
       artist
-      apr
-      tvl
-      escrow
     }
   }
 `
@@ -131,9 +102,6 @@ export const USER_LIKES = gql`
       title
       id
       artist
-      apr
-      tvl
-      escrow
     }
   }
 `
@@ -198,9 +166,6 @@ export const ENTRIES_SEARCH = gql`
       title
       id
       artist
-      apr
-      tvl
-      escrow
     }
   }
 `
@@ -228,9 +193,17 @@ export const RECENTLY_ADDED_ENTRIES = gql`
       title
       id
       artist
-      apr
-      tvl
-      escrow
+    }
+  }
+`
+
+export const CLAIM_EARNINGS = gql`
+  mutation ClaimEarnings {
+    claimEarnings {
+      success
+      message
+      totalClaimedAmount
+      lastClaimTime
     }
   }
 `

@@ -1,4 +1,3 @@
-'use client'
 import { ratingEntriesIndex } from 'app/api/algolia'
 import { Entry } from 'app/api/graphql/types'
 import { Config } from 'app/config'
@@ -22,7 +21,6 @@ export const dynamic = 'force-dynamic'
 async function getChart() {
   const res = await ratingEntriesIndex.search<Entry>('', {
     attributesToRetrieve: ['*'],
-    cacheable: false,
     facets: ['apr'],
   })
 
@@ -30,7 +28,10 @@ async function getChart() {
     return []
   }
 
-  return res.hits as Entry[]
+  // Convert Algolia search results to Entry objects
+  return res.hits.map((hit: any) => {
+    return hit as unknown as Entry
+  })
 }
 
 export default async function ChartPage() {

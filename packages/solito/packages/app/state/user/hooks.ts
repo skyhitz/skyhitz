@@ -1,3 +1,5 @@
+'use client'
+
 import { useCallback } from 'react'
 import { useUserStore } from './index'
 import { User } from 'app/api/graphql/types'

@@ -22,7 +22,7 @@ export function LowBalanceModal({
         <P className="mb-6 text-center text-white">
           You need a minimum of {minWithdrawalAmount} XLM to withdraw funds from your account.
         </P>
-        <Button text="OK" onPress={onClose} size="medium" />
+        <Button text="OK" onPress={onClose} />
       </View>
     </Modal>
   )

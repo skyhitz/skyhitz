@@ -1,5 +1,5 @@
 'use client'
-import { Platform, View } from 'react-native'
+import { View } from 'react-native'
 import { ProfileHeader } from './ProfileHeader'
 import Cog from 'app/ui/icons/cog'
 import { CopyWalletPublicKeyButton } from 'app/ui/buttons/CopyWalletPublicKeyButton'
@@ -12,17 +12,15 @@ import Dollar from 'app/ui/icons/dollar'
 import { useRouter } from 'solito/navigation'
 import { useState, useEffect, useRef } from 'react'
 import { LowBalanceModal } from './LowBalanceModal'
+import { User } from 'app/api/graphql/types'
 import {
-  User,
   useUserCollectionQuery,
   useUserCreditsQuery,
   useUserLikesQuery,
   useClaimEarningsMutation,
 } from 'app/api/graphql/mutations'
-import { Config } from 'app/config'
 import { P, ActivityIndicator } from 'app/design/typography'
 import { useToast } from 'app/provider/toast'
-import { WithdrawCredits } from './edit/WithdrawCredits'
 
 export function ProfileScreen({ user }: { user: User }) {
   const [modalVisible, setModalVisible] = useState<boolean>(false)
@@ -30,9 +28,7 @@ export function ProfileScreen({ user }: { user: User }) {
   const { data: credits, refetch: refetchUserCredits } = useUserCreditsQuery()
   const { push } = useRouter()
   const { data: userLikesData } = useUserLikesQuery()
-  const { data: userCollectionData } = useUserCollectionQuery({
-    variables: { userId: user.id },
-  })
+  const { data: userCollectionData } = useUserCollectionQuery(user.id)
   const [claimEarnings] = useClaimEarningsMutation()
   const toast = useToast()
 
@@ -45,26 +41,62 @@ export function ProfileScreen({ user }: { user: User }) {
     if (hasAttemptedClaim.current) return
 
     const attemptClaimEarnings = async () => {
+      // Mark that we've attempted to claim
+      hasAttemptedClaim.current = true
+
       try {
         setIsClaimingEarnings(true)
-        await claimEarnings()
-        // Refresh user credits after claiming
-        refetchUserCredits()
+        const earningsResult = await claimEarnings()
+        const response = earningsResult.data?.claimEarnings
+
+        if (response?.success) {
+          if (response.totalClaimedAmount > 0) {
+            // Refresh user credits to show updated balance
+            try {
+              await refetchUserCredits()
+            } catch (refetchError) {
+              console.error('Error refreshing user credits:', refetchError)
+            }
+
+            toast.show(
+              `Successfully claimed ${response.totalClaimedAmount} XLM!`,
+              { type: 'success' }
+            )
+          } else {
+            // No earnings to claim
+            toast.show(
+              response.message || 'No earnings available to claim at this time',
+              { type: 'info' }
+            )
+          }
+        } else {
+          // Claim failed with a specific message
+          if (
+            response?.message?.includes('24 hours') ||
+            response?.lastClaimTime
+          ) {
+            // Don't show toast for cooldown period
+          } else {
+            // Generic error
+            toast.show(response?.message || 'Failed to claim earnings', {
+              type: 'danger'
+            })
+          }
+        }
       } catch (error) {
-        // Silent failure is ok here
+        // Log error but don't show toast for network errors
         console.error('Failed to claim earnings:', error)
       } finally {
         setIsClaimingEarnings(false)
-        // Mark that we've attempted to claim
-        hasAttemptedClaim.current = true
       }
     }
 
     attemptClaimEarnings()
-  }, [claimEarnings, refetchUserCredits])
+  }, [claimEarnings, refetchUserCredits, toast])
 
   const handleWithdraw = () => {
-    if (credits?.userCredits && credits.userCredits < Config.MINIMUM_WITHDRAWAL_AMOUNT) {
+    // Use hardcoded minimum withdrawal amount (5 XLM) as in the legacy app
+    if (credits?.userCredits && credits.userCredits < 5) {
       setModalVisible(true)
     } else {
       push('/dashboard/profile/edit?withdraw=true')
@@ -88,31 +120,39 @@ export function ProfileScreen({ user }: { user: User }) {
         />
 
         <View className="mt-1 w-full items-center justify-center">
-          {user.publicKey && <CopyWalletPublicKeyButton address={user.publicKey} />}
+          {user.publicKey && (
+            <CopyWalletPublicKeyButton address={user.publicKey} />
+          )}
         </View>
 
         <View className="mt-8 w-full items-center justify-center px-4">
           <View className="mb-0.5 flex w-full max-w-lg flex-row items-center justify-between">
-            <P className="ml-2 font-bold text-white">
+            <View className="ml-2">
               {isClaimingEarnings ? (
                 <ActivityIndicator size="small" />
               ) : (
-                `${credits?.userCredits || 0} XLM`
+                <P className="font-bold text-white">
+                  {`${credits?.userCredits || 0} XLM`}
+                </P>
               )}
-            </P>
-            <P
-              className="mr-2 cursor-pointer font-bold text-white underline decoration-white decoration-2 underline-offset-4"
-              onPress={handleWithdraw}
-            >
-              Withdraw
-            </P>
+            </View>
+            <View className="mr-2">
+              <P
+                className="cursor-pointer font-bold text-white underline decoration-white decoration-2 underline-offset-4"
+                onPress={handleWithdraw}
+              >
+                Withdraw
+              </P>
+            </View>
           </View>
 
           <View className="flex w-full max-w-lg flex-col">
             <TextLink href="/dashboard/profile/likes">
               <ProfileRow
                 title="Likes"
-                icon={<Like className="h-5 w-5 fill-none stroke-current stroke-2 text-white" />}
+                icon={
+                  <Like className="h-5 w-5 fill-none stroke-current stroke-2 text-white" />
+                }
                 count={userLikesData?.userLikes?.length || 0}
               />
             </TextLink>
@@ -120,7 +160,9 @@ export function ProfileScreen({ user }: { user: User }) {
             <TextLink href="/dashboard/profile/collection">
               <ProfileRow
                 title="Collection"
-                icon={<StarBorder className="h-5 w-5 fill-none stroke-current stroke-2 text-white" />}
+                icon={
+                  <StarBorder className="h-5 w-5 fill-none stroke-current stroke-2 text-white" />
+                }
                 count={userCollectionData?.userEntries?.length || 0}
               />
             </TextLink>
@@ -128,7 +170,9 @@ export function ProfileScreen({ user }: { user: User }) {
             <TextLink href="/top-up">
               <ProfileRow
                 title="Top-up"
-                icon={<Dollar className="h-5 w-5 fill-none stroke-current stroke-2 text-white" />}
+                icon={
+                  <Dollar className="h-5 w-5 fill-none stroke-current stroke-2 text-white" />
+                }
               />
             </TextLink>
           </View>
@@ -138,7 +182,7 @@ export function ProfileScreen({ user }: { user: User }) {
       <LowBalanceModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
-        minWithdrawalAmount={Config.MINIMUM_WITHDRAWAL_AMOUNT}
+        minWithdrawalAmount={5}
       />
     </SafeAreaView>
   )

@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@apollo/client'
+import { useMutation, useQuery, useLazyQuery } from '@apollo/client'
 import { User } from './types'
 import { SecureStorage } from 'app/utils/secure-storage'
 import { useUserStore } from 'app/state/user'
@@ -7,7 +7,6 @@ import {
   REQUEST_TOKEN,
   SIGN_IN_WITH_TOKEN,
   CREATE_USER_WITH_EMAIL,
-  AUTHENTICATED_USER,
   USER_CREDITS,
   USER_COLLECTION,
   USER_LIKES,
@@ -16,7 +15,8 @@ import {
   CREATE_PAYMENT_INTENT,
   ENTRIES_SEARCH,
   USERS_SEARCH,
-  RECENTLY_ADDED_ENTRIES
+  RECENTLY_ADDED_ENTRIES,
+  CLAIM_EARNINGS
 } from './operations'
 
 // Define GraphQL mutation types
@@ -108,13 +108,6 @@ export function useCreateUserWithEmailMutation() {
   return useMutation(CREATE_USER_WITH_EMAIL)
 }
 
-// Authentication check query
-export function useAuthenticatedUserQuery() {
-  return useQuery(AUTHENTICATED_USER, {
-    fetchPolicy: 'network-only',
-    notifyOnNetworkStatusChange: true,
-  })
-}
 
 // User data queries
 export function useUserCreditsQuery() {
@@ -148,6 +141,11 @@ export function useWithdrawToExternalWalletMutation() {
   return useMutation(WITHDRAW_TO_EXTERNAL_WALLET)
 }
 
+// Claim earnings mutation
+export function useClaimEarningsMutation() {
+  return useMutation(CLAIM_EARNINGS)
+}
+
 // Payment mutation
 export function useCreatePaymentIntentMutation() {
   return useMutation(CREATE_PAYMENT_INTENT)
@@ -155,11 +153,11 @@ export function useCreatePaymentIntentMutation() {
 
 // Search queries
 export function useEntriesSearchLazyQuery() {
-  return useMutation(ENTRIES_SEARCH)
+  return useLazyQuery(ENTRIES_SEARCH)
 }
 
 export function useUsersSearchLazyQuery() {
-  return useMutation(USERS_SEARCH)
+  return useLazyQuery(USERS_SEARCH)
 }
 
 export function useRecentlyAddedEntriesQuery() {

@@ -5910,6 +5910,7 @@ __metadata:
     app: "npm:*"
     babel-plugin-react-compiler: "npm:19.0.0-beta-3229e95-20250315"
     expo: "npm:~52.0.42"
+    expo-clipboard: "npm:^7.1.4"
     expo-font: "npm:~13.0.4"
     expo-image: "npm:~2.0.7"
     expo-linear-gradient: "npm:~14.0.2"
@@ -5942,6 +5943,17 @@ __metadata:
     react: "*"
     react-native: "*"
   checksum: 10/0f8151db65de24d4dcd4205dc923600c986dd96fcc75269bdba2b8c16a4f1ff267cc92d0e3b14bd1dc1214fedf85f84d322c8b85e4e1dc64a5019eadd184177a
+  languageName: node
+  linkType: hard
+
+"expo-clipboard@npm:^7.1.4":
+  version: 7.1.4
+  resolution: "expo-clipboard@npm:7.1.4"
+  peerDependencies:
+    expo: "*"
+    react: "*"
+    react-native: "*"
+  checksum: 10/89e67f0d88a5de1e6f78033e4e46056cbc72840f3d07bba008b1bc78fdc31094f2b7628da4958f56576118a15770ef453611ff7021cc824be68f95d07757d559
   languageName: node
   linkType: hard
 

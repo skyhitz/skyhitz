@@ -1,13 +1,43 @@
 'use client'
 import { FlatList, View } from 'react-native'
 import { BeatListEntry } from 'app/ui/beat-list-entry'
-import { useRecentlyAddedEntriesQuery } from 'app/api/graphql/mutations'
-import { isSome } from 'app/utils'
 import { P, ActivityIndicator } from 'app/design/typography'
+import { algoliaClient, indexNames } from 'app/api/algolia'
+import { Entry } from 'app/api/graphql/types'
+import { useEffect, useState } from 'react'
 
 export default function RecentlyAddedList() {
-  const { data, loading } = useRecentlyAddedEntriesQuery()
-  const entries = data?.recentlyAddedEntries?.filter(isSome) ?? []
+  const [entries, setEntries] = useState<Entry[]>([])
+  const [loading, setLoading] = useState(true)
+  
+  // Fetch recently added entries from Algolia on component mount
+  useEffect(() => {
+    // Use the timestamp replica index sorted by descending order (newest first)
+    algoliaClient.searchSingleIndex({
+      indexName: indexNames.entriesTimestampDesc,
+      searchParams: {
+        query: '',
+        hitsPerPage: 10,  // Limit to 10 recent entries
+        attributesToRetrieve: ['*']
+      }
+    })
+      .then(result => {
+        console.log('Recently added entries result:', result)
+        if (result.hits && result.hits.length > 0) {
+          // Convert Algolia hits to Entry objects
+          const recentEntries = result.hits.map(hit => hit as unknown as Entry)
+          setEntries(recentEntries)
+        } else {
+          setEntries([])
+        }
+        setLoading(false)
+      })
+      .catch(error => {
+        console.error('Error fetching recently added entries:', error)
+        setEntries([])
+        setLoading(false)
+      })
+  }, [])
 
   if (loading) {
     return (

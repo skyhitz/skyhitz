@@ -1,10 +1,10 @@
 'use client'
 import { View, FlatList } from 'react-native'
 import { BeatListEntry } from 'app/ui/beat-list-entry'
-import { useEntriesSearchLazyQuery } from 'app/api/graphql/mutations'
 import { useState, useEffect } from 'react'
-import { isSome } from 'app/utils'
 import { P, ActivityIndicator } from 'app/design/typography'
+import { entriesIndex } from 'app/api/algolia'
+import { Entry } from 'app/api/graphql/types'
 
 type BeatsSearchResultListProps = {
   searchPhrase: string
@@ -13,9 +13,11 @@ type BeatsSearchResultListProps = {
 export function BeatsSearchResultList({
   searchPhrase,
 }: BeatsSearchResultListProps) {
-  const [search, { data, loading }] = useEntriesSearchLazyQuery()
   const [debouncedSearchPhrase, setDebouncedSearchPhrase] = useState(searchPhrase)
+  const [entries, setEntries] = useState<Entry[]>([])
+  const [loading, setLoading] = useState(false)
 
+  // Debounce search phrase to avoid too many API calls
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearchPhrase(searchPhrase)
@@ -26,17 +28,34 @@ export function BeatsSearchResultList({
     }
   }, [searchPhrase])
 
+  // Search directly with Algolia
   useEffect(() => {
     if (debouncedSearchPhrase) {
-      search({
-        variables: {
-          query: debouncedSearchPhrase,
-        },
-      })
+      console.log('Searching for entries with Algolia:', debouncedSearchPhrase)
+      setLoading(true)
+      
+      entriesIndex.search(debouncedSearchPhrase)
+        .then(result => {
+          console.log('Algolia search result:', result)
+          if (result.hits && result.hits.length > 0) {
+            // Convert Algolia hits to Entry objects
+            const searchResults = result.hits.map(hit => hit as unknown as Entry)
+            setEntries(searchResults)
+          } else {
+            setEntries([])
+          }
+          setLoading(false)
+        })
+        .catch(error => {
+          console.error('Algolia search error:', error)
+          setLoading(false)
+          setEntries([])
+        })
+    } else {
+      // Clear results when search is empty
+      setEntries([])
     }
-  }, [debouncedSearchPhrase, search])
-
-  const entries = data?.entriesSearch?.filter(isSome) ?? []
+  }, [debouncedSearchPhrase])
 
   if (loading) {
     return (

@@ -5,6 +5,7 @@
     "@expo-google-fonts/unbounded": "^0.3.0",
     "app": "*",
     "expo": "~52.0.42",
+    "expo-clipboard": "^7.1.4",
     "expo-font": "~13.0.4",
     "expo-image": "~2.0.7",
     "expo-linear-gradient": "~14.0.2",

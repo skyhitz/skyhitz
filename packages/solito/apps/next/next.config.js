@@ -33,6 +33,8 @@ module.exports = {
     'react-native-svg',
     'react-native-htmlview',
     '@react-native-community',
+    'expo-clipboard',
+    'expo-modules-core',
   ],
   images: {
     remotePatterns: [

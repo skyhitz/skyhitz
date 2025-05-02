@@ -1,6 +1,6 @@
 'use client'
 import { imageSrc } from 'app/utils/entry'
-import { UserAvatar } from 'app/ui/userAvatar'
+import { UserAvatar } from 'app/ui/user-avatar'
 import Twitter from 'app/ui/icons/twitter'
 import Instagram from 'app/ui/icons/instagram'
 import { Linking, Pressable, View } from 'react-native'
@@ -21,27 +21,41 @@ export function SocialLinks({
   instagram,
   profileUrl,
 }: SocialLinksProps) {
-  return (
-    <View className="flex min-h-[1.5rem] flex-row-reverse">
+  // Using array of elements to avoid any whitespace text nodes
+  const socialItems = [
+    // Share button
+    <View key="share">
       <ShareButton url={profileUrl} title="Check out this Skyhitz profile" />
-      {instagram && (
-        <Pressable
-          className="mx-2"
-          onPress={() => Linking.openURL(`https://instagram.com/${instagram}`)}
-        >
+    </View>
+  ];
+  
+  // Add Instagram if available
+  if (instagram) {
+    socialItems.push(
+      <View key="instagram" className="mx-2">
+        <Pressable onPress={() => Linking.openURL(`https://instagram.com/${instagram}`)}>
           <Instagram className="h-6 w-6 fill-none stroke-current stroke-[1.5] text-white" />
         </Pressable>
-      )}
-      {twitter && (
-        <Pressable
-          className="mx-2"
-          onPress={() => Linking.openURL(`https://twitter.com/${twitter}`)}
-        >
+      </View>
+    );
+  }
+  
+  // Add Twitter if available
+  if (twitter) {
+    socialItems.push(
+      <View key="twitter" className="mx-2">
+        <Pressable onPress={() => Linking.openURL(`https://twitter.com/${twitter}`)}>
           <Twitter className="h-6 w-6 fill-none stroke-current stroke-[1.5] text-white" />
         </Pressable>
-      )}
+      </View>
+    );
+  }
+  
+  return (
+    <View className="flex min-h-[1.5rem] flex-row-reverse">
+      {socialItems}
     </View>
-  )
+  );
 }
 
 type ProfileHeaderProps = {
@@ -52,21 +66,23 @@ type ProfileHeaderProps = {
 export function ProfileHeader({ user, action }: ProfileHeaderProps) {
   const profileUrl = `${Config.APP_URL}/collector/${user.id}`
   
+  // Create the background element
+  const backgroundElement = user.backgroundUrl ? (
+    <SolitoImage
+      src={imageSrc(user.backgroundUrl)}
+      contentFit="cover"
+      fill
+      alt="Background"
+      sizes="100vw"
+    />
+  ) : (
+    <View className="h-40 w-full bg-gray-800 md:h-60" />
+  );
+  
   return (
     <View className="w-full">
       <View className="h-40 w-full md:h-60">
-        {user.backgroundImage ? (
-          <SolitoImage
-            src={imageSrc(user.backgroundImage)}
-            contentFit="cover"
-            fill
-            alt="Background"
-            sizes="100vw"
-          />
-        ) : (
-          <View className="h-40 w-full bg-gray-800 md:h-60" />
-        )}
-
+        {backgroundElement}
         <View className="absolute -bottom-8 left-5 flex-row items-end md:left-20">
           <UserAvatar
             avatarUrl={user.avatarUrl}
@@ -88,7 +104,7 @@ export function ProfileHeader({ user, action }: ProfileHeaderProps) {
             instagram={user.instagram || ''}
             profileUrl={profileUrl}
           />
-          {action}
+          {action ? action : null}
         </View>
       </View>
     </View>

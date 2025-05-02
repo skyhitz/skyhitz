@@ -13,10 +13,10 @@ const fetchChart = async (key: string) => {
     page,
     hitsPerPage: pageSize,
     attributesToRetrieve: ['*'],
-    facets: ['apr'],
-    cacheable: false,
+    facets: ['apr']
   })
-  return filter(isSome, response.hits) as NonNullable<Entry>[]
+  // Convert Algolia hits to Entry objects with proper type casting
+  return filter(isSome, response.hits.map(hit => hit as unknown as Entry)) as NonNullable<Entry>[]
 }
 
 export function useTopChart(pageStart?: number) {
