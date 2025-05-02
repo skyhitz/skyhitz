@@ -5,11 +5,13 @@ import { View } from 'react-native'
 import { H1, H2, P } from 'app/design/typography'
 import { Button } from 'app/design/button'
 import { useLogOut } from 'app/hooks/useLogIn'
-import { useUserAtomState } from 'app/state/user/hooks'
+import { useUserState } from 'app/state/user/hooks'
 
 function DashboardScreen() {
   const logOut = useLogOut()
-  const { user } = useUserAtomState()
+  const { user } = useUserState()
+  
+  console.log('Dashboard user state:', user)
 
   return (
     <View className="flex-1 items-center justify-center bg-black p-6">
@@ -18,16 +20,21 @@ function DashboardScreen() {
         
         <View className="my-6 rounded-lg bg-gray-800 p-4">
           <H2 className="mb-2 text-lg text-white">Account Info</H2>
-          <P className="text-gray-300">
-            Username: <P className="font-bold text-white">{user?.username || 'Not available'}</P>
-          </P>
-          <P className="mt-1 text-gray-300">
-            Email: <P className="font-bold text-white">{user?.email || 'Not available'}</P>
-          </P>
+          <View className="flex-row items-center">
+            <P className="text-gray-300">Username: </P>
+            <P className="font-bold text-white ml-1">{user?.username || 'Not available'}</P>
+          </View>
+          
+          <View className="flex-row items-center mt-1">
+            <P className="text-gray-300">Email: </P>
+            <P className="font-bold text-white ml-1">{user?.email || 'Not available'}</P>
+          </View>
+          
           {user?.publicKey && (
-            <P className="mt-1 text-gray-300">
-              Wallet: <P className="font-bold text-white truncate">{user.publicKey}</P>
-            </P>
+            <View className="flex-row items-center mt-1">
+              <P className="text-gray-300">Wallet: </P>
+              <P className="font-bold text-white ml-1 truncate">{user.publicKey}</P>
+            </View>
           )}
         </View>
         

@@ -1,4 +1,23 @@
+import { useMutation, useQuery } from '@apollo/client'
 import { User } from './types'
+import { SecureStorage } from 'app/utils/secure-storage'
+import { useUserStore } from 'app/state/user'
+import { secureStorage, STORAGE_KEYS } from 'app/services/storage'
+import {
+  REQUEST_TOKEN,
+  SIGN_IN_WITH_TOKEN,
+  CREATE_USER_WITH_EMAIL,
+  AUTHENTICATED_USER,
+  USER_CREDITS,
+  USER_COLLECTION,
+  USER_LIKES,
+  UPDATE_USER,
+  WITHDRAW_TO_EXTERNAL_WALLET,
+  CREATE_PAYMENT_INTENT,
+  ENTRIES_SEARCH,
+  USERS_SEARCH,
+  RECENTLY_ADDED_ENTRIES
+} from './operations'
 
 // Define GraphQL mutation types
 export type RequestTokenMutationVariables = {
@@ -19,72 +38,133 @@ export type CreateUserWithEmailMutationVariables = {
 
 export type CreateUserWithEmailResponse = {
   createUserWithEmail: {
+    message: string
     user?: User
   }
 }
 
-// Mock implementations of mutation hooks for use during development
+export type UpdateUserMutationVariables = {
+  displayName?: string
+  username?: string
+  email?: string
+  avatarUrl?: string
+  backgroundUrl?: string
+  twitter?: string
+  instagram?: string
+}
+
+export type WithdrawToExternalWalletMutationVariables = {
+  address: string
+}
+
+export type CreatePaymentIntentMutationVariables = {
+  amount: number
+}
+
+export type CreatePaymentIntentResponse = {
+  createPaymentIntent: {
+    clientSecret: string
+  }
+}
+
+// Real GraphQL mutation hooks that connect to the backend
 export function useRequestTokenMutation(options?: { 
   onCompleted?: () => void 
-}): [
-  (variables: { variables: RequestTokenMutationVariables }) => Promise<any>,
-  { loading: boolean; error: Error | null }
-] {
-  const requestToken = async () => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    if (options?.onCompleted) {
-      options.onCompleted()
-    }
-    return { data: { requestToken: true } }
-  }
-
-  return [requestToken, { loading: false, error: null }]
+}) {
+  return useMutation(REQUEST_TOKEN, {
+    onCompleted: (data) => {
+      if (data?.requestToken && options?.onCompleted) {
+        options.onCompleted()
+      }
+    },
+  })
 }
 
-export function useSignInWithTokenMutation(): [
-  (variables: { variables: SignInWithTokenMutationVariables }) => Promise<any>,
-  { loading: boolean; error: Error | null }
-] {
-  const signIn = async () => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // Mock successful authentication response
-    return {
-      data: {
-        signInWithToken: {
-          id: '1234',
-          displayName: 'Test User',
-          email: 'test@example.com',
-          username: 'testuser',
-          jwt: 'mock-jwt-token',
-          publicKey: 'mock-public-key'
+export function useSignInWithTokenMutation() {
+  // Get the setUser function from the Zustand store
+  const { setUser } = useUserStore()
+  
+  return useMutation(SIGN_IN_WITH_TOKEN, {
+    onCompleted: async (data) => {
+      console.log('Sign in with token succeeded:', data?.signInWithToken)
+      
+      if (data?.signInWithToken) {
+        // Store JWT token in secure storage
+        if (data.signInWithToken.jwt) {
+          await SecureStorage.save('auth-token', data.signInWithToken.jwt)
         }
+        
+        // Update the user in the Zustand store
+        setUser(data.signInWithToken)
+        
+        // Also save user data to secure storage for offline access
+        await secureStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(data.signInWithToken))
       }
-    }
-  }
-
-  return [signIn, { loading: false, error: null }]
+    },
+  })
 }
 
-export function useCreateUserWithEmailMutation(): [
-  (variables: { variables: CreateUserWithEmailMutationVariables }) => Promise<any>,
-  { loading: boolean; error: Error | null; data: CreateUserWithEmailResponse | null }
-] {
-  const createUser = async () => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // Mock successful registration response
-    return {
-      data: {
-        createUserWithEmail: {
-          user: null // User is null on successful registration, they need to verify email
-        }
-      }
-    }
-  }
+export function useCreateUserWithEmailMutation() {
+  return useMutation(CREATE_USER_WITH_EMAIL)
+}
 
-  return [createUser, { loading: false, error: null, data: null }]
+// Authentication check query
+export function useAuthenticatedUserQuery() {
+  return useQuery(AUTHENTICATED_USER, {
+    fetchPolicy: 'network-only',
+    notifyOnNetworkStatusChange: true,
+  })
+}
+
+// User data queries
+export function useUserCreditsQuery() {
+  return useQuery(USER_CREDITS, {
+    fetchPolicy: 'network-only',
+    notifyOnNetworkStatusChange: true,
+  })
+}
+
+export function useUserCollectionQuery(userId: string) {
+  return useQuery(USER_COLLECTION, {
+    variables: { userId },
+    fetchPolicy: 'network-only',
+    notifyOnNetworkStatusChange: true,
+  })
+}
+
+export function useUserLikesQuery() {
+  return useQuery(USER_LIKES, {
+    fetchPolicy: 'network-only',
+    notifyOnNetworkStatusChange: true,
+  })
+}
+
+// User update mutations
+export function useUpdateUserMutation() {
+  return useMutation(UPDATE_USER)
+}
+
+export function useWithdrawToExternalWalletMutation() {
+  return useMutation(WITHDRAW_TO_EXTERNAL_WALLET)
+}
+
+// Payment mutation
+export function useCreatePaymentIntentMutation() {
+  return useMutation(CREATE_PAYMENT_INTENT)
+}
+
+// Search queries
+export function useEntriesSearchLazyQuery() {
+  return useMutation(ENTRIES_SEARCH)
+}
+
+export function useUsersSearchLazyQuery() {
+  return useMutation(USERS_SEARCH)
+}
+
+export function useRecentlyAddedEntriesQuery() {
+  return useQuery(RECENTLY_ADDED_ENTRIES, {
+    fetchPolicy: 'network-only',
+    notifyOnNetworkStatusChange: true,
+  })
 }

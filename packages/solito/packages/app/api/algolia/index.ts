@@ -57,6 +57,17 @@ export async function getObject(indexName: string, objectID: string) {
 }
 
 // Create index interfaces for direct use
+export const entriesIndex = {
+  search: async <T>(query: string, options: any = {}) => {
+    const result = await searchIndex(indexNames.entries, query, options)
+    return result
+  },
+  getObject: async <T>(objectID: string) => {
+    const result = await getObject(indexNames.entries, objectID)
+    return result as T
+  },
+}
+
 export const blogIndex = {
   search: async <T>(query: string, options: any = {}) => {
     const result = await searchIndex(indexNames.blog, query, options)

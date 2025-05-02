@@ -8,22 +8,32 @@ import { View } from 'react-native'
 import { useRouter } from 'solito/navigation'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { setUser } = useUserStore()
+  const { setUser, setLoading } = useUserStore()
   const { replace } = useRouter()
 
   useEffect(() => {
     async function restoreAuth() {
-      // Try to restore authentication state
-      const user = await AuthService.restoreUserFromStorage()
-      
-      if (user) {
-        // User data found, set auth state
-        setUser(user)
+      try {
+        // Set loading to true while we check authentication
+        setLoading(true)
+        
+        // Try to restore authentication state
+        const user = await AuthService.restoreUserFromStorage()
+        
+        if (user) {
+          // User data found, set auth state
+          setUser(user)
+        }
+      } catch (error) {
+        console.error('Auth restore error:', error)
+      } finally {
+        // Ensure loading is set to false regardless of outcome
+        setLoading(false)
       }
     }
 
     restoreAuth()
-  }, [setUser, replace])
+  }, [setUser, setLoading, replace])
 
   return <>{children}</>
 }

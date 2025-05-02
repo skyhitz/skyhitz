@@ -7,10 +7,10 @@ export type SignInParam = {
 }
 
 export const useSignInParam = (): SignInParam | undefined => {
-  const searchParams = useSearchParams<SignInParam>()
+  const searchParams = useSearchParams()
 
-  const token = searchParams?.token
-  const uid = searchParams?.uid
+  const token = searchParams ? searchParams.get('token') : null
+  const uid = searchParams ? searchParams.get('uid') : null
 
   return useMemo(() => {
     if (token && uid) return { token, uid }

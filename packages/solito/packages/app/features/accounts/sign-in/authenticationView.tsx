@@ -14,28 +14,48 @@ export function AuthenticationView({
 }: {
   signInParam: SignInParam
 }) {
-  const [signIn, { error }] = useSignInWithTokenMutation()
-  const { push } = useRouter()
+  const [signIn, { error, loading }] = useSignInWithTokenMutation()
+  const { replace } = useRouter()
   const logIn = useLogIn()
 
   useEffect(() => {
     const trySignIn = async () => {
       try {
+        console.log('Attempting sign in with token...')
         const { data } = await signIn({
           variables: {
             uid: signInParam.uid,
             token: signInParam.token,
           },
         })
+        
+        console.log('Sign in response:', JSON.stringify(data, null, 2))
+        
         if (data?.signInWithToken) {
-          logIn(data.signInWithToken as User)
+          // The user data comes directly in the signInWithToken response, not nested in a 'user' property
+          const userData = data.signInWithToken
+          
+          console.log('Authentication successful, updating user state with:', userData)
+          
+          // Double check that we have the necessary user fields
+          if (userData.id && userData.email) {
+            // Update the user state in Zustand
+            logIn(userData)
+            // The logIn function will handle redirect after setting user state
+          } else {
+            console.error('Invalid user data received:', userData)
+            replace('/')
+          }
         }
       } catch (ex) {
-        //no-op
+        console.error('Authentication error:', ex)
       }
     }
-    trySignIn()
-  }, [signInParam, signIn, logIn])
+    
+    if (signInParam.token && signInParam.uid) {
+      trySignIn()
+    }
+  }, [signInParam, signIn, replace])
 
   return (
     <View className="flex w-72 items-center">
@@ -44,7 +64,7 @@ export function AuthenticationView({
           <P className="w-full text-center text-[#d9544f]">{error.message}</P>
           <Button
             text="Go back"
-            onPress={() => push('/')}
+            onPress={() => replace('/')}
             className="my-3"
             variant="secondary"
           />

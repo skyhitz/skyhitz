@@ -15,12 +15,15 @@ export const useLogIn = () => {
     // Save JWT token to secure storage
     if (user.jwt) {
       await secureStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, user.jwt)
+    } else {
+      console.warn('No JWT token found in user object during login')
     }
     
     // Save user data for offline access
     await secureStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user))
     
-    replace('/')
+    // Navigate to dashboard after successful login
+    replace('/dashboard')
   }, [setUser, replace])
 }
 

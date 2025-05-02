@@ -3,18 +3,21 @@ import { useUserStore } from './index'
 import { User } from 'app/api/graphql/types'
 
 export function useUserState() {
-  const { user, setUser } = useUserStore()
+  const { user, loading, setUser, setLoading } = useUserStore()
 
   const updateUser = useCallback(
     (newUser: User | null) => {
       setUser(newUser)
+      setLoading(false) // Once user is set, loading is complete
     },
-    [setUser]
+    [setUser, setLoading]
   )
 
   return {
     user,
+    loading,
     updateUser,
+    setLoading
   }
 }
 

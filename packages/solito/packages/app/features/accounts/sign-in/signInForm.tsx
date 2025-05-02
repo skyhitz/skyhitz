@@ -7,6 +7,7 @@ import StyledTextInput from 'app/features/accounts/styledTextInput'
 import { useRequestTokenMutation } from 'app/api/graphql/mutations'
 import { signInFormSchema } from 'app/validation'
 import { A, P } from 'app/design/typography'
+import { ApolloError } from '@apollo/client'
 
 type SignInFormProps = {
   onEmailSend: () => void
@@ -17,16 +18,22 @@ export function SignInForm({
   onEmailSend,
 }: SignInFormProps) {
   const [requestToken, { loading, error }] = useRequestTokenMutation({
-    onCompleted: onEmailSend,
+    onCompleted: () => {
+      onEmailSend()
+    },
   })
   
   const handleSignIn = async (formData: FormData) => {
     if (loading) return
-    await requestToken({
-      variables: {
-        usernameOrEmail: formData.usernameOrEmail,
-      },
-    })
+    try {
+      await requestToken({
+        variables: {
+          usernameOrEmail: formData.usernameOrEmail,
+        },
+      })
+    } catch (err) {
+      console.error('Sign in error:', err)
+    }
   }
 
   const initialValues: FormData = {
