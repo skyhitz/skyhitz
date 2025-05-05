@@ -2,16 +2,6 @@
 import { ComponentAuthGuard } from 'app/utils/authGuard'
 import CollectionScreen from 'app/features/dashboard/profile/collection'
 import { useUserState } from 'app/state/user/hooks'
-import { Metadata } from 'next'
-import { Config } from 'app/config'
-
-export const metadata: Metadata = {
-  title: 'Skyhitz - Your Collection',
-  description: 'View your Skyhitz collection',
-  alternates: {
-    canonical: `${Config.APP_URL}/dashboard/profile/collection`,
-  },
-}
 
 export default function CollectionPage() {
   const { user } = useUserState()

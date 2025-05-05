@@ -1,5 +1,3 @@
-'use client'
-
 import { View, ScrollView } from 'react-native'
 import CheckoutForm from 'app/ui/payments/checkout-form'
 import { H1 } from 'app/design/typography'

@@ -7,7 +7,8 @@ import MailOutline from 'app/ui/icons/mail-outline'
 import Twitter from 'app/ui/icons/twitter'
 import Instagram from 'app/ui/icons/instagram'
 import { useEffect, useState } from 'react'
-import { User, useUpdateUserMutation } from 'app/api/graphql/mutations'
+import { useUpdateUserMutation } from 'app/api/graphql/mutations'
+import { User } from 'app/api/graphql/types'
 import { Formik, FormikProps } from 'formik'
 import { LogOutBtn } from './logOutBtn'
 import { useUserStore } from 'app/state/user'
@@ -28,7 +29,7 @@ export default function EditProfileScreen({ user }: { user: User }) {
   if (!user) return null;
 
   const searchParams = useSearchParams();
-  const showWithdraw = searchParams?.withdraw === 'true';
+  const showWithdraw = searchParams?.get('withdraw') === 'true';
   
   const { setUser } = useUserStore();
   const [avatar, setAvatar] = useState<ChangeImage>({
@@ -84,18 +85,14 @@ export default function EditProfileScreen({ user }: { user: User }) {
         };
 
         setUser(updatedUser);
-        toast?.show({
-          type: 'success',
-          title: 'Profile Updated',
-          message: 'Your profile has been updated successfully!',
+        toast.show('Your profile has been updated successfully!', {
+          type: 'success'
         });
         back();
       }
     } catch (error) {
-      toast?.show({
-        type: 'error',
-        title: 'Update Failed',
-        message: (error as Error).message || 'Failed to update profile',
+      toast.show((error as Error).message || 'Failed to update profile', {
+        type: 'danger'
       });
     }
   };
@@ -117,7 +114,7 @@ export default function EditProfileScreen({ user }: { user: User }) {
           user={{
             ...user,
             avatarUrl: avatar.url,
-            backgroundImage: background.url,
+            backgroundUrl: background.url,
           }}
         />
 

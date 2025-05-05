@@ -1,5 +1,5 @@
 'use client'
-import { View } from 'react-native'
+import { View, TextInput, Text } from 'react-native'
 import { useState } from 'react'
 import { Formik, FormikProps } from 'formik'
 import * as Yup from 'yup'
@@ -45,10 +45,8 @@ export function WithdrawCredits() {
       })
 
       if (data?.withdrawToExternalWallet) {
-        toast?.show({
-          type: 'success',
-          title: 'Withdrawal Successful',
-          message: 'Your XLM has been sent to the specified address.',
+        toast.show('Your XLM has been sent to the specified address.', {
+          type: 'success'
         })
         
         // Refresh user credits
@@ -57,10 +55,8 @@ export function WithdrawCredits() {
         back()
       }
     } catch (error) {
-      toast?.show({
-        type: 'error',
-        title: 'Withdrawal Failed',
-        message: (error as Error).message || 'Failed to process withdrawal',
+      toast.show((error as Error).message || 'Failed to process withdrawal', {
+        type: 'danger'
       })
     } finally {
       setWithdrawing(false)
@@ -101,16 +97,28 @@ export function WithdrawCredits() {
               handleSubmit,
             }: FormikProps<WithdrawForm>) => (
               <View className="w-full">
-                <FormInputWithIcon
-                  icon={<CreditCard className="h-5 w-5 text-white" />}
-                  placeholder="Stellar Address"
-                  value={values.address}
-                  onChangeText={handleChange('address')}
-                  onBlur={handleBlur('address')}
-                  error={touched.address ? errors.address : undefined}
-                  editable={!withdrawing}
-                  autoCapitalize="none"
-                />
+                <View className="mb-4">
+                  <View className="relative flex flex-row items-center rounded-lg border bg-gray-900 focus-within:border-blue-500">
+                    <View className="absolute left-3 z-10">
+                      <CreditCard className="h-5 w-5 text-white" />
+                    </View>
+                    
+                    <TextInput
+                      placeholder="Stellar Address"
+                      placeholderTextColor="#6b7280"
+                      value={values.address}
+                      onChangeText={handleChange('address')}
+                      onBlur={handleBlur('address')}
+                      editable={!withdrawing}
+                      autoCapitalize="none"
+                      className="flex-1 rounded-lg py-3 px-3 text-white pl-10"
+                    />
+                  </View>
+                  
+                  {touched.address && errors.address && (
+                    <Text className="mt-1 text-sm text-red-500">{errors.address}</Text>
+                  )}
+                </View>
 
                 <View className="mt-6 flex flex-row justify-between">
                   <Button

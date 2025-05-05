@@ -4,11 +4,15 @@ import { TextInput, View, Text, TextInputProps } from 'react-native'
 import { useField, FieldHookConfig } from 'formik'
 
 type FormInputWithIconProps = TextInputProps & {
-  name: string
+  name?: string
   label?: string
   icon?: React.ReactNode
   className?: string
   inputClassName?: string
+  error?: string
+  value?: string
+  onChangeText?: (text: string) => void
+  onBlur?: (e: any) => void
 }
 
 export function FormInputWithIcon({
@@ -17,11 +21,16 @@ export function FormInputWithIcon({
   icon,
   className = '',
   inputClassName = '',
+  error: propError,
   ...props
 }: FormInputWithIconProps) {
-  const [field, meta, helpers] = useField(name as FieldHookConfig<string>)
-
-  const hasError = meta.touched && meta.error
+  // Handle both direct error prop and Formik integration
+  const formikProps = name ? useField(name) : [];
+  const [field, meta, helpers] = formikProps as any;
+  
+  // Use either direct error prop or formik error
+  const hasError = propError || (meta?.touched && meta?.error);
+  const errorMessage = propError || (meta?.touched ? meta?.error : undefined)
 
   return (
     <View className={`mb-4 ${className}`}>
@@ -37,9 +46,9 @@ export function FormInputWithIcon({
         )}
         
         <TextInput
-          value={field.value}
-          onChangeText={helpers.setValue}
-          onBlur={() => helpers.setTouched(true)}
+          value={field?.value !== undefined ? field.value : props.value}
+          onChangeText={helpers?.setValue || props.onChangeText}
+          onBlur={field ? () => helpers.setTouched(true) : props.onBlur}
           placeholderTextColor="#6b7280"
           className={`flex-1 rounded-lg py-3 px-3 text-white ${
             icon ? 'pl-10' : 'pl-3'
@@ -49,7 +58,7 @@ export function FormInputWithIcon({
       </View>
       
       {hasError && (
-        <Text className="mt-1 text-xs text-red-500">{meta.error}</Text>
+        <Text className="mt-1 text-xs text-red-500">{errorMessage}</Text>
       )}
     </View>
   )
