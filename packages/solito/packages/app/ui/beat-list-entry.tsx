@@ -15,7 +15,7 @@ export function BeatListEntry({ entry, playlist }: BeatListEntryProps) {
   const { push } = useRouter()
   
   const handlePress = () => {
-    push(`/entry/${entry.id}`)
+    push(`/dashboard/beat/${entry.id}`)
   }
 
   return (
