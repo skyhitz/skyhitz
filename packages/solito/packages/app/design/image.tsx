@@ -59,7 +59,8 @@ export default function Image(props: ImageProps) {
 
     return <SolitoImage {...imgProps} />
   } else {
-    // React Native implementation
-    return <RNImage source={source} style={[style, StyleSheet.flatten(className)]} {...rest} />
+    // React Native implementation - className is not applicable in React Native
+    // Just use the style prop and pass all other props through
+    return <RNImage source={source} style={style} {...rest} />
   }
 }

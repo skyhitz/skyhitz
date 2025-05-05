@@ -4,8 +4,7 @@ import { isEmpty } from 'ramda'
 
 export const getEntry = async (id: string) => {
   const res = await entriesIndex.search('', {
-    filters: `id:${id}`,
-    cacheable: false,
+    filters: `id:${id}`
   })
 
   if (isEmpty(res.hits)) {
