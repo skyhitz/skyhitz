@@ -7,6 +7,8 @@ import { Entry } from 'app/api/graphql/types'
 import { SafeAreaView } from 'app/design/safe-area-view'
 import Footer from 'app/ui/footer'
 
+import { useTheme } from 'app/state/theme/useTheme'
+
 export function ChartScreen({ entries }: { entries: Entry[] }) {
   const {
     data: extraEntries,
@@ -14,17 +16,24 @@ export function ChartScreen({ entries }: { entries: Entry[] }) {
     onNextPage,
     loadMoreEnabled,
   } = useTopChart(1)
+  const { colors, isDark } = useTheme()
 
   const playlist = [...entries, ...extraEntries]
 
   return (
-    <SafeAreaView className="bg-black">
-      <View className="mx-auto flex w-full flex-1">
-        <ScrollView>
+    <SafeAreaView style={{ backgroundColor: colors.background }}>
+      <View className="mx-auto flex w-full flex-1" style={{ backgroundColor: colors.background }}>
+        <ScrollView style={{ backgroundColor: colors.background }}>
           <View className="mx-auto mb-32 w-full max-w-7xl px-2 lg:px-8">
-            <H1 className="text-base text-white sm:text-2xl">Trending</H1>
-            <View className="mb-4 border-b border-gray-700 sm:my-4" />
-            <View>
+            {/* Trending header with styling that matches legacy app */}
+            <View className="mb-4">
+              <H1 className="py-2 text-xl font-bold sm:text-2xl" style={{ color: colors.text }}>Trending</H1>
+              <View style={{ borderBottomWidth: 1, borderBottomColor: colors.border }} />
+            </View>
+            
+            {/* Main content with border styling matching legacy app */}
+            <View className="rounded-lg overflow-hidden">
+              {/* Original entries */}
               {entries.map((entry, index) => {
                 return (
                   <BeatListEntry
@@ -36,12 +45,13 @@ export function ChartScreen({ entries }: { entries: Entry[] }) {
                 )
               })}
 
+              {/* Extra entries loaded with "Load More" */}
               {extraEntries.map((entry, index) => {
                 return (
                   <BeatListEntry
                     key={entry.id || index}
                     entry={entry}
-                    spot={20 + index + 1}
+                    spot={entries.length + index + 1}
                     playlist={playlist}
                   />
                 )

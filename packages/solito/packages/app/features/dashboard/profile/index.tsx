@@ -21,6 +21,7 @@ import {
 } from 'app/api/graphql/mutations'
 import { P, ActivityIndicator } from 'app/design/typography'
 import { useToast } from 'app/provider/toast'
+import { useTheme } from 'app/state/theme/useTheme'
 
 export function ProfileScreen({ user }: { user: User }) {
   const [modalVisible, setModalVisible] = useState<boolean>(false)
@@ -31,6 +32,7 @@ export function ProfileScreen({ user }: { user: User }) {
   const { data: userCollectionData } = useUserCollectionQuery(user.id)
   const [claimEarnings] = useClaimEarningsMutation()
   const toast = useToast()
+  const { colors, isDark } = useTheme()
 
   // Use a ref to track if we've already attempted to claim earnings
   const hasAttemptedClaim = useRef(false)
@@ -104,15 +106,15 @@ export function ProfileScreen({ user }: { user: User }) {
   }
 
   return (
-    <SafeAreaView className="bg-black">
-      <View className="mb-16 min-h-screen w-full bg-black pb-10">
+    <SafeAreaView style={{ backgroundColor: colors.background }}>
+      <View className="mb-16 min-h-screen w-full pb-10" style={{ backgroundColor: colors.background }}>
         <ProfileHeader
           user={user}
           action={
             <View className="ml-2 flex flex-row">
               <Link href="/dashboard/profile/edit">
                 <View className="items-center">
-                  <Cog className="h-5 w-5 fill-white" />
+                  <Cog className="h-5 w-5" fill={colors.text} />
                 </View>
               </Link>
             </View>
@@ -131,14 +133,15 @@ export function ProfileScreen({ user }: { user: User }) {
               {isClaimingEarnings ? (
                 <ActivityIndicator size="small" />
               ) : (
-                <P className="font-bold text-white">
+                <P className="font-bold" style={{ color: colors.text }}>
                   {`${credits?.userCredits || 0} XLM`}
                 </P>
               )}
             </View>
             <View className="mr-2">
               <P
-                className="cursor-pointer font-bold text-white underline decoration-white decoration-2 underline-offset-4"
+                className="cursor-pointer font-bold underline decoration-2 underline-offset-4"
+                style={{ color: colors.text, textDecorationColor: colors.text }}
                 onPress={handleWithdraw}
               >
                 Withdraw

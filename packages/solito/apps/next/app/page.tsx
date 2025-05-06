@@ -1,5 +1,17 @@
 import { HomeScreen } from 'app/features/home/screen'
-import { Post } from 'app/types'
+// Define a local Post type to match exactly the one used in HomeScreen component
+type Post = {
+  id: string
+  title: string
+  content: string
+  excerpt: string
+  slug: string
+  publishedAt: number
+  imageUrl: string
+  author: string
+  tag: string
+  publishedAtTimestamp: number
+}
 import { isEmpty } from 'ramda'
 import { blogIndex } from 'app/api/algolia'
 import { homeContent } from 'app/constants/content'
@@ -28,6 +40,8 @@ const fetchPosts = async () => {
       publishedAt: postData.publishedAt || Date.now(),
       imageUrl: postData.imageUrl || '',
       author: postData.author || '',
+      tag: postData.tag || 'general', // Providing a default tag value
+      publishedAtTimestamp: postData.publishedAtTimestamp || Math.floor(Date.now() / 1000) // Convert current time to UNIX timestamp
     } as Post
   })
 }

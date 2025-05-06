@@ -1,6 +1,6 @@
 'use client'
 import { ReactNode, useState } from 'react'
-import { Pressable, Text, View } from 'react-native'
+import { Pressable, Text, View, StyleProp, ViewStyle } from 'react-native'
 import ChevronDown from 'app/ui/icons/chevron-down'
 import ChevronUp from 'app/ui/icons/chevron-up'
 import { AnimateHeight } from './animate-height'
@@ -11,6 +11,7 @@ type Props = {
   icon?: React.ComponentType<any>
   headerText: string
   className?: string
+  style?: StyleProp<ViewStyle>
 }
 
 export const CollapsableView = ({
@@ -19,6 +20,7 @@ export const CollapsableView = ({
   headerText,
   icon: Icon,
   className,
+  style,
 }: Props) => {
   const [collapsed, setCollapsed] = useState<boolean>(initCollapsed)
 
@@ -27,6 +29,7 @@ export const CollapsableView = ({
       className={`mt-8 w-full overflow-hidden rounded-lg border border-gray-800 ${
         className ?? ''
       }`}
+      style={style}
     >
       <Pressable
         onPress={() => {

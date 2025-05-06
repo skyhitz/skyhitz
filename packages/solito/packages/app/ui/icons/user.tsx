@@ -2,7 +2,7 @@
 import * as React from 'react'
 import Svg, { Path } from 'react-native-svg'
 
-export default function Search(props: React.ComponentProps<typeof Svg>) {
+export default function User(props: React.ComponentProps<typeof Svg>) {
   return (
     <Svg
       fill="none"
@@ -16,7 +16,7 @@ export default function Search(props: React.ComponentProps<typeof Svg>) {
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth="2"
-        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zm-4 7a7 7 0 00-7 7h14a7 7 0 00-7-7z"
       />
     </Svg>
   )

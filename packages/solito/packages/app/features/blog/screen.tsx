@@ -3,14 +3,28 @@
 import { A, Button, H1, H2, P, ActivityIndicator } from 'app/design/typography'
 import { useBlogPosts } from 'app/hooks/algolia/useBlogPosts'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
-import { Post } from 'app/types'
+// Define a local Post type since it might have changed in the main types file
+type Post = {
+  id: string
+  title: string
+  content: string
+  excerpt: string
+  slug: string
+  publishedAt: number
+  imageUrl: string
+  author: string
+  tag: string
+  publishedAtTimestamp: number
+}
 import Footer from 'app/ui/footer'
-import Navbar from 'app/ui/navbar'
+import { Navbar } from 'app/ui/navbar/Navbar'
 import { View } from 'react-native'
 import { SolitoImage } from 'app/design/solito-image'
 import { formattedDate } from 'app/utils'
+import { useTheme } from 'app/state/theme/useTheme'
 
-const PostWrapper = ({ imageUrl, title, publishedAtTimestamp, slug }: Post) => {
+const PostWrapper = ({ imageUrl, title, publishedAtTimestamp, slug }: any) => {
+  const { colors } = useTheme()
   return (
     <A href={`/blog/${slug}`}>
       <View className="flex flex-row items-center justify-start gap-8">
@@ -26,16 +40,17 @@ const PostWrapper = ({ imageUrl, title, publishedAtTimestamp, slug }: Post) => {
           </View>
         </View>
         <View className="flex shrink flex-col items-start justify-center">
-          <H2 className="mb-2 break-words text-xl text-black">{title}</H2>
-          <P>{formattedDate(publishedAtTimestamp)}</P>
+          <H2 className="mb-2 break-words text-xl" style={{ color: colors.text }}>{title}</H2>
+          <P style={{ color: colors.secondary }}>{formattedDate(publishedAtTimestamp)}</P>
         </View>
       </View>
     </A>
   )
 }
 
-export function BlogScreen({ posts }: { posts: Post[] }) {
+export function BlogScreen({ posts }: { posts: any[] }) {
   const insets = useSafeArea()
+  const { colors } = useTheme()
   const {
     data: extraPosts,
     isLoadingMore,
@@ -48,13 +63,14 @@ export function BlogScreen({ posts }: { posts: Post[] }) {
       className={`flex h-full w-full`}
       style={{ 
         paddingTop: insets.top,
-        paddingBottom: insets.bottom
+        paddingBottom: insets.bottom,
+        backgroundColor: colors.background
       }}
     >
       <Navbar />
       <View className="mx-auto mb-32 w-full max-w-7xl px-6 lg:px-8">
-        <H1 className="mb-4 mt-10 text-4xl">Blog</H1>
-        <View className="my-8 border-b border-gray-200" />
+        <H1 className="mb-4 mt-10 text-4xl" style={{ color: colors.text }}>Blog</H1>
+        <View style={{ borderBottomWidth: 1, borderBottomColor: colors.border, marginVertical: 32 }} />
         <View className="gap-16">
           {posts.map((props, index) => {
             return <PostWrapper key={index} {...props} />
@@ -66,13 +82,14 @@ export function BlogScreen({ posts }: { posts: Post[] }) {
         </View>
         <View className="mt-16 flex h-12 items-center justify-center">
           {isLoadingMore ? (
-            <ActivityIndicator size={'small'} />
+            <ActivityIndicator size={'small'} color={colors.primary} />
           ) : (
             loadMoreEnabled && (
               <Button
                 onPress={() => {
                   onNextPage()
                 }}
+                style={{ color: colors.primary }}
               >
                 Load More →
               </Button>

@@ -1,5 +1,5 @@
 'use client'
-import Navbar from 'app/ui/navbar'
+import { Navbar } from 'app/ui/navbar/Navbar'
 import { View, ScrollView, Platform } from 'react-native'
 import { H1, P } from 'app/design/typography'
 import { SafeAreaView } from 'app/design/safe-area-view'

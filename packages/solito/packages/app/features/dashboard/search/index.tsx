@@ -9,15 +9,19 @@ import { BeatsSearchResultList } from 'app/features/dashboard/search/search-resu
 import BeatmakersEmptyState from 'app/features/dashboard/search/beatmakersEmptyState'
 import { SafeAreaView } from 'app/design/safe-area-view'
 
+import { useTheme } from 'app/state/theme/useTheme'
+
 export function SearchScreen() {
   const [searchPhrase, setSearchPhrase] = useState('')
   const [tab, setTab] = useState<Tabs>('MFTs')
+  const { colors } = useTheme()
 
   return (
-    <SafeAreaView className="bg-black">
+    <SafeAreaView style={{ backgroundColor: colors.background }}>
       <SafeAreaView
         edges={['top']}
-        className="mx-auto flex w-full max-w-7xl flex-1 bg-black px-2 pb-0 pt-4 lg:px-8"
+        className="mx-auto flex w-full max-w-7xl flex-1 px-2 pb-0 pt-4 lg:px-8"
+        style={{ backgroundColor: colors.background }}
       >
         <SearchInputField
           value={searchPhrase}

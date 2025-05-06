@@ -6,7 +6,7 @@ function Icon({ size = 24, color = 'currentColor' }) {
     <Svg viewBox="0 0 24 24" width={size} height={size}>
       <G
         fill="none"
-        stroke="currentcolor"
+        stroke={color}
         strokeLinecap="round"
         strokeLinejoin="round"
       >

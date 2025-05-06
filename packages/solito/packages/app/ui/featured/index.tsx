@@ -1,20 +1,32 @@
 'use client'
+import * as React from 'react'
 import { View } from 'react-native'
 import { H2, P } from 'app/design/typography'
-import { FeaturedProps } from 'app/types'
+// Remove incorrect type import
 import { SolitoImage } from 'app/design/solito-image'
+import { useTheme } from 'app/state/theme/useTheme'
 
-export function Featured({ title, subtitle, features, imgUrl }: FeaturedProps) {
+export function Featured({ title, subtitle, features, imgUrl }: any) {
+  const { colors, isDark } = useTheme()
   return (
-    <View className="overflow-hidden bg-white py-32">
+    <View
+      className="overflow-hidden py-32"
+      style={{ backgroundColor: colors.background }}
+    >
       <View className="mx-auto max-w-7xl md:px-6 lg:px-8">
         <View className="grid grid-cols-1 gap-x-8 gap-y-24 lg:grid-cols-2 lg:items-center">
           <View className="px-6 lg:px-0 lg:pr-4 lg:pt-4">
             <View className="mx-auto max-w-2xl lg:mx-0 lg:max-w-lg">
-              <P className="text-blue-brand font-semibold leading-7">
+              <P
+                className="font-semibold leading-7"
+                style={{ color: colors.primary }}
+              >
                 {subtitle}
               </P>
-              <H2 className="font-unbounded mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+              <H2
+                className="font-unbounded mt-2 text-3xl font-bold tracking-tight sm:text-4xl"
+                style={{ color: colors.text }}
+              >
                 {title}
               </H2>
 
@@ -24,12 +36,26 @@ export function Featured({ title, subtitle, features, imgUrl }: FeaturedProps) {
                     key={feature.name}
                     className="relative flex flex-row items-center pl-9"
                   >
-                    <View className="h-5 w-5 text-black">
-                      {feature.icon && feature.icon({})}
+                    <View style={{ position: 'absolute', left: 0, top: 1 }}>
+                      <View className="h-5 w-5">
+                        {feature.icon &&
+                          feature.icon({
+                            color: colors.text,
+                            fill: colors.text,
+                            stroke: colors.text,
+                          })}
+                      </View>
                     </View>
-                    <View className="relative max-w-fit pl-9">
-                      <P className="font-semibold leading-8">{feature.name}</P>
-                      <P className="inline leading-8">{feature.desc}</P>
+                    <View className="relative max-w-fit pl-1">
+                      <P
+                        className="font-semibold leading-8"
+                        style={{ color: colors.text }}
+                      >
+                        {feature.name}
+                      </P>
+                      <P className="inline leading-8 text-gray-600">
+                        {feature.desc}
+                      </P>
                     </View>
                   </View>
                 ))}
