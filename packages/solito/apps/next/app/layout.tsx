@@ -6,6 +6,11 @@ import { Provider } from 'app/provider/index'
 export const metadata = {
   title: 'Skyhitz',
   description: 'Web3 Music Platform',
+  icons: {
+    icon: '/icon.png',
+    shortcut: '/icon.png',
+    apple: '/icon.png',
+  }
 }
 
 export default function RootLayout({
