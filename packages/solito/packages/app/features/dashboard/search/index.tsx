@@ -9,12 +9,9 @@ import { BeatsSearchResultList } from 'app/features/dashboard/search/search-resu
 import BeatmakersEmptyState from 'app/features/dashboard/search/beatmakersEmptyState'
 import { SafeAreaView } from 'app/design/safe-area-view'
 
-import { useTheme } from 'app/state/theme/useTheme'
-
 export function SearchScreen() {
   const [searchPhrase, setSearchPhrase] = useState('')
   const [tab, setTab] = useState<Tabs>('MFTs')
-  const { theme } = useTheme()
 
   return (
     <SafeAreaView className="bg-[--bg-color]">

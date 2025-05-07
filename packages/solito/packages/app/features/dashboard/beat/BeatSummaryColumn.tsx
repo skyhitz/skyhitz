@@ -1,12 +1,9 @@
 'use client'
 import { Entry } from 'app/api/graphql/types'
-import { Pressable, View } from 'react-native'
+import { View } from 'react-native'
 import InfoCircle from 'app/ui/icons/info-circle'
 import { H1, P } from 'app/design/typography'
-import { useTheme } from 'app/state/theme/useTheme'
 import { CollapsableView } from 'app/ui/CollapsableView'
-import PlayIcon from 'app/ui/icons/play'
-import { Config } from 'app/config'
 
 type Props = {
   entry: Entry
@@ -16,7 +13,7 @@ export function BeatSummaryColumn({ entry }: Props) {
   // Format values for display
   const tvl = entry.tvl || 1; // Default to 1 XLM if not provided
   const apr = entry.apr || 40; // Default to 40% if not provided
-  const { isDark } = useTheme();
+  // No theme variables needed anymore
   
   return (
     <View className="flex w-full md:ml-4 md:flex-1">
@@ -80,15 +77,4 @@ export function BeatSummaryColumn({ entry }: Props) {
   )
 }
 
-function PlayButton({ entry }: { entry: Entry }) {
-  const handlePlay = () => {
-    console.log('Play entry:', entry.id)
-    // Playback functionality will be implemented in a future PR
-  }
-
-  return (
-    <Pressable onPress={handlePlay}>
-      <PlayIcon className="text-gray-600" size={24} />
-    </Pressable>
-  )
-}
+// Removed unused PlayButton component

@@ -4,10 +4,7 @@ import { View } from 'react-native'
 import { H2, P } from 'app/design/typography'
 // Remove incorrect type import
 import { SolitoImage } from 'app/design/solito-image'
-import { useTheme } from 'app/state/theme/useTheme'
-
 export function Featured({ title, subtitle, features, imgUrl }: any) {
-  const { theme, isDark } = useTheme()
   return (
     <View
       className="overflow-hidden py-32 bg-[--bg-color]"

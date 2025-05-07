@@ -7,8 +7,6 @@ import { Entry } from 'app/api/graphql/types'
 import { SafeAreaView } from 'app/design/safe-area-view'
 import Footer from 'app/ui/footer'
 
-import { useTheme } from 'app/state/theme/useTheme'
-
 export function ChartScreen({ entries }: { entries: Entry[] }) {
   const {
     data: extraEntries,
@@ -16,7 +14,6 @@ export function ChartScreen({ entries }: { entries: Entry[] }) {
     onNextPage,
     loadMoreEnabled,
   } = useTopChart(1)
-  const { theme } = useTheme()
 
   const playlist = [...entries, ...extraEntries]
 
