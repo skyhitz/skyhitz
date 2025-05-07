@@ -2,6 +2,7 @@
 import { useThemeStore } from './index'
 import { useColorScheme as useNativeWindColorScheme } from 'nativewind'
 import { vars } from 'nativewind'
+import { useEffect, useCallback } from 'react'
 
 // Define CSS variables for themes
 export const themes = {
@@ -59,23 +60,39 @@ export function useTheme() {
   // Apply the appropriate theme CSS variables
   const theme = isDark ? themes.dark : themes.light
 
+  // Memoize theme toggle functions to prevent recreating them every render
+  const toggleTheme = useCallback(() => {
+    zustandToggleTheme()
+    // Use setTimeout to ensure toggleColorScheme runs after render completes
+    setTimeout(() => toggleColorScheme(), 0)
+  }, [zustandToggleTheme, toggleColorScheme])
+
+  const setDarkThemeFunc = useCallback(() => {
+    setDarkTheme()
+    // Use setTimeout to ensure setColorScheme runs after render completes
+    setTimeout(() => setColorScheme('dark'), 0)
+  }, [setDarkTheme, setColorScheme])
+
+  const setLightThemeFunc = useCallback(() => {
+    setLightTheme()
+    // Use setTimeout to ensure setColorScheme runs after render completes
+    setTimeout(() => setColorScheme('light'), 0)
+  }, [setLightTheme, setColorScheme])
+
+  // Sync NativeWind color scheme with our theme store
+  useEffect(() => {
+    if (isDark && colorScheme !== 'dark') {
+      setColorScheme('dark')
+    } else if (!isDark && colorScheme !== 'light') {
+      setColorScheme('light')
+    }
+  }, [isDark, colorScheme, setColorScheme])
+
   return {
     isDark,
-    // Toggle both NativeWind and our store
-    toggleTheme: () => {
-      zustandToggleTheme()
-      toggleColorScheme()
-    },
-    // Set dark theme in both systems
-    setDarkTheme: () => {
-      setDarkTheme()
-      setColorScheme('dark')
-    },
-    // Set light theme in both systems
-    setLightTheme: () => {
-      setLightTheme()
-      setColorScheme('light')
-    },
+    toggleTheme,
+    setDarkTheme: setDarkThemeFunc,
+    setLightTheme: setLightThemeFunc,
     // Expose NativeWind color scheme values
     colorScheme,
     setColorScheme,
