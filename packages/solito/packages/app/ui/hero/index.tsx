@@ -26,7 +26,7 @@ export const Hero = ({ title, desc }: HeroProps) => {
         <H1 className="mt-10 max-w-lg text-4xl font-bold !leading-tight tracking-tight sm:text-5xl">
           {title}
         </H1>
-        <P className="mt-6 leading-8 text-gray-600">{desc}</P>
+        <P className="mt-6 leading-8 text-[--text-secondary-color]">{desc}</P>
         <View className="mt-10 flex flex-row items-center gap-x-6">
           <View className="bg-blue rounded-lg px-3 py-2">
             <TextLink href={user ? '/dashboard/chart' : '/sign-up'}>

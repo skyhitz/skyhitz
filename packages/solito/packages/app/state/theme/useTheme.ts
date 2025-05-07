@@ -10,12 +10,12 @@ export const themes = {
     // Base colors
     '--bg-color': '#FFFFFF',
     '--surface-color': '#F5F5F5',
-    '--text-color': '#000000',
+    '--text-color': 'rgb(75 85 99)',
     '--text-secondary-color': '#555555',
     '--primary-color': '#0097A7',
     '--secondary-color': '#5C6BC0',
     '--accent-color': '#0097A7',
-    
+
     // UI elements
     '--border-color': '#E0E0E0',
     '--card-bg-color': '#FFFFFF',
@@ -30,12 +30,12 @@ export const themes = {
     // Base colors
     '--bg-color': '#000000',
     '--surface-color': '#000000',
-    '--text-color': '#FFFFFF',
+    '--text-color': 'rgb(255 255 255)',
     '--text-secondary-color': '#6B7280',
     '--primary-color': '#19aafe',
     '--secondary-color': '#6B7280',
     '--accent-color': '#19aafe',
-    
+
     // UI elements
     '--border-color': '#1A1A1A',
     '--card-bg-color': '#000000',
@@ -52,11 +52,17 @@ export const themes = {
 
 export function useTheme() {
   // Use NativeWind's colorScheme hook directly
-  const { colorScheme, setColorScheme, toggleColorScheme } = useNativeWindColorScheme()
+  const { colorScheme, setColorScheme, toggleColorScheme } =
+    useNativeWindColorScheme()
   // Get theme state from our Zustand store
-  const { isDark, setDarkTheme, setLightTheme, toggleTheme: zustandToggleTheme } = useThemeStore()
+  const {
+    isDark,
+    setDarkTheme,
+    setLightTheme,
+    toggleTheme: zustandToggleTheme,
+  } = useThemeStore()
   // No longer using ThemeContext, keeping the implementation simple
-  
+
   // Apply the appropriate theme CSS variables
   const theme = isDark ? themes.dark : themes.light
 

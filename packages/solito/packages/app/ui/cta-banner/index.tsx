@@ -40,7 +40,7 @@ export default function CtaBanner({
           <H2 className="font-unbounded mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
             {title}
           </H2>
-          <P className="mt-6 leading-8">{desc}</P>
+          <P className="mt-6 leading-8 text-[--text-secondary-color]">{desc}</P>
           <View className="mt-8">
             <View className="bg-blue w-fit rounded-lg px-3 py-2">
               <TextLink href={'/dashboard/chart'}>

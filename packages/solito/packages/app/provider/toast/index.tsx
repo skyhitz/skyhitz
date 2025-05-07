@@ -14,9 +14,12 @@ const defaultToastContext = {
 
 const ToastContext = createContext(defaultToastContext)
 
+// Define a type that works for both browser and Node.js environments
+type TimeoutId = ReturnType<typeof setTimeout>;
+
 export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
   const [toasts, setToasts] = useState<Toast[]>([])
-  const [timeouts, setTimeouts] = useState<Record<number, NodeJS.Timeout>>({})
+  const [timeouts, setTimeouts] = useState<Record<number, TimeoutId>>({})
 
   const hide = useCallback(
     (id: Toast['id']) => {

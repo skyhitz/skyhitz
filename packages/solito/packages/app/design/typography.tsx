@@ -103,17 +103,26 @@ export const A = ({ className = '', children, href, ...props }: any) => {
 export function Button({
   className,
   wrapperClassName,
-  ...rest
-}: { className?: string; wrapperClassName?: string } & ComponentProps<
-  typeof Text
->) {
+  children,
+  onPress,
+  disabled,
+  ...textProps
+}: {
+  className?: string;
+  wrapperClassName?: string;
+  onPress?: () => void;
+  disabled?: boolean;
+} & Omit<ComponentProps<typeof Text>, 'onPress'>) {
   const defaultStyles = 'text-sm font-semibold text-[--text-color]'
   return (
     <Pressable
-      {...rest}
-      className={`bg-blue-brand hover:bg-blue-brand focus-visible:outline-blue-brand w-fit rounded-md px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 aria-disabled:opacity-70 ${wrapperClassName}`}
+      onPress={onPress}
+      disabled={disabled}
+      className={`bg-blue-brand hover:bg-blue-brand focus-visible:outline-blue-brand w-fit rounded-md px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 aria-disabled:opacity-70 ${wrapperClassName || ''}`}
     >
-      <Text className={`${defaultStyles} ${className}`} {...rest} />
+      <Text className={`${defaultStyles} ${className || ''}`} {...textProps}>
+        {children}
+      </Text>
     </Pressable>
   )
 }

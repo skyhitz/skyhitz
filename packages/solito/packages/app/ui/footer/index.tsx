@@ -3,11 +3,9 @@ import { A, H3, P } from 'app/design/typography'
 import { View } from 'react-native'
 import { SkyhitzLogo } from 'app/ui/logo'
 import { footer } from 'app/constants/content'
-import { useTheme } from 'app/state/theme/useTheme'
 
 export default function Footer() {
   const { companyName, sections } = footer
-  const { theme, isDark } = useTheme()
   return (
     <View className="mx-auto w-full max-w-7xl px-6 pb-12 lg:px-8">
       <View className="xl:grid xl:grid-cols-2 xl:gap-8">
@@ -23,7 +21,9 @@ export default function Footer() {
             }) => {
               return (
                 <View key={title}>
-                  <H3 className="text-sm font-semibold leading-6 text-[--text-color]">{title}</H3>
+                  <H3 className="text-sm font-semibold leading-6 text-[--text-color]">
+                    {title}
+                  </H3>
                   <View role="list" className="mt-6 space-y-4">
                     {links.map((item) => (
                       <View key={item.name}>
@@ -39,7 +39,7 @@ export default function Footer() {
                   </View>
                 </View>
               )
-            },
+            }
           )}
         </View>
       </View>

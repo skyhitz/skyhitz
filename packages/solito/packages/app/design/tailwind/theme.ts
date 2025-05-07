@@ -53,55 +53,33 @@ export const theme = {
       }),
     },
     colors: {
+      // Primary colors - referencing our CSS variables whenever possible
       blue: {
-        DEFAULT: '#1eaeff',
-        dark: '#1A1B20',
-        field: '#292b33',
-        transparent: '#292b33e6',
-        track: '#292b33',
-        light: '#00aeefe6',
-        brand: '#1dadff',
-        start: '#63AADF',
-        middle: '#21ACFE',
-        end: '#D4EFFF',
+        DEFAULT: 'var(--primary-color)',  // Default blue references primary CSS variable
+        brand: '#1dadff',                  // Keep for the logo gradient
+        start: '#63AADF',                  // Keep for gradients
+        middle: '#21ACFE',                 // Keep for gradients
+        end: '#D4EFFF',                    // Keep for gradients
       },
-      red: {
-        DEFAULT: '#ff444a',
-        dark: '#241e22',
-      },
-      white: {
-        DEFAULT: '#ffffff',
-      },
+      
+      // Basic colors that might still be needed in some components
+      white: '#ffffff',
+      black: '#000000',
       grey: {
-        DEFAULT: '#4b5563',
-        dark: '#2B3033',
+        DEFAULT: 'rgb(75 85 99)',  // Matches our --text-color in light mode
         light: '#dbdbdb',
       },
-      green: {
-        DEFAULT: '#5ce67e',
-      },
-      lightGreen: '#5ce67e',
-      valid: {
-        DEFAULT: 'rgba(15,172,141,.8)',
-        dark: '#192225',
-      },
-      tab: {
-        DEFAULT: 'rgba(255, 255, 255, 0.6)',
-        selected: 'rgb(238,238,238)',
-        disabled: 'rgba(255, 255, 255, 0.2)',
-      },
-      warningBackground: '#EAEB5E',
-      warningText: '#666804',
-      noticeText: '#fff',
-      loadingScreenBackground: '#17191C',
-      profileOverlayBackground: 'rgba(0,0,0,0.3)',
-      searchTextColor: '#000000',
+      
+      // Utility colors for specific states
       transparent: 'rgba(0,0,0,0)',
-      facebookBtnBackground: '#44619D',
-      joinBtnBackground: '#00aeef',
-      loginTextColor: '#000000',
-      black: 'black',
-      beatmakerAvatarBackground: '#121316',
+      red: '#ff444a',               // For errors
+      green: '#5ce67e',             // For success
+      
+      // Form validation
+      valid: 'rgba(15,172,141,.8)',
+      
+      // Keep only essential UI elements that might not be converted yet
+      profileOverlayBackground: 'rgba(0,0,0,0.3)',
     },
   },
 }
