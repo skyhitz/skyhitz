@@ -7,6 +7,7 @@ import {
 } from 'react-native'
 import { theme } from './tailwind/theme'
 import { TextLink } from 'solito/link'
+import { remapProps } from 'nativewind'
 
 /**
  * You can use this pattern to create components with default styles
@@ -74,6 +75,8 @@ export function H3({
   )
 }
 
+remapProps(TextLink, { className: 'style' })
+
 /**
  * This is a more advanced component with custom styles and per-platform functionality
  */
@@ -89,11 +92,12 @@ export const A = ({ className = '', children, href, ...props }: any) => {
       className={
         props.variant === 'primary'
           ? `bg-blue-brand hover:bg-blue-brand focus-visible:outline-blue-brand w-fit rounded-md px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${className}`
-          : `text-blue-brand cursor-pointer ${className}`
+          : `text-[--primary-color] cursor-pointer ${className}`
       }
       href={href}
       rel="noreferrer"
       {...props}
+      role="link"
     >
       {children}
     </TextLink>
@@ -108,10 +112,10 @@ export function Button({
   disabled,
   ...textProps
 }: {
-  className?: string;
-  wrapperClassName?: string;
-  onPress?: () => void;
-  disabled?: boolean;
+  className?: string
+  wrapperClassName?: string
+  onPress?: () => void
+  disabled?: boolean
 } & Omit<ComponentProps<typeof Text>, 'onPress'>) {
   const defaultStyles = 'text-sm font-semibold text-[--text-color]'
   return (

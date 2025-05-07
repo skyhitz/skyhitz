@@ -17,22 +17,49 @@ export function useColorScheme() {
   
   // Sync our Zustand theme state to NativeWind's color scheme
   useEffect(() => {
-    if (isDark && colorScheme !== 'dark') {
-      setColorScheme('dark')
-    } else if (!isDark && colorScheme !== 'light') {
-      setColorScheme('light')
-    }
+    // Check for browser environment before making state updates
+    if (typeof window === 'undefined') return;
+    
+    // Use a flag to ensure we're safely mounted before updating
+    let isMounted = true;
+    
+    // Delay initial state update to ensure component is fully mounted
+    const timer = setTimeout(() => {
+      if (isMounted) {
+        if (isDark && colorScheme !== 'dark') {
+          setColorScheme('dark')
+        } else if (!isDark && colorScheme !== 'light') {
+          setColorScheme('light')
+        }
+      }
+    }, 0);
+    
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
   }, [isDark, colorScheme, setColorScheme])
 
+  // Safe wrapper to prevent server-side rendering issues
+  const safelyExecute = (fn: () => void) => {
+    if (typeof window === 'undefined') return;
+    setTimeout(fn, 0);
+  };
+  
   // Enhanced toggleTheme that syncs with NativeWind
   const toggleTheme = () => {
-    toggleColorScheme()
-    // NativeWind's toggleColorScheme is synchronous, so we can check the new value immediately
-    if (colorScheme === 'dark') {
-      setLightTheme()
+    // Skip theme toggling on server
+    if (typeof window === 'undefined') return;
+    
+    // Update our Zustand store (safe operation)
+    if (isDark) {
+      setLightTheme();
     } else {
-      setDarkTheme()
+      setDarkTheme();
     }
+    
+    // Safely toggle the NativeWind color scheme
+    safelyExecute(() => toggleColorScheme());
   }
 
   return {

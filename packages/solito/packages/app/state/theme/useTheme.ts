@@ -12,16 +12,16 @@ export const themes = {
     '--surface-color': '#F5F5F5',
     '--text-color': 'rgb(75 85 99)',
     '--text-secondary-color': '#555555',
-    '--primary-color': '#0097A7',
+    '--primary-color': '#19aafe',
     '--secondary-color': '#5C6BC0',
-    '--accent-color': '#0097A7',
+    '--accent-color': '#19aafe',
 
     // UI elements
     '--border-color': '#E0E0E0',
     '--card-bg-color': '#FFFFFF',
     '--button-bg-color': '#F5F5F5',
     '--button-text-color': '#000000',
-    '--invest-button-bg-color': '#0097A7',
+    '--invest-button-bg-color': '#19aafe',
     '--invest-button-text-color': '#FFFFFF',
     '--description-bg-color': '#F9F9F9',
     '--bg-secondary-color': '#F9F9F9',
@@ -66,31 +66,54 @@ export function useTheme() {
   // Apply the appropriate theme CSS variables
   const theme = isDark ? themes.dark : themes.light
 
+  // A safe wrapper to prevent server-side rendering issues with state updates
+  const safelyUpdateColorScheme = useCallback((updateFn: () => void) => {
+    // Skip updates during server-side rendering
+    if (typeof window === 'undefined') return;
+    
+    // Delay update to ensure component is mounted
+    setTimeout(updateFn, 0);
+  }, []);
+  
   // Memoize theme toggle functions to prevent recreating them every render
   const toggleTheme = useCallback(() => {
+    // Update our Zustand store first (this is safe and doesn't cause React updates directly)
     zustandToggleTheme()
-    // Use setTimeout to ensure toggleColorScheme runs after render completes
-    setTimeout(() => toggleColorScheme(), 0)
-  }, [zustandToggleTheme, toggleColorScheme])
+    // Safely update NativeWind's color scheme after component is mounted
+    safelyUpdateColorScheme(() => toggleColorScheme())
+  }, [zustandToggleTheme, toggleColorScheme, safelyUpdateColorScheme])
 
   const setDarkThemeFunc = useCallback(() => {
     setDarkTheme()
-    // Use setTimeout to ensure setColorScheme runs after render completes
-    setTimeout(() => setColorScheme('dark'), 0)
-  }, [setDarkTheme, setColorScheme])
+    safelyUpdateColorScheme(() => setColorScheme('dark'))
+  }, [setDarkTheme, setColorScheme, safelyUpdateColorScheme])
 
   const setLightThemeFunc = useCallback(() => {
     setLightTheme()
-    // Use setTimeout to ensure setColorScheme runs after render completes
-    setTimeout(() => setColorScheme('light'), 0)
-  }, [setLightTheme, setColorScheme])
+    safelyUpdateColorScheme(() => setColorScheme('light'))
+  }, [setLightTheme, setColorScheme, safelyUpdateColorScheme])
 
   // Sync NativeWind color scheme with our theme store
   useEffect(() => {
-    if (isDark && colorScheme !== 'dark') {
-      setColorScheme('dark')
-    } else if (!isDark && colorScheme !== 'light') {
-      setColorScheme('light')
+    // Check for browser environment before making state updates
+    if (typeof window === 'undefined') return
+
+    // Use a flag to ensure we're safely mounted before updating
+    let isMounted = true
+    // Delay initial state update to allow component to fully mount
+    const timer = setTimeout(() => {
+      if (isMounted) {
+        if (isDark && colorScheme !== 'dark') {
+          setColorScheme('dark')
+        } else if (!isDark && colorScheme !== 'light') {
+          setColorScheme('light')
+        }
+      }
+    }, 0)
+
+    return () => {
+      isMounted = false
+      clearTimeout(timer)
     }
   }, [isDark, colorScheme, setColorScheme])
 
