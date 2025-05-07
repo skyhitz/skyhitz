@@ -35,7 +35,7 @@ const DownloadIcon = ({
 }
 
 const DownloadBtn = ({ size = 24, className = "", entry }: Props) => {
-  const { colors } = useTheme()
+  const { isDark } = useTheme()
   
   const handleDownload = () => {
     // In the real implementation, this would trigger a download from entry.audioUrl
@@ -54,7 +54,7 @@ const DownloadBtn = ({ size = 24, className = "", entry }: Props) => {
 
   return (
     <Pressable onPress={handleDownload} className={className}>
-      <DownloadIcon size={size} stroke={colors.textSecondary} />
+      <DownloadIcon size={size} stroke="var(--text-secondary-color)" />
     </Pressable>
   )
 }

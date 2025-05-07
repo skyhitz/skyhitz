@@ -16,19 +16,19 @@ export function ChartScreen({ entries }: { entries: Entry[] }) {
     onNextPage,
     loadMoreEnabled,
   } = useTopChart(1)
-  const { colors, isDark } = useTheme()
+  const { theme } = useTheme()
 
   const playlist = [...entries, ...extraEntries]
 
   return (
-    <SafeAreaView style={{ backgroundColor: colors.background }}>
-      <View className="mx-auto flex w-full flex-1" style={{ backgroundColor: colors.background }}>
-        <ScrollView style={{ backgroundColor: colors.background }}>
+    <SafeAreaView className="bg-[--bg-color]">
+      <View className="mx-auto flex w-full flex-1 bg-[--bg-color]">
+        <ScrollView className="bg-[--bg-color]">
           <View className="mx-auto mb-32 w-full max-w-7xl px-2 lg:px-8">
             {/* Trending header with styling that matches legacy app */}
             <View className="mb-4">
-              <H1 className="py-2 text-xl font-bold sm:text-2xl" style={{ color: colors.text }}>Trending</H1>
-              <View style={{ borderBottomWidth: 1, borderBottomColor: colors.border }} />
+              <H1 className="py-2 text-xl font-bold sm:text-2xl text-[--text-color]">Trending</H1>
+              <View style={{ borderBottomWidth: 1, borderBottomColor: 'var(--border-color)' }} />
             </View>
             
             {/* Main content with border styling matching legacy app */}

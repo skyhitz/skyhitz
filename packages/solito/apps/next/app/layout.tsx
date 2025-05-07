@@ -2,6 +2,7 @@ import { StylesProvider } from './styles-provider'
 import 'app/design/global.css'
 import { inter, raleway, unbounded } from './fonts'
 import { Provider } from 'app/provider/index'
+import { ThemeProvider } from 'app/provider/theme'
 
 export const metadata = {
   title: 'Skyhitz',
@@ -10,7 +11,7 @@ export const metadata = {
     icon: '/icon.png',
     shortcut: '/icon.png',
     apple: '/icon.png',
-  }
+  },
 }
 
 export default function RootLayout({
@@ -23,11 +24,11 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${raleway.variable} ${unbounded.variable} font-sans`}
     >
-      <body>
+      <ThemeProvider>
         <StylesProvider>
           <Provider>{children}</Provider>
         </StylesProvider>
-      </body>
+      </ThemeProvider>
     </html>
   )
 }

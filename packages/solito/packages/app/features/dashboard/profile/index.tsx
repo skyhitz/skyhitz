@@ -32,7 +32,7 @@ export function ProfileScreen({ user }: { user: User }) {
   const { data: userCollectionData } = useUserCollectionQuery(user.id)
   const [claimEarnings] = useClaimEarningsMutation()
   const toast = useToast()
-  const { colors, isDark } = useTheme()
+  const { theme, isDark } = useTheme()
 
   // Use a ref to track if we've already attempted to claim earnings
   const hasAttemptedClaim = useRef(false)
@@ -106,15 +106,15 @@ export function ProfileScreen({ user }: { user: User }) {
   }
 
   return (
-    <SafeAreaView style={{ backgroundColor: colors.background }}>
-      <View className="mb-16 min-h-screen w-full pb-10" style={{ backgroundColor: colors.background }}>
+    <SafeAreaView className="bg-[--bg-color]">
+      <View className="mb-16 min-h-screen w-full pb-10 bg-[--bg-color]">
         <ProfileHeader
           user={user}
           action={
             <View className="ml-2 flex flex-row">
               <Link href="/dashboard/profile/edit">
                 <View className="items-center">
-                  <Cog className="h-5 w-5" fill={colors.text} />
+                  <Cog className="h-5 w-5" fill="var(--text-color)" />
                 </View>
               </Link>
             </View>
@@ -133,7 +133,7 @@ export function ProfileScreen({ user }: { user: User }) {
               {isClaimingEarnings ? (
                 <ActivityIndicator size="small" />
               ) : (
-                <P className="font-bold" style={{ color: colors.text }}>
+                <P className="font-bold" style={{ color: 'var(--text-color)' }}>
                   {`${credits?.userCredits || 0} XLM`}
                 </P>
               )}
@@ -141,7 +141,10 @@ export function ProfileScreen({ user }: { user: User }) {
             <View className="mr-2">
               <P
                 className="cursor-pointer font-bold underline decoration-2 underline-offset-4"
-                style={{ color: colors.text, textDecorationColor: colors.text }}
+                style={{
+                  color: 'var(--text-color)',
+                  textDecorationColor: 'var(--text-color)',
+                }}
                 onPress={handleWithdraw}
               >
                 Withdraw

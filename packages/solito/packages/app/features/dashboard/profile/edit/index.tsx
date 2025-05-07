@@ -32,7 +32,7 @@ export default function EditProfileScreen({ user }: { user: User }) {
   const searchParams = useSearchParams()
   const showWithdraw = searchParams?.get('withdraw') === 'true'
 
-  const { isDark, colors } = useTheme()
+  const { isDark, theme } = useTheme()
   const { setUser } = useUserStore()
   const [avatar, setAvatar] = useState<ChangeImage>({
     url: user.avatarUrl,

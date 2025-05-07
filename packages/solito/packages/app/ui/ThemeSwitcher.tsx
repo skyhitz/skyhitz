@@ -1,12 +1,11 @@
 'use client'
-import { View, Pressable } from 'react-native'
-import { P } from 'app/design/typography'
+import { Pressable } from 'react-native'
 import { useTheme } from 'app/state/theme/useTheme'
 import Moon from 'app/ui/icons/moon'
 import Sun from 'app/ui/icons/sun'
 
 export default function ThemeSwitcher() {
-  const { isDark, toggleTheme, colors } = useTheme()
+  const { isDark, toggleTheme, theme } = useTheme()
 
   return (
     <Pressable
@@ -18,9 +17,9 @@ export default function ThemeSwitcher() {
       accessibilityRole="button"
     >
       {isDark ? (
-        <Moon stroke={colors.text} width={20} height={20} />
+        <Moon stroke={theme['--text-color']} width={20} height={20} />
       ) : (
-        <Sun stroke={colors.text} width={20} height={20} />
+        <Sun stroke={theme['--text-color']} width={20} height={20} />
       )}
     </Pressable>
   )

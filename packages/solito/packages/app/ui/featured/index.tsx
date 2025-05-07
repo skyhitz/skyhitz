@@ -7,26 +7,17 @@ import { SolitoImage } from 'app/design/solito-image'
 import { useTheme } from 'app/state/theme/useTheme'
 
 export function Featured({ title, subtitle, features, imgUrl }: any) {
-  const { colors, isDark } = useTheme()
+  const { theme, isDark } = useTheme()
   return (
     <View
-      className="overflow-hidden py-32"
-      style={{ backgroundColor: colors.background }}
+      className="overflow-hidden py-32 bg-[--bg-color]"
     >
       <View className="mx-auto max-w-7xl md:px-6 lg:px-8">
         <View className="grid grid-cols-1 gap-x-8 gap-y-24 lg:grid-cols-2 lg:items-center">
           <View className="px-6 lg:px-0 lg:pr-4 lg:pt-4">
             <View className="mx-auto max-w-2xl lg:mx-0 lg:max-w-lg">
-              <P
-                className="font-semibold leading-7"
-                style={{ color: colors.primary }}
-              >
-                {subtitle}
-              </P>
-              <H2
-                className="font-unbounded mt-2 text-3xl font-bold tracking-tight sm:text-4xl"
-                style={{ color: colors.text }}
-              >
+              <P className="font-semibold leading-7">{subtitle}</P>
+              <H2 className="font-unbounded mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
                 {title}
               </H2>
 
@@ -40,16 +31,15 @@ export function Featured({ title, subtitle, features, imgUrl }: any) {
                       <View className="h-5 w-5">
                         {feature.icon &&
                           feature.icon({
-                            color: colors.text,
-                            fill: colors.text,
-                            stroke: colors.text,
+                            color: 'var(--text-color)',
+                            fill: 'var(--text-color)',
+                            stroke: 'var(--text-color)',
                           })}
                       </View>
                     </View>
                     <View className="relative max-w-fit pl-1">
                       <P
-                        className="font-semibold leading-8"
-                        style={{ color: colors.text }}
+                        className="font-semibold leading-8 text-[--text-color]"
                       >
                         {feature.name}
                       </P>

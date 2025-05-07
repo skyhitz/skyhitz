@@ -32,12 +32,11 @@ export function SignUp({ signedXDR }: SignUpProps = {}) {
         <View className="items-center justify-center py-5">
           <SkyhitzLogo id="sign-up" size={42} />
         </View>
-        
+
         <H1 className="mb-6 text-center text-white">Create Account</H1>
-        
+
         <SignUpForm signedXDR={signedXDR} />
       </View>
     </KeyboardAvoidingView>
   )
-}
 }

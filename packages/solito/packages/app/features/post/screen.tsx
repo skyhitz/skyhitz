@@ -18,7 +18,7 @@ const TypeSafeHTMLView = HTMLView as React.ComponentType<any>
 
 export function PostScreen({ post }: { post: any }) {
   const insets = useSafeArea()
-  const { colors } = useTheme()
+  const { theme } = useTheme()
 
   const { title, imageUrl, content, publishedAtTimestamp } = post
 
@@ -28,14 +28,14 @@ export function PostScreen({ post }: { post: any }) {
       style={{
         paddingTop: insets.top,
         paddingBottom: insets.bottom,
-        backgroundColor: colors.background
+        backgroundColor: 'var(--bg-color)',
       }}
     >
       <Navbar />
       <View className="mx-auto mb-32 w-full max-w-4xl px-6 lg:px-8">
-        <H1 className="mb-4 mt-10 text-4xl lg:text-6xl" style={{ color: colors.text }}>{title}</H1>
-        <P className="mt-4 text-left" style={{ color: colors.secondary }}>{formattedDate(publishedAtTimestamp)}</P>
-        <View style={{ borderBottomWidth: 1, borderBottomColor: colors.border, marginVertical: 32 }} />
+        <H1 className="mb-4 mt-10 text-4xl lg:text-6xl text-[--text-color]">{title}</H1>
+        <P className="mt-4 text-left text-[--secondary-color]">{formattedDate(publishedAtTimestamp)}</P>
+        <View style={{ borderBottomWidth: 1, borderBottomColor: 'var(--border-color)', marginVertical: 32 }} />
 
         <View className="aspect-[3/2] w-full object-cover">
           <View className="relative h-full w-full overflow-hidden rounded-2xl">
@@ -52,12 +52,12 @@ export function PostScreen({ post }: { post: any }) {
           <TypeSafeHTMLView 
             value={content} 
             stylesheet={{
-              p: { color: colors.text, marginBottom: 16 },
-              h1: { color: colors.text, fontWeight: 'bold', fontSize: 24, marginVertical: 16 },
-              h2: { color: colors.text, fontWeight: 'bold', fontSize: 20, marginVertical: 14 },
-              h3: { color: colors.text, fontWeight: 'bold', fontSize: 18, marginVertical: 12 },
-              a: { color: colors.primary },
-              li: { color: colors.text, marginBottom: 8 },
+              p: { color: 'var(--text-color)', marginBottom: 16 },
+              h1: { color: 'var(--text-color)', fontWeight: 'bold', fontSize: 24, marginVertical: 16 },
+              h2: { color: 'var(--text-color)', fontWeight: 'bold', fontSize: 20, marginVertical: 14 },
+              h3: { color: 'var(--text-color)', fontWeight: 'bold', fontSize: 18, marginVertical: 12 },
+              a: { color: 'var(--primary-color)' },
+              li: { color: 'var(--text-color)', marginBottom: 8 },
               ul: { marginBottom: 16, paddingLeft: 20 },
               ol: { marginBottom: 16, paddingLeft: 20 }
             }}

@@ -12,15 +12,14 @@ type NavbarProps = {
 }
 
 export function Navbar({ className }: NavbarProps) {
-  const { colors } = useTheme()
-  
+  const { theme } = useTheme()
+
   return (
-    <View 
-      className={`w-full flex-row items-center justify-between p-3 ${className || ''}`}
-      style={{ backgroundColor: colors.background }}
+    <View
+      className={`w-full flex-row items-center justify-between p-3 bg-[--bg-color] ${className || ''}`}
     >
       {/* Logo */}
-      <Link href="/" viewProps={{ className: "flex flex-row" }}>
+      <Link href="/" viewProps={{ className: 'flex flex-row' }}>
         <View className="flex flex-row items-center justify-start">
           <View className="flex min-h-[2.25rem] flex-row items-center">
             <SkyhitzLogo id="navbar" />
@@ -30,20 +29,23 @@ export function Navbar({ className }: NavbarProps) {
           </View>
         </View>
       </Link>
-      
+
       {/* Search bar */}
       <View className="mx-4 flex-1 max-w-xl">
         <View className="flex flex-row items-center rounded-full border border-gray-800 px-4 py-2">
-          <Search width="20" height="20" stroke={colors.textSecondary} />
+          <Search
+            width="20"
+            height="20"
+            stroke={theme['--text-secondary-color']}
+          />
           <TextInput
             placeholder="Search beats and artists..."
-            placeholderTextColor={colors.textSecondary}
-            className="ml-2 flex-1"
-            style={{ color: colors.text }}
+            placeholderTextColor={theme['--text-secondary-color']}
+            className="ml-2 flex-1 text-[--text-color]"
           />
         </View>
       </View>
-      
+
       {/* Theme switcher */}
       <ThemeSwitcher />
     </View>

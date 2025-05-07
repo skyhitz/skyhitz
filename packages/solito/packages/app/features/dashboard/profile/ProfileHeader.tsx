@@ -22,7 +22,7 @@ export function SocialLinks({
   instagram,
   profileUrl,
 }: SocialLinksProps) {
-  const { colors } = useTheme();
+  const { isDark } = useTheme();
   
   // Using array of elements to avoid any whitespace text nodes
   const socialItems = [
@@ -37,7 +37,7 @@ export function SocialLinks({
     socialItems.push(
       <View key="instagram" className="mx-2">
         <Pressable onPress={() => Linking.openURL(`https://instagram.com/${instagram}`)}>
-          <Instagram className="h-6 w-6 fill-none stroke-[1.5]" stroke={colors.text} />
+          <Instagram className="h-6 w-6 fill-none stroke-[1.5] stroke-[--text-color]" />
         </Pressable>
       </View>
     );
@@ -48,7 +48,7 @@ export function SocialLinks({
     socialItems.push(
       <View key="twitter" className="mx-2">
         <Pressable onPress={() => Linking.openURL(`https://twitter.com/${twitter}`)}>
-          <Twitter className="h-6 w-6 fill-none stroke-[1.5]" stroke={colors.text} />
+          <Twitter className="h-6 w-6 fill-none stroke-[1.5] stroke-[--text-color]" />
         </Pressable>
       </View>
     );
@@ -68,7 +68,7 @@ type ProfileHeaderProps = {
 
 export function ProfileHeader({ user, action }: ProfileHeaderProps) {
   const profileUrl = `${Config.APP_URL}/collector/${user.id}`
-  const { colors } = useTheme()
+  const { isDark } = useTheme()
   
   // Create the background element
   const backgroundElement = user.backgroundUrl ? (
@@ -98,8 +98,8 @@ export function ProfileHeader({ user, action }: ProfileHeaderProps) {
 
       <View className="mt-12 flex w-full flex-row items-start justify-between px-5 md:px-20">
         <View className="flex flex-col">
-          <H3 style={{ color: colors.text }}>{user.displayName}</H3>
-          <P style={{ color: colors.text }}>@{user.username}</P>
+          <H3 className="text-[--text-color]">{user.displayName}</H3>
+          <P className="text-[--text-color]">@{user.username}</P>
         </View>
 
         <View className="flex flex-row items-center">

@@ -23,8 +23,8 @@ import { SolitoImage } from 'app/design/solito-image'
 import { formattedDate } from 'app/utils'
 import { useTheme } from 'app/state/theme/useTheme'
 
-const PostWrapper = ({ imageUrl, title, publishedAtTimestamp, slug }: any) => {
-  const { colors } = useTheme()
+const PostWrapper = ({ imageUrl, title, publishedAtTimestamp, slug }: Post) => {
+  const { theme } = useTheme()
   return (
     <A href={`/blog/${slug}`}>
       <View className="flex flex-row items-center justify-start gap-8">
@@ -40,8 +40,8 @@ const PostWrapper = ({ imageUrl, title, publishedAtTimestamp, slug }: any) => {
           </View>
         </View>
         <View className="flex shrink flex-col items-start justify-center">
-          <H2 className="mb-2 break-words text-xl" style={{ color: colors.text }}>{title}</H2>
-          <P style={{ color: colors.secondary }}>{formattedDate(publishedAtTimestamp)}</P>
+          <H2 className="mb-2 break-words text-xl text-[--text-color]">{title}</H2>
+          <P className="text-[--secondary-color]">{formattedDate(publishedAtTimestamp)}</P>
         </View>
       </View>
     </A>
@@ -50,7 +50,7 @@ const PostWrapper = ({ imageUrl, title, publishedAtTimestamp, slug }: any) => {
 
 export function BlogScreen({ posts }: { posts: any[] }) {
   const insets = useSafeArea()
-  const { colors } = useTheme()
+  const { theme } = useTheme()
   const {
     data: extraPosts,
     isLoadingMore,
@@ -64,13 +64,13 @@ export function BlogScreen({ posts }: { posts: any[] }) {
       style={{ 
         paddingTop: insets.top,
         paddingBottom: insets.bottom,
-        backgroundColor: colors.background
+        backgroundColor: 'var(--bg-color)',
       }}
     >
       <Navbar />
       <View className="mx-auto mb-32 w-full max-w-7xl px-6 lg:px-8">
-        <H1 className="mb-4 mt-10 text-4xl" style={{ color: colors.text }}>Blog</H1>
-        <View style={{ borderBottomWidth: 1, borderBottomColor: colors.border, marginVertical: 32 }} />
+        <H1 className="mb-4 mt-10 text-4xl text-[--text-color]">Blog</H1>
+        <View style={{ borderBottomWidth: 1, borderBottomColor: 'var(--border-color)', marginVertical: 32 }} />
         <View className="gap-16">
           {posts.map((props, index) => {
             return <PostWrapper key={index} {...props} />
@@ -82,14 +82,14 @@ export function BlogScreen({ posts }: { posts: any[] }) {
         </View>
         <View className="mt-16 flex h-12 items-center justify-center">
           {isLoadingMore ? (
-            <ActivityIndicator size={'small'} color={colors.primary} />
+            <ActivityIndicator size={'small'} color="var(--primary-color)" />
           ) : (
             loadMoreEnabled && (
               <Button
                 onPress={() => {
                   onNextPage()
                 }}
-                style={{ color: colors.primary }}
+                className="text-[--primary-color]"
               >
                 Load More →
               </Button>

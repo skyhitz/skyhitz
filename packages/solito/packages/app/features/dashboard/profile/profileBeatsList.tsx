@@ -23,7 +23,7 @@ function ListEmptyComponent({
 
   return (
     <View className="mt-8 flex flex-1 items-center justify-center">
-      <P>{emptyStateText}</P>
+      <P className="text-[--text-color]">{emptyStateText}</P>
     </View>
   )
 }

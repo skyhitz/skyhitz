@@ -11,9 +11,9 @@ export default function LikesScreen() {
   const entries = data?.userLikes?.filter(isSome) ?? []
 
   return (
-    <SafeAreaView className="bg-black">
+    <SafeAreaView className="bg-[--bg-color]">
       <View className="w-full flex-1">
-        <P className="web:flex font-unbounded my-4 ml-8 hidden text-lg font-bold text-white">
+        <P className="web:flex font-unbounded my-4 ml-8 hidden text-lg font-bold text-[--text-color]">
           Likes
         </P>
         <ProfileBeatsList

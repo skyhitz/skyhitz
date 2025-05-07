@@ -28,7 +28,7 @@ export default function DashboardTabBar({
   currentTabName: string
   className?: string
 }) {
-  const { colors, isDark } = useTheme()
+  const { isDark } = useTheme()
 
   const isActive = useCallback(
     (tabName: string): boolean => {
@@ -41,29 +41,29 @@ export default function DashboardTabBar({
   const { user } = useUserStore()
   const rootViewStyle = column ? 'flex-col' : 'flex-row border-t-2 border-white'
 
-  const activeColor = colors.primary
-  const inactiveColor = colors.textSecondary
+  const activeColor = 'var(--primary-color)'
+  const inactiveColor = 'var(--text-secondary-color)'
 
   return (
     <View
       className={`flex ${rootViewStyle} ${className}`}
       style={{
         paddingBottom: insets.bottom,
-        backgroundColor: isDark ? colors.background : 'white',
+        backgroundColor: 'var(--bg-color)',
       }}
     >
       <Link href="/dashboard/search" viewProps={{ style: LinkStyle }}>
         <Search
           width="28"
           height="28"
-          stroke={isActive('search') ? colors.primary : colors.textSecondary}
+          className={`stroke-[${isActive('search') ? '--primary-color' : '--text-secondary-color'}]`}
         />
       </Link>
 
       <Link href="/dashboard/chart" viewProps={{ style: LinkStyle }}>
         <View
           style={{
-            borderColor: isActive('chart') ? colors.primary : colors.textSecondary,
+            borderColor: isActive('chart') ? 'var(--primary-color)' : 'var(--text-secondary-color)',
             borderWidth: 2,
             borderRadius: 9999,
             width: 32,
@@ -82,7 +82,7 @@ export default function DashboardTabBar({
           <User
             width="28"
             height="28"
-            stroke={isActive('profile') ? colors.primary : colors.textSecondary}
+            className={`stroke-[${isActive('profile') ? '--primary-color' : '--text-secondary-color'}]`}
           />
         </Link>
       )}

@@ -15,7 +15,7 @@ export function P({
   className,
   ...rest
 }: { className?: string } & ComponentProps<typeof Text>) {
-  const defaultStyles = 'text-base text-gray-600'
+  const defaultStyles = 'text-base text-[--text-color]'
   return (
     <Text
       className={`${defaultStyles} ${className}`}
@@ -33,7 +33,7 @@ export function H1({
   ...rest
 }: { className?: string } & ComponentProps<typeof Text>) {
   const defaultStyles =
-    'my-4 text-3xl font-extrabold font-unbounded text-gray-600'
+    'my-4 text-3xl font-extrabold font-unbounded text-[--text-color]'
   return (
     <Text
       className={`${defaultStyles} ${className}`}
@@ -48,7 +48,7 @@ export function H2({
   className,
   ...rest
 }: { className?: string } & ComponentProps<typeof Text>) {
-  const defaultStyles = 'font-extrabold font-unbounded text-gray-600'
+  const defaultStyles = 'font-extrabold font-unbounded text-[--text-color]'
   return (
     <Text
       className={`${defaultStyles} ${className}`}
@@ -63,7 +63,7 @@ export function H3({
   className,
   ...rest
 }: { className?: string } & ComponentProps<typeof Text>) {
-  const defaultStyles = 'font-extrabold font-unbounded text-gray-600'
+  const defaultStyles = 'font-extrabold font-unbounded text-[--text-color]'
   return (
     <Text
       className={`${defaultStyles} ${className}`}
@@ -107,7 +107,7 @@ export function Button({
 }: { className?: string; wrapperClassName?: string } & ComponentProps<
   typeof Text
 >) {
-  const defaultStyles = 'text-sm font-semibold text-white'
+  const defaultStyles = 'text-sm font-semibold text-[--text-color]'
   return (
     <Pressable
       {...rest}

@@ -14,14 +14,13 @@ import { useTheme } from 'app/state/theme/useTheme'
 export function SearchScreen() {
   const [searchPhrase, setSearchPhrase] = useState('')
   const [tab, setTab] = useState<Tabs>('MFTs')
-  const { colors } = useTheme()
+  const { theme } = useTheme()
 
   return (
-    <SafeAreaView style={{ backgroundColor: colors.background }}>
+    <SafeAreaView className="bg-[--bg-color]">
       <SafeAreaView
         edges={['top']}
-        className="mx-auto flex w-full max-w-7xl flex-1 px-2 pb-0 pt-4 lg:px-8"
-        style={{ backgroundColor: colors.background }}
+        className="mx-auto flex w-full max-w-7xl flex-1 px-2 pb-0 pt-4 lg:px-8 bg-[--bg-color]"
       >
         <SearchInputField
           value={searchPhrase}

@@ -1,67 +1,85 @@
 'use client'
 import { useThemeStore } from './index'
+import { useColorScheme as useNativeWindColorScheme } from 'nativewind'
+import { vars } from 'nativewind'
 
-export type ThemeColors = {
-  background: string
-  surface: string
-  text: string
-  textSecondary: string
-  primary: string
-  secondary: string
-  accent: string
-  border: string
-  cardBackground: string
-  buttonBackground: string
-  buttonText: string
-  investButtonBackground: string
-  investButtonText: string
-  descriptionBackground: string
+// Define CSS variables for themes
+export const themes = {
+  light: vars({
+    // Base colors
+    '--bg-color': '#FFFFFF',
+    '--surface-color': '#F5F5F5',
+    '--text-color': '#000000',
+    '--text-secondary-color': '#555555',
+    '--primary-color': '#0097A7',
+    '--secondary-color': '#5C6BC0',
+    '--accent-color': '#0097A7',
+    
+    // UI elements
+    '--border-color': '#E0E0E0',
+    '--card-bg-color': '#FFFFFF',
+    '--button-bg-color': '#F5F5F5',
+    '--button-text-color': '#000000',
+    '--invest-button-bg-color': '#0097A7',
+    '--invest-button-text-color': '#FFFFFF',
+    '--description-bg-color': '#F9F9F9',
+    '--bg-secondary-color': '#F9F9F9',
+  }),
+  dark: vars({
+    // Base colors
+    '--bg-color': '#000000',
+    '--surface-color': '#000000',
+    '--text-color': '#FFFFFF',
+    '--text-secondary-color': '#6B7280',
+    '--primary-color': '#19aafe',
+    '--secondary-color': '#6B7280',
+    '--accent-color': '#19aafe',
+    
+    // UI elements
+    '--border-color': '#1A1A1A',
+    '--card-bg-color': '#000000',
+    '--button-bg-color': '#19aafe',
+    '--button-text-color': '#FFFFFF',
+    '--invest-button-bg-color': '#FFFFFF',
+    '--invest-button-text-color': '#000000',
+    '--description-bg-color': '#000000',
+    '--bg-secondary-color': '#1A1A1A',
+  }),
 }
 
-// Colors matching Skyhitz's existing dark theme
-const darkColors: ThemeColors = {
-  background: '#000000', // Pure black background as seen in screenshot
-  surface: '#000000', // Also black for surface elements
-  text: '#FFFFFF',
-  textSecondary: '#6B7280', // Gray color from the screenshot
-  primary: '#19aafe', // Skyhitz blue from screenshot
-  secondary: '#6B7280',
-  accent: '#19aafe',
-  border: '#1A1A1A', // Very subtle border color
-  cardBackground: '#000000', // Keeping cards black
-  buttonBackground: '#19aafe', // Blue buttons
-  buttonText: '#FFFFFF',
-  investButtonBackground: '#FFFFFF',
-  investButtonText: '#000000',
-  descriptionBackground: '#000000'
-}
-
-// Light theme to contrast with dark theme
-const lightColors: ThemeColors = {
-  background: '#FFFFFF',
-  surface: '#F5F5F5',
-  text: '#000000',
-  textSecondary: '#555555',
-  primary: '#0097A7', // Darker blue for light theme
-  secondary: '#5C6BC0',
-  accent: '#0097A7',
-  border: '#E0E0E0',
-  cardBackground: '#FFFFFF',
-  buttonBackground: '#F5F5F5',
-  buttonText: '#000000',
-  investButtonBackground: '#0097A7',
-  investButtonText: '#FFFFFF',
-  descriptionBackground: '#F9F9F9'
-}
+// We're now using CSS variables for all theme colors defined in the themes object above
 
 export function useTheme() {
-  const { isDark, toggleTheme, setDarkTheme, setLightTheme } = useThemeStore()
+  // Use NativeWind's colorScheme hook directly
+  const { colorScheme, setColorScheme, toggleColorScheme } = useNativeWindColorScheme()
+  // Get theme state from our Zustand store
+  const { isDark, setDarkTheme, setLightTheme, toggleTheme: zustandToggleTheme } = useThemeStore()
+  // No longer using ThemeContext, keeping the implementation simple
   
+  // Apply the appropriate theme CSS variables
+  const theme = isDark ? themes.dark : themes.light
+
   return {
     isDark,
-    toggleTheme,
-    setDarkTheme,
-    setLightTheme,
-    colors: isDark ? darkColors : lightColors,
+    // Toggle both NativeWind and our store
+    toggleTheme: () => {
+      zustandToggleTheme()
+      toggleColorScheme()
+    },
+    // Set dark theme in both systems
+    setDarkTheme: () => {
+      setDarkTheme()
+      setColorScheme('dark')
+    },
+    // Set light theme in both systems
+    setLightTheme: () => {
+      setLightTheme()
+      setColorScheme('light')
+    },
+    // Expose NativeWind color scheme values
+    colorScheme,
+    setColorScheme,
+    // Return the current theme object with CSS variables
+    theme,
   }
 }

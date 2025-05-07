@@ -55,17 +55,14 @@ import Footer from 'app/ui/footer'
 import { Hero } from 'app/ui/hero'
 import { Navbar } from 'app/ui/navbar/Navbar'
 import { View } from 'react-native'
-import { useTheme } from 'app/state/theme/useTheme'
 
 export function HomeScreen(props: HomePageProps) {
   const { posts, header, cta, featured, faq } = props
   const insets = useSafeArea()
-  const { colors } = useTheme()
 
   return (
     <View
-      className={`flex h-full w-full pt-[${insets.top}px] pb-[${insets.bottom}px]`}
-      style={{ backgroundColor: colors.background }}
+      className={`flex h-full w-full pt-[${insets.top}px] pb-[${insets.bottom}px] bg-[--bg-color]`}
     >
       <Navbar />
       <Hero {...header} />

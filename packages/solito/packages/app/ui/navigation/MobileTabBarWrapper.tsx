@@ -21,7 +21,7 @@ export function MobileTabBarWrapper({
 }) {
   const insets = useSafeArea()
   const { height } = useWindowDimensions()
-  const { colors, isDark } = useTheme()
+  const { isDark } = useTheme()
 
   const tabBarHeight = 54 + insets.bottom // 54 for tab bar height + bottom inset
 
@@ -65,8 +65,8 @@ export function MobileTabBarWrapper({
         {
           transform: [{ translateY: y.value }],
           borderTopWidth: 2,
-          borderTopColor: isDark ? colors.border : 'white',
-          backgroundColor: isDark ? colors.background : 'white',
+          borderTopColor: 'var(--border-color)',
+          backgroundColor: 'var(--bg-color)',
         }
       ]}
     >

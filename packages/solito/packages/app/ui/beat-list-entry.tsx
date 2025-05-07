@@ -24,7 +24,7 @@ type BeatListEntryProps = {
 
 export function BeatListEntry({ entry, spot, playlist = [] }: BeatListEntryProps) {
   const { push } = useRouter()
-  const { colors } = useTheme()
+  const { isDark } = useTheme()
   
   const handlePress = () => {
     push(`/dashboard/beat/${entry.id}`)
@@ -37,8 +37,8 @@ export function BeatListEntry({ entry, spot, playlist = [] }: BeatListEntryProps
   return (
     <Pressable onPress={handlePress} className="flex">
       {({ hovered }: PressableState) => (
-        <View className="flex flex-row items-center py-2" 
-          style={{ borderBottomWidth: 0.5, borderBottomColor: colors.border }}>
+        <View className="flex flex-row items-center py-2 border-b border-[--border-color]" 
+          style={{ borderBottomWidth: 0.5 }}>
           {/* Album artwork */}
           <View className="aspect-[2/2] w-12 object-cover">
             <SolitoImage
@@ -53,17 +53,17 @@ export function BeatListEntry({ entry, spot, playlist = [] }: BeatListEntryProps
           
           {/* Rank number */}
           {spot && (
-            <P className="ml-2 w-8 text-center text-2xl leading-none" style={{ color: colors.text }}>
+            <P className="ml-2 w-8 text-center text-2xl leading-none text-[--text-color]">
               {spot}
             </P>
           )}
           
           {/* Title and artist */}
           <View className="ml-2 flex flex-1 justify-center pr-2">
-            <P numberOfLines={1} className="text-sm font-bold leading-6" style={{ color: colors.text }}>
+            <P numberOfLines={1} className="text-sm font-bold leading-6 text-[--text-color]">
               {entry.title}
             </P>
-            <P numberOfLines={1} className="text-xs leading-6" style={{ color: colors.textSecondary }}>
+            <P numberOfLines={1} className="text-xs leading-6 text-[--text-secondary-color]">
               {entry.artist}
             </P>
             
@@ -74,12 +74,12 @@ export function BeatListEntry({ entry, spot, playlist = [] }: BeatListEntryProps
                 onPress={() => push(`/dashboard/beat/${entry.id}`)}
               >
                 <View className="mr-3 flex flex-row items-center">
-                  <Stellar size={10} color={colors.primary} />
-                  <P className="ml-1 text-xs leading-6" style={{ color: colors.text }}>
+                  <Stellar size={10} color="var(--primary-color)" />
+                  <P className="ml-1 text-xs leading-6 text-[--text-color]">
                     {tvlFormatted}
                   </P>
                 </View>
-                <P className="mr-3 text-xs leading-6" style={{ color: colors.primary }}>
+                <P className="mr-3 text-xs leading-6 text-[--primary-color]">
                   APR: {aprFormatted}
                 </P>
               </Pressable>
@@ -95,12 +95,12 @@ export function BeatListEntry({ entry, spot, playlist = [] }: BeatListEntryProps
                 onPress={() => push(`/dashboard/beat/${entry.id}`)}
               >
                 <View className="mr-3 flex flex-row items-center">
-                  <Stellar size={10} color={colors.primary} />
-                  <P className="ml-1 text-xs" style={{ color: colors.text }}>
+                  <Stellar size={10} color="var(--primary-color)" />
+                  <P className="ml-1 text-xs text-[--text-color]">
                     {tvlFormatted}
                   </P>
                 </View>
-                <P className="mr-3 text-xs" style={{ color: colors.primary }}>
+                <P className="mr-3 text-xs text-[--primary-color]">
                   APR: {aprFormatted}
                 </P>
               </Pressable>
@@ -116,7 +116,7 @@ export function BeatListEntry({ entry, spot, playlist = [] }: BeatListEntryProps
             
             {/* More options dots */}
             <Pressable onPress={() => push(`/dashboard/beat/${entry.id}`)}>
-              <VerticalDots size={24} stroke={colors.text} />
+              <VerticalDots size={24} className="stroke-[--text-color]" />
             </Pressable>
           </View>
         </View>

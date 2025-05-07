@@ -16,20 +16,18 @@ export function BeatSummaryColumn({ entry }: Props) {
   // Format values for display
   const tvl = entry.tvl || 1; // Default to 1 XLM if not provided
   const apr = entry.apr || 40; // Default to 40% if not provided
-  const { colors, isDark } = useTheme();
+  const { isDark } = useTheme();
   
   return (
     <View className="flex w-full md:ml-4 md:flex-1">
       <View>
         <H1 
-          className="font-unbounded mb-2 text-3xl font-bold md:text-5xl"
-          style={{ color: colors.text }}
+          className="font-unbounded mb-2 text-3xl font-bold md:text-5xl text-[--text-color]"
         >
           {entry.title}
         </H1>
         <P 
-          className="md:text-2xl"
-          style={{ color: colors.text }}
+          className="md:text-2xl text-[--text-color]"
         >
           {entry.artist}
         </P>
@@ -38,12 +36,12 @@ export function BeatSummaryColumn({ entry }: Props) {
       {/* TVL and APR information */}
       <View className="mt-6 mb-4">
         <View className="flex-row">
-          <P style={{ color: colors.textSecondary, marginRight: 4 }}>TVL: </P>
-          <P style={{ color: colors.text }}>{tvl} XLM</P>
+          <P className="text-[--text-secondary-color] mr-1">TVL: </P>
+          <P className="text-[--text-color]">{tvl} XLM</P>
         </View>
         <View className="flex-row mt-1">
-          <P style={{ color: colors.textSecondary, marginRight: 4 }}>APR: </P>
-          <P style={{ color: colors.primary }}>{apr}%</P>
+          <P className="text-[--text-secondary-color] mr-1">APR: </P>
+          <P className="text-[--primary-color]">{apr}%</P>
         </View>
       </View>
       
@@ -54,29 +52,28 @@ export function BeatSummaryColumn({ entry }: Props) {
             className="mr-2" 
             width="16" 
             height="16" 
-            stroke={colors.textSecondary}
+            className="stroke-[--text-secondary-color]"
           />
-          <P style={{ color: colors.textSecondary }}>Amount (XLM)</P>
+          <P className="text-[--text-secondary-color]">Amount (XLM)</P>
         </View>
         <View className="flex-row items-center">
           <InfoCircle 
             className="mr-2" 
             width="16" 
             height="16" 
-            stroke={colors.textSecondary}
+            className="stroke-[--text-secondary-color]"
           />
-          <P style={{ color: colors.textSecondary }}>Pool share %</P>
+          <P className="text-[--text-secondary-color]">Pool share %</P>
         </View>
       </View>
 
       <CollapsableView 
         headerText="Description" 
         icon={InfoCircle}
-        style={{ backgroundColor: colors.descriptionBackground }}
+        className="bg-[--bg-secondary-color]"
       >
         <P 
-          className="p-5 text-sm leading-6"
-          style={{ color: colors.text }}
+          className="p-5 text-sm leading-6 text-[--text-color]"
         >
           {entry.description}
         </P>

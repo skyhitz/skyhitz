@@ -33,7 +33,7 @@ const LikeIcon = ({
 }
 
 const LikeButton = ({ size = 24, entry }: Props) => {
-  const { colors } = useTheme()
+  const { isDark } = useTheme()
   // For the prototype, we're using local state since Entry type doesn't have a liked property
   const [liked, setLiked] = React.useState(false)
 
@@ -46,8 +46,8 @@ const LikeButton = ({ size = 24, entry }: Props) => {
     <Pressable onPress={handlePress} className="mr-3">
       <LikeIcon 
         size={size} 
-        fill={liked ? colors.primary : 'none'} 
-        stroke={liked ? colors.primary : colors.textSecondary}
+        fill={liked ? 'var(--primary-color)' : 'none'} 
+        stroke={liked ? 'var(--primary-color)' : 'var(--text-secondary-color)'}
       />
     </Pressable>
   )
