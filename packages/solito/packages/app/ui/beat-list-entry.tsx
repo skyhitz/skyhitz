@@ -12,6 +12,15 @@ import DownloadBtn from 'app/ui/buttons/DownloadBtn'
 import Stellar from 'app/ui/icons/stellar'
 import { stroopsToLumens } from 'app/utils/stroopsToLumens'
 
+// Reusable component for APR text with consistent styling
+function APRText({ apr }: { apr: string }) {
+  return (
+    <P className="mr-3 text-xs text-[--primary-color]">
+      APR: {apr}
+    </P>
+  )
+}
+
 export type PressableState = Readonly<{
   hovered?: boolean
 }>
@@ -53,14 +62,14 @@ export function BeatListEntry({ entry, spot, playlist = [] }: BeatListEntryProps
           
           {/* Rank number */}
           {spot && (
-            <P className="ml-2 w-8 text-center text-2xl leading-none text-[--text-color]">
+            <P className="ml-2 w-8 text-center text-2xl leading-none">
               {spot}
             </P>
           )}
           
           {/* Title and artist */}
           <View className="ml-2 flex flex-1 justify-center pr-2">
-            <P numberOfLines={1} className="text-sm font-bold leading-6 text-[--text-color]">
+            <P numberOfLines={1} className="text-sm font-bold leading-6">
               {entry.title}
             </P>
             <P numberOfLines={1} className="text-xs leading-6 text-[--text-secondary-color]">
@@ -75,13 +84,11 @@ export function BeatListEntry({ entry, spot, playlist = [] }: BeatListEntryProps
               >
                 <View className="mr-3 flex flex-row items-center">
                   <Stellar size={10} color="var(--primary-color)" />
-                  <P className="ml-1 text-xs leading-6 text-[--text-color]">
+                  <P className="ml-1 text-xs leading-6">
                     {tvlFormatted}
                   </P>
                 </View>
-                <P className="mr-3 text-xs leading-6 text-[--primary-color]">
-                  APR: {aprFormatted}
-                </P>
+                <APRText apr={aprFormatted} />
               </Pressable>
             ) : null}
           </View>
@@ -96,13 +103,11 @@ export function BeatListEntry({ entry, spot, playlist = [] }: BeatListEntryProps
               >
                 <View className="mr-3 flex flex-row items-center">
                   <Stellar size={10} color="var(--primary-color)" />
-                  <P className="ml-1 text-xs text-[--text-color]">
+                  <P className="ml-1 text-xs">
                     {tvlFormatted}
                   </P>
                 </View>
-                <P className="mr-3 text-xs text-[--primary-color]">
-                  APR: {aprFormatted}
-                </P>
+                <APRText apr={aprFormatted} />
               </Pressable>
             ) : null}
             

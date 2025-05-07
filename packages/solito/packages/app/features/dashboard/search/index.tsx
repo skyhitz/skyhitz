@@ -20,7 +20,7 @@ export function SearchScreen() {
     <SafeAreaView className="bg-[--bg-color]">
       <SafeAreaView
         edges={['top']}
-        className="mx-auto flex w-full max-w-7xl flex-1 px-2 pb-0 pt-4 lg:px-8 bg-[--bg-color]"
+        className="mx-auto flex w-full max-w-7xl flex-1 px-2 pb-0 pt-4 lg:px-8"
       >
         <SearchInputField
           value={searchPhrase}

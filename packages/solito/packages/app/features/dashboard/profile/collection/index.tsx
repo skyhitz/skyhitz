@@ -14,7 +14,7 @@ export default function CollectionScreen({ user }: { user: User }) {
   return (
     <SafeAreaView className="bg-[--bg-color]">
       <View className="w-full flex-1">
-        <P className="web:flex font-unbounded my-4 ml-8 hidden text-lg font-bold text-[--text-color]">
+        <P className="web:flex font-unbounded my-4 ml-8 hidden text-lg font-bold">
           Collection
         </P>
         <ProfileBeatsList

@@ -22,12 +22,12 @@ export function ChartScreen({ entries }: { entries: Entry[] }) {
 
   return (
     <SafeAreaView className="bg-[--bg-color]">
-      <View className="mx-auto flex w-full flex-1 bg-[--bg-color]">
-        <ScrollView className="bg-[--bg-color]">
+      <View className="mx-auto flex w-full flex-1">
+        <ScrollView>
           <View className="mx-auto mb-32 w-full max-w-7xl px-2 lg:px-8">
             {/* Trending header with styling that matches legacy app */}
             <View className="mb-4">
-              <H1 className="py-2 text-xl font-bold sm:text-2xl text-[--text-color]">Trending</H1>
+              <H1 className="py-2 text-xl font-bold sm:text-2xl">Trending</H1>
               <View style={{ borderBottomWidth: 1, borderBottomColor: 'var(--border-color)' }} />
             </View>
             

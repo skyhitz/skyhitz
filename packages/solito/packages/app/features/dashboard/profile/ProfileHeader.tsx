@@ -98,8 +98,8 @@ export function ProfileHeader({ user, action }: ProfileHeaderProps) {
 
       <View className="mt-12 flex w-full flex-row items-start justify-between px-5 md:px-20">
         <View className="flex flex-col">
-          <H3 className="text-[--text-color]">{user.displayName}</H3>
-          <P className="text-[--text-color]">@{user.username}</P>
+          <H3>{user.displayName}</H3>
+          <P>@{user.username}</P>
         </View>
 
         <View className="flex flex-row items-center">

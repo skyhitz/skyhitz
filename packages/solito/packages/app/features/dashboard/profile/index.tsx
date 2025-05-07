@@ -107,7 +107,7 @@ export function ProfileScreen({ user }: { user: User }) {
 
   return (
     <SafeAreaView className="bg-[--bg-color]">
-      <View className="mb-16 min-h-screen w-full pb-10 bg-[--bg-color]">
+      <View className="mb-16 min-h-screen w-full pb-10">
         <ProfileHeader
           user={user}
           action={

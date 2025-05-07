@@ -20,7 +20,7 @@ export function DashboardNavigation({
       {/* Top Navigation - hidden on mobile */}
       <Navbar className="hidden md:flex" />
 
-      <View className="flex flex-1 flex-row bg-[--bg-color]">
+      <View className="flex flex-1 flex-row">
         {/* Side Navigation - hidden on mobile - always show regardless of login status */}
         <DashboardTabBar
           className="hidden md:flex"
@@ -29,7 +29,7 @@ export function DashboardNavigation({
         />
 
         {/* Main Content */}
-        <View className="flex-1 overflow-auto bg-[--bg-color]">{children}</View>
+        <View className="flex-1 overflow-auto">{children}</View>
       </View>
 
       {/* Bottom Navigation - visible only on mobile */}

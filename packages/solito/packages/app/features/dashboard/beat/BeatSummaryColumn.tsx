@@ -22,12 +22,12 @@ export function BeatSummaryColumn({ entry }: Props) {
     <View className="flex w-full md:ml-4 md:flex-1">
       <View>
         <H1 
-          className="font-unbounded mb-2 text-3xl font-bold md:text-5xl text-[--text-color]"
+          className="font-unbounded mb-2 text-3xl font-bold md:text-5xl"
         >
           {entry.title}
         </H1>
         <P 
-          className="md:text-2xl text-[--text-color]"
+          className="md:text-2xl"
         >
           {entry.artist}
         </P>
@@ -37,7 +37,7 @@ export function BeatSummaryColumn({ entry }: Props) {
       <View className="mt-6 mb-4">
         <View className="flex-row">
           <P className="text-[--text-secondary-color] mr-1">TVL: </P>
-          <P className="text-[--text-color]">{tvl} XLM</P>
+          <P>{tvl} XLM</P>
         </View>
         <View className="flex-row mt-1">
           <P className="text-[--text-secondary-color] mr-1">APR: </P>
@@ -49,19 +49,17 @@ export function BeatSummaryColumn({ entry }: Props) {
       <View className="mt-2 mb-6 flex-row items-center justify-between">
         <View className="flex-row items-center">
           <InfoCircle 
-            className="mr-2" 
+            className="mr-2 stroke-[--text-secondary-color]" 
             width="16" 
-            height="16" 
-            className="stroke-[--text-secondary-color]"
+            height="16"
           />
           <P className="text-[--text-secondary-color]">Amount (XLM)</P>
         </View>
         <View className="flex-row items-center">
           <InfoCircle 
-            className="mr-2" 
+            className="mr-2 stroke-[--text-secondary-color]" 
             width="16" 
-            height="16" 
-            className="stroke-[--text-secondary-color]"
+            height="16"
           />
           <P className="text-[--text-secondary-color]">Pool share %</P>
         </View>
@@ -73,7 +71,7 @@ export function BeatSummaryColumn({ entry }: Props) {
         className="bg-[--bg-secondary-color]"
       >
         <P 
-          className="p-5 text-sm leading-6 text-[--text-color]"
+          className="p-5 text-sm leading-6"
         >
           {entry.description}
         </P>
