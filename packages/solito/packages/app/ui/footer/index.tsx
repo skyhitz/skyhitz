@@ -3,6 +3,7 @@ import { A, H3, P } from 'app/design/typography'
 import { View } from 'react-native'
 import { SkyhitzLogo } from 'app/ui/logo'
 import { footer } from 'app/constants/content'
+import ThemeSwitcher from '../ThemeSwitcher'
 
 export default function Footer() {
   const { companyName, sections } = footer
@@ -43,10 +44,14 @@ export default function Footer() {
           )}
         </View>
       </View>
-      <P className="mt-16 flex flex-row items-center gap-4 text-xs text-[--text-color]">
-        <SkyhitzLogo size={25} id="footer" /> © {new Date().getFullYear()}{' '}
-        {companyName} - All Rights Reserved.
-      </P>
+
+      <View className="flex flex-row items-center justify-between mt-16">
+        <P className="flex flex-row items-center gap-4 text-xs text-[--text-color]">
+          <SkyhitzLogo size={25} id="footer" /> © {new Date().getFullYear()}{' '}
+          {companyName} - All Rights Reserved.
+        </P>
+        <ThemeSwitcher />
+      </View>
     </View>
   )
 }

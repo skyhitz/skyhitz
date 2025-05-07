@@ -29,7 +29,7 @@ export default function Card({
         </View>
         <View className="max-w-xl px-6 py-8">
           <View className="group relative">
-            <H3 className="line-clamp-2 min-h-[3rem] text-lg font-semibold leading-6 group-hover:text-gray-600">
+            <H3 className="line-clamp-2 min-h-[3rem] text-lg font-semibold leading-6 group-hover:text-gray-100">
               <View className="absolute inset-0" />
               {title}
             </H3>
@@ -38,9 +38,7 @@ export default function Card({
                 {tag}
               </P>
             </View>
-            <P className="mt-5 line-clamp-3 text-sm leading-6 text-gray-600">
-              {summary}
-            </P>
+            <P className="mt-5 line-clamp-3 text-sm leading-6">{summary}</P>
           </View>
           <View className="mt-5 flex items-start gap-4">
             <P className="text-xs font-bold text-gray-700">

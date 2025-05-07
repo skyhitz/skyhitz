@@ -28,8 +28,8 @@ export const themes = {
     // Base colors
     '--bg-color': '#000000',
     '--surface-color': '#000000',
-    '--text-color': 'rgb(255 255 255)',
-    '--text-secondary-color': '#6B7280',
+    '--text-color': 'rgb(179, 186, 197)',
+    '--text-secondary-color': 'rgb(217, 220, 226)',
     '--primary-color': '#19aafe',
     '--secondary-color': '#6B7280',
     '--accent-color': '#19aafe',
@@ -51,8 +51,9 @@ export const themes = {
  */
 export function useTheme() {
   // Use our custom color scheme hook
-  const { colorScheme, isDark, toggleColorScheme, setColorScheme } = useColorScheme()
-  
+  const { colorScheme, isDark, toggleColorScheme, setColorScheme } =
+    useColorScheme()
+
   // Get the appropriate theme CSS variables
   const theme = isDark ? themes.dark : themes.light
 

@@ -25,9 +25,14 @@ export function ChartScreen({ entries }: { entries: Entry[] }) {
             {/* Trending header with styling that matches legacy app */}
             <View className="mb-4">
               <H1 className="py-2 text-xl font-bold sm:text-2xl">Trending</H1>
-              <View style={{ borderBottomWidth: 1, borderBottomColor: 'var(--border-color)' }} />
+              <View
+                style={{
+                  borderBottomWidth: 1,
+                  borderBottomColor: 'var(--border-color)',
+                }}
+              />
             </View>
-            
+
             {/* Main content with border styling matching legacy app */}
             <View className="rounded-lg overflow-hidden">
               {/* Original entries */}
@@ -63,6 +68,7 @@ export function ChartScreen({ entries }: { entries: Entry[] }) {
                     onPress={() => {
                       onNextPage()
                     }}
+                    className="text-white"
                   >
                     Load More →
                   </Button>
