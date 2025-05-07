@@ -68,6 +68,18 @@ export const entriesIndex = {
   },
 }
 
+// Users index for users/collectors search
+export const usersIndex = {
+  search: async <T>(query: string, options: any = {}) => {
+    const result = await searchIndex(indexNames.users, query, options)
+    return result
+  },
+  getObject: async <T>(objectID: string) => {
+    const result = await getObject(indexNames.users, objectID)
+    return result as T
+  },
+}
+
 // Rating entries index for the chart functionality
 export const ratingEntriesIndex = {
   search: async <T>(query: string, options: any = {}) => {

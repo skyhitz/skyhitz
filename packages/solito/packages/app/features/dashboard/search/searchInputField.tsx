@@ -1,30 +1,51 @@
 'use client'
-import { TextInput, TextInputProps, View, Pressable } from 'react-native'
-import { X } from 'app/ui/icons/x'
+import { TextInput, Pressable, View } from 'react-native'
 import Search from 'app/ui/icons/search'
+import { X } from 'app/ui/icons/x'
 
-type SearchInputFieldProps = TextInputProps & {
+type SearchInputFieldProps = {
+  value: string
+  onChangeText: (text: string) => void
   showX?: boolean
   onXClick?: () => void
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters'
+  placeholder?: string
 }
 
 export function SearchInputField({
+  value,
+  onChangeText,
   showX,
   onXClick,
-  ...rest
+  autoCapitalize,
+  placeholder = 'Search for Music or Collectors',
 }: SearchInputFieldProps) {
   return (
-    <View className="flex flex-row items-center rounded-lg bg-gray-800 p-3">
-      <Search className="mr-2 h-5 w-5 text-gray-400" />
+    <View className="flex w-full flex-row items-center rounded-lg border border-[--border-color] bg-[--card-bg-color] px-2 py-1">
+      <Search
+        width={20}
+        height={20}
+        color="var(--text-secondary-color)"
+        className="mr-2"
+      />
       <TextInput
-        className="remove-font-padding flex-1 text-base text-white"
-        placeholderTextColor="#71717a"
-        placeholder="Search for Music or Collectors"
-        {...rest}
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor="var(--text-secondary-color)"
+        className="remove-font-padding flex-1 text-sm text-[--text-color] py-1"
+        autoCapitalize={autoCapitalize}
+        // @ts-ignore - outlineStyle works on web but isn't in the type definitions
+        style={{ outlineStyle: 'none' }}
       />
       {showX && (
-        <Pressable onPress={onXClick}>
-          <X className="ml-2 h-5 w-5 text-gray-400" />
+        <Pressable onPress={onXClick} hitSlop={8}>
+          <X
+            width={20}
+            height={20}
+            color="var(--text-secondary-color)"
+            className="ml-2"
+          />
         </Pressable>
       )}
     </View>
