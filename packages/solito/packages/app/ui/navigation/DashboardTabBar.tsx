@@ -5,7 +5,6 @@ import { Link } from 'solito/link'
 import Search from 'app/ui/icons/search'
 import { useUserStore } from 'app/state/user'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
-import { P } from 'app/design/typography'
 import { useTheme } from 'app/state/theme/useTheme'
 import User from 'app/ui/icons/user'
 import { SkyhitzLogo } from 'app/ui/logo'
@@ -41,9 +40,6 @@ export default function DashboardTabBar({
   const { user } = useUserStore()
   const rootViewStyle = column ? 'flex-col' : 'flex-row border-t-2 border-white'
 
-  const activeColor = 'var(--primary-color)'
-  const inactiveColor = 'var(--text-secondary-color)'
-
   return (
     <View
       className={`flex ${rootViewStyle} ${className}`}
@@ -54,16 +50,21 @@ export default function DashboardTabBar({
     >
       <Link href="/dashboard/search" viewProps={{ style: LinkStyle }}>
         <Search
-          width="28"
-          height="28"
-          className={`stroke-[${isActive('search') ? '--primary-color' : '--text-secondary-color'}]`}
+          size={28}
+          color={
+            isActive('search')
+              ? 'var(--primary-color)'
+              : 'var(--text-secondary-color)'
+          }
         />
       </Link>
 
       <Link href="/dashboard/chart" viewProps={{ style: LinkStyle }}>
         <View
           style={{
-            borderColor: isActive('chart') ? 'var(--primary-color)' : 'var(--text-secondary-color)',
+            borderColor: isActive('chart')
+              ? 'var(--primary-color)'
+              : 'var(--text-secondary-color)',
             borderWidth: 2,
             borderRadius: 9999,
             width: 32,
@@ -80,9 +81,12 @@ export default function DashboardTabBar({
       {user && (
         <Link href="/dashboard/profile" viewProps={{ style: LinkStyle }}>
           <User
-            width="28"
-            height="28"
-            className={`stroke-[${isActive('profile') ? '--primary-color' : '--text-secondary-color'}]`}
+            size={28}
+            color={
+              isActive('profile')
+                ? 'var(--primary-color)'
+                : 'var(--text-secondary-color)'
+            }
           />
         </Link>
       )}

@@ -1,16 +1,14 @@
-'use client'
-import * as React from 'react'
 import Svg, { Path } from 'react-native-svg'
 
-export default function Search(props: React.ComponentProps<typeof Svg>) {
+function Icon({ color = 'currentColor', size = 20, ...rest }) {
   return (
     <Svg
       fill="none"
-      stroke="currentColor"
+      stroke={color}
       viewBox="0 0 24 24"
-      width={24}
-      height={24}
-      {...props}
+      width={size}
+      height={size}
+      {...rest}
     >
       <Path
         strokeLinecap="round"
@@ -21,3 +19,5 @@ export default function Search(props: React.ComponentProps<typeof Svg>) {
     </Svg>
   )
 }
+
+export default Icon
