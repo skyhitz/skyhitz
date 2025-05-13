@@ -4,18 +4,19 @@ import { H3, P } from 'app/design/typography'
 import { Entry } from 'app/api/graphql/types'
 import { gql, useQuery } from '@apollo/client'
 import { CollapsableView } from 'app/ui/CollapsableView'
-import Image from 'app/design/image'
-import { imageUrlMedium } from 'app/utils/entry'
+import { UserAvatar } from 'app/ui/user-avatar'
 import { useRouter } from 'solito/router'
 
 // Query to fetch users who liked the entry
 const ENTRY_LIKES = gql`
   query EntryLikes($id: String!) {
     entryLikes(id: $id) {
-      id
-      username
-      displayName
-      avatarUrl
+      users {
+        id
+        username
+        displayName
+        avatarUrl
+      }
     }
   }
 `
@@ -38,7 +39,7 @@ export function LikesList({ entry }: Props) {
     skip: !entry.id,
   })
 
-  const likes = data?.entryLikes || []
+  const likes = data?.entryLikes?.users || []
 
   const navigateToProfile = (userId: string) => {
     router.push(`/dashboard/profile/${userId}`)
@@ -49,12 +50,13 @@ export function LikesList({ entry }: Props) {
       onPress={() => navigateToProfile(item.id)}
       className="mb-2 flex flex-row items-center rounded-md p-2 hover:bg-gray-800"
     >
-      <View className="mr-3 h-10 w-10 overflow-hidden rounded-full">
-        <Image
-          source={{ uri: item.avatarUrl ? imageUrlMedium(item.avatarUrl) : undefined }}
-          width={40}
-          height={40}
-          alt={item.displayName || item.username}
+      <View className="mr-3">
+        <UserAvatar
+          avatarUrl={item.avatarUrl}
+          displayName={item.displayName || item.username}
+          userId={item.id}
+          email={item.username}
+          size="small"
         />
       </View>
       <View>

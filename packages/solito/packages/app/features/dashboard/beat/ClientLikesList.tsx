@@ -5,17 +5,18 @@ import { View, FlatList, Pressable, Platform } from 'react-native'
 import { H3, P } from 'app/design/typography'
 import { gql, useQuery } from '@apollo/client'
 import { CollapsableView } from 'app/ui/CollapsableView'
-import Image from 'app/design/image'
-import { imageUrlMedium } from 'app/utils/entry'
+import { UserAvatar } from 'app/ui/user-avatar'
 
 // Query to fetch users who liked the entry
 const ENTRY_LIKES = gql`
   query EntryLikes($id: String!) {
     entryLikes(id: $id) {
-      id
-      username
-      displayName
-      avatarUrl
+      users {
+        id
+        username
+        displayName
+        avatarUrl
+      }
     }
   }
 `
@@ -38,7 +39,7 @@ export default function ClientLikesList({ entry }: Props): JSX.Element {
     skip: !entry.id,
   })
 
-  const likes = data?.entryLikes || []
+  const likes = data?.entryLikes?.users || []
 
   const renderItem = ({ item }: { item: User }) => {
     // For web, use a native anchor tag that doesn't require router
@@ -48,12 +49,13 @@ export default function ClientLikesList({ entry }: Props): JSX.Element {
           href={`/dashboard/profile/${item.id}`}
           className="mb-2 flex flex-row items-center rounded-md p-2 hover:bg-gray-800 no-underline"
         >
-          <View className="mr-3 h-10 w-10 overflow-hidden rounded-full">
-            <Image
-              source={{ uri: item.avatarUrl ? imageUrlMedium(item.avatarUrl) : undefined }}
-              width={40}
-              height={40}
-              alt={item.displayName || item.username}
+          <View className="mr-3">
+            <UserAvatar
+              avatarUrl={item.avatarUrl}
+              displayName={item.displayName || item.username}
+              userId={item.id}
+              email={item.username}
+              size="small"
             />
           </View>
           <View>
@@ -76,12 +78,13 @@ export default function ClientLikesList({ entry }: Props): JSX.Element {
         }}
         className="mb-2 flex flex-row items-center rounded-md p-2 hover:bg-gray-800"
       >
-        <View className="mr-3 h-10 w-10 overflow-hidden rounded-full">
-          <Image
-            source={{ uri: item.avatarUrl ? imageUrlMedium(item.avatarUrl) : undefined }}
-            width={40}
-            height={40}
-            alt={item.displayName || item.username}
+        <View className="mr-3">
+          <UserAvatar
+            avatarUrl={item.avatarUrl}
+            displayName={item.displayName || item.username}
+            userId={item.id}
+            email={item.username}
+            size="small"
           />
         </View>
         <View>
