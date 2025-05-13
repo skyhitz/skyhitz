@@ -1,7 +1,7 @@
 'use client'
 import { imageSrc } from 'app/utils/entry'
 import { UserAvatar } from 'app/ui/user-avatar'
-import Twitter from 'app/ui/icons/twitter'
+import XLogo from 'app/ui/icons/x-logo'
 import Instagram from 'app/ui/icons/instagram'
 import { Linking, Pressable, View } from 'react-native'
 import { ShareButton } from 'app/ui/buttons/ShareButton'
@@ -9,7 +9,6 @@ import { SolitoImage } from 'app/design/solito-image'
 import { User } from 'app/api/graphql/types'
 import { H3, P } from 'app/design/typography'
 import { Config } from 'app/config'
-import { useTheme } from 'app/state/theme/useTheme'
 
 type SocialLinksProps = {
   twitter: string
@@ -22,43 +21,41 @@ export function SocialLinks({
   instagram,
   profileUrl,
 }: SocialLinksProps) {
-  const { isDark } = useTheme();
-  
   // Using array of elements to avoid any whitespace text nodes
   const socialItems = [
     // Share button
     <View key="share">
-      <ShareButton url={profileUrl} title="Check out this Skyhitz profile" />
-    </View>
-  ];
-  
+      <ShareButton url={profileUrl} title="Share profile" />
+    </View>,
+  ]
+
   // Add Instagram if available
   if (instagram) {
     socialItems.push(
       <View key="instagram" className="mx-2">
-        <Pressable onPress={() => Linking.openURL(`https://instagram.com/${instagram}`)}>
+        <Pressable
+          onPress={() => Linking.openURL(`https://instagram.com/${instagram}`)}
+        >
           <Instagram className="h-6 w-6 fill-none stroke-[1.5] stroke-[--text-color]" />
         </Pressable>
       </View>
-    );
+    )
   }
-  
-  // Add Twitter if available
+
+  // Add X (formerly Twitter) if available
   if (twitter) {
     socialItems.push(
-      <View key="twitter" className="mx-2">
-        <Pressable onPress={() => Linking.openURL(`https://twitter.com/${twitter}`)}>
-          <Twitter className="h-6 w-6 fill-none stroke-[1.5] stroke-[--text-color]" />
+      <View key="x" className="mx-2">
+        <Pressable onPress={() => Linking.openURL(`https://x.com/${twitter}`)}>
+          <XLogo className="h-6 w-6 text-[--text-color]" />
         </Pressable>
       </View>
-    );
+    )
   }
-  
+
   return (
-    <View className="flex min-h-[1.5rem] flex-row-reverse">
-      {socialItems}
-    </View>
-  );
+    <View className="flex min-h-[1.5rem] flex-row-reverse">{socialItems}</View>
+  )
 }
 
 type ProfileHeaderProps = {
@@ -68,8 +65,7 @@ type ProfileHeaderProps = {
 
 export function ProfileHeader({ user, action }: ProfileHeaderProps) {
   const profileUrl = `${Config.APP_URL}/collector/${user.id}`
-  const { isDark } = useTheme()
-  
+
   // Create the background element
   const backgroundElement = user.backgroundUrl ? (
     <SolitoImage
@@ -81,8 +77,8 @@ export function ProfileHeader({ user, action }: ProfileHeaderProps) {
     />
   ) : (
     <View className="h-40 w-full bg-gray-800 md:h-60" />
-  );
-  
+  )
+
   return (
     <View className="w-full">
       <View className="h-40 w-full md:h-60">

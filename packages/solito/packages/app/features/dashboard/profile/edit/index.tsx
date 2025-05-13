@@ -3,7 +3,7 @@ import { View, ScrollView, Pressable } from 'react-native'
 import InfoCircle from 'app/ui/icons/info-circle'
 import PersonOutline from 'app/ui/icons/person-outline'
 import MailOutline from 'app/ui/icons/mail-outline'
-import Twitter from 'app/ui/icons/twitter'
+import XLogo from 'app/ui/icons/x-logo'
 import Instagram from 'app/ui/icons/instagram'
 import { useEffect, useState } from 'react'
 import { useUpdateUserMutation } from 'app/api/graphql/mutations'
@@ -197,11 +197,11 @@ export default function EditProfileScreen({ user }: { user: User }) {
                   />
                   <FormInputWithIcon
                     icon={
-                      <Twitter
+                      <XLogo
                         className={`h-5 w-5 ${isDark ? 'text-white' : 'text-gray-800'}`}
                       />
                     }
-                    placeholder="Twitter username"
+                    placeholder="X username"
                     value={values.twitter}
                     onChangeText={handleChange('twitter')}
                     onBlur={handleBlur('twitter')}

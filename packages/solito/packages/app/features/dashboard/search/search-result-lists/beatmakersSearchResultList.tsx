@@ -7,21 +7,23 @@ import { algoliaClient, indexNames } from 'app/api/algolia'
 import { User } from 'app/api/graphql/types'
 
 import { imageSrc } from 'app/utils/entry';
+import { UserAvatar } from 'app/ui/user-avatar';
 
 // Simplified in-file user entry component to avoid any import issues
 function SimpleUserEntry({ user }: { user: User }) {
   if (!user || !user.id) return null;
   
-  // Use the imageSrc utility to properly handle IPFS URLs
-  const avatarUrl = imageSrc(user.avatarUrl);
-  
   return (
     <Pressable
       className="mb-4 flex-row items-center rounded-lg bg-gray-800 p-2"
     >
-      <Image
-        source={{ uri: avatarUrl }}
-        className="h-14 w-14 rounded-full"
+      {/* Use the enhanced UserAvatar component that handles placeholders */}
+      <UserAvatar 
+        avatarUrl={user.avatarUrl}
+        displayName={user.displayName || user.username}
+        userId={user.id}
+        email={user.email}
+        size="large"
       />
       <View className="ml-3 flex-1">
         <Text className="text-white">

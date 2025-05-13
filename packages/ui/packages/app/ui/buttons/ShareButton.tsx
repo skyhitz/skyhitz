@@ -46,7 +46,7 @@ export function ShareButton({ url, title }: Props) {
               </Pressable>
             </View>
             <Text className="mt-5 text-center text-sm text-white">
-              Copy link or tweet directly.
+              Copy link or post directly.
             </Text>
             <View className="mt-5 flex-row items-center justify-center">
               <CopyBeatUrlButton beatUrl={url} />

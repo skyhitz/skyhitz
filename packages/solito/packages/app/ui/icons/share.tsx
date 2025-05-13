@@ -1,6 +1,6 @@
 'use client'
 import * as React from 'react'
-import Svg, { Path, Line, Circle } from 'react-native-svg'
+import Svg, { Path } from 'react-native-svg'
 
 type Props = React.ComponentProps<typeof Svg>
 
@@ -10,18 +10,10 @@ export default function Share(props: Props) {
       width="24" 
       height="24" 
       viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
+      fill="currentColor" 
       {...props}
     >
-      <Circle cx="18" cy="5" r="3" />
-      <Circle cx="6" cy="12" r="3" />
-      <Circle cx="18" cy="19" r="3" />
-      <Line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-      <Line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+      <Path d="M12 2.59l5.7 5.7-1.41 1.42L13 6.41V16h-2V6.41l-3.3 3.3-1.41-1.42L12 2.59zM21 15l-.02 3.51c0 1.38-1.12 2.49-2.5 2.49H5.5C4.11 21 3 19.88 3 18.5V15h2v3.5c0 .28.22.5.5.5h12.98c.28 0 .5-.22.5-.5L19 15h2z" />
     </Svg>
   )
 }
