@@ -1,11 +1,10 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { View, FlatList, Text, Image } from 'react-native'
+import { View, FlatList } from 'react-native'
 import { ActivityIndicator, P } from 'app/design/typography'
 import { entriesIndex, usersIndex } from 'app/api/algolia'
 import { Entry, User } from 'app/api/graphql/types'
 import { BeatListEntry } from 'app/ui/beat-list-entry'
-import { imageSrc } from 'app/utils/entry'
 import { TextLink } from 'solito/link'
 import { UserAvatar } from 'app/ui/user-avatar'
 
