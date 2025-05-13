@@ -10,7 +10,10 @@ import { P, H2 } from 'app/design/typography'
 import { SafeAreaView } from 'app/design/safe-area-view'
 import { FormInputWithIcon } from 'app/ui/inputs/FormInputWithIcon'
 import CreditCard from 'app/ui/icons/credit-card'
-import { useUserCreditsQuery, useWithdrawToExternalWalletMutation } from 'app/api/graphql/mutations'
+import {
+  useUserCreditsQuery,
+  useWithdrawToExternalWalletMutation,
+} from 'app/api/graphql/mutations'
 
 type WithdrawForm = {
   address: string
@@ -46,17 +49,17 @@ export function WithdrawCredits() {
 
       if (data?.withdrawToExternalWallet) {
         toast.show('Your XLM has been sent to the specified address.', {
-          type: 'success'
+          type: 'success',
         })
-        
+
         // Refresh user credits
         await refetch()
-        
+
         back()
       }
     } catch (error) {
       toast.show((error as Error).message || 'Failed to process withdrawal', {
-        type: 'danger'
+        type: 'danger',
       })
     } finally {
       setWithdrawing(false)
@@ -67,16 +70,18 @@ export function WithdrawCredits() {
     <SafeAreaView className="bg-black">
       <View className="mb-20 min-h-screen w-full bg-black pb-10">
         <View className="mx-auto mt-8 w-full max-w-lg px-4">
-          <H2 className="mb-4 text-xl font-bold text-white">Withdraw Credits</H2>
-          
+          <H2 className="mb-4 text-xl font-bold text-white">
+            Withdraw Credits
+          </H2>
+
           <P className="mb-4 text-white">
             Available balance: {credits?.userCredits || 0} XLM
           </P>
-          
+
           <P className="mb-6 text-gray-400">
-            Enter a Stellar address to withdraw your XLM credits. The entire balance 
-            will be sent to this address. Make sure you have entered the correct address
-            as transactions cannot be reversed.
+            Enter a Stellar address to withdraw your XLM credits. The entire
+            balance will be sent to this address. Make sure you have entered the
+            correct address as transactions cannot be reversed.
           </P>
 
           <Formik
@@ -102,7 +107,7 @@ export function WithdrawCredits() {
                     <View className="absolute left-3 z-10">
                       <CreditCard className="h-5 w-5 text-white" />
                     </View>
-                    
+
                     <TextInput
                       placeholder="Stellar Address"
                       placeholderTextColor="#6b7280"
@@ -114,9 +119,11 @@ export function WithdrawCredits() {
                       className="flex-1 rounded-lg py-3 px-3 text-white pl-10"
                     />
                   </View>
-                  
+
                   {touched.address && errors.address && (
-                    <Text className="mt-1 text-sm text-red-500">{errors.address}</Text>
+                    <Text className="mt-1 text-sm text-red">
+                      {errors.address}
+                    </Text>
                   )}
                 </View>
 

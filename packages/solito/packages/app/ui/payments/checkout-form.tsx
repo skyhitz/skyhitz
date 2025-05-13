@@ -75,7 +75,11 @@ export default function CheckoutForm() {
   )
 }
 
-const InnerCheckoutForm = ({ setAmount }: { setAmount: (amount: number) => void }) => {
+const InnerCheckoutForm = ({
+  setAmount,
+}: {
+  setAmount: (amount: number) => void
+}) => {
   const stripe = useStripe()
   const elements = useElements()
 
@@ -117,7 +121,7 @@ const InnerCheckoutForm = ({ setAmount }: { setAmount: (amount: number) => void 
       const { data } = await createPaymentIntent({
         variables: { amount: Number(values.amount) * 100 },
       })
-      
+
       const clientSecret = data?.createPaymentIntent.clientSecret
 
       if (!clientSecret) {
@@ -243,7 +247,7 @@ const InnerCheckoutForm = ({ setAmount }: { setAmount: (amount: number) => void 
             textInputClassName="!text-gray-900"
           />
           <View className="mt-4 h-auto min-h-[1.25rem] w-full flex-row">
-            <P className="text-red-500 w-full text-center text-sm">
+            <P className="text-red w-full text-center text-sm">
               {(touched.email && errors.email) ||
                 (touched.amount && errors.amount) ||
                 message}
@@ -273,7 +277,7 @@ const InnerCheckoutForm = ({ setAmount }: { setAmount: (amount: number) => void 
               options={paymentElementOptions}
             />
           )}
-          
+
           <Button
             wrapperClassName="w-full my-4"
             className="text-center bg-primary hover:bg-primary-dark"

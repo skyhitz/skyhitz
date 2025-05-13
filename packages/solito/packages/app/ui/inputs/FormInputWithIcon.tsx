@@ -52,13 +52,13 @@ export function FormInputWithIcon({
           placeholderTextColor="#6b7280"
           className={`flex-1 rounded-lg py-3 px-3 text-white ${
             icon ? 'pl-10' : 'pl-3'
-          } ${inputClassName} ${hasError ? 'border-red-500' : ''}`}
+          } ${inputClassName} ${hasError ? 'border-red' : ''}`}
           {...props}
         />
       </View>
 
       {hasError && (
-        <Text className="mt-1 text-xs text-red-500">{errorMessage}</Text>
+        <Text className="mt-1 text-xs text-red">{errorMessage}</Text>
       )}
     </View>
   )
