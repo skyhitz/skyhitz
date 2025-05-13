@@ -1,5 +1,5 @@
 import * as Yup from 'yup'
-import { object, string } from 'yup'
+import { object, string, number } from 'yup'
 import { EditProfileForm, WithdrawalForm } from 'app/types'
 
 // Reusable schemas
@@ -36,7 +36,12 @@ export const editProfileFormSchema = object().shape({
 
 export const withdrawFormSchema = (currentBalance: number) => {
   return object().shape({
-    address: Yup.string().required('Stellar Address is required'),
+    address: Yup.string()
+      .required('Stellar Address is required')
+      .matches(/^[A-Z0-9]+$/, 'Stellar address can only contain uppercase letters and numbers')
+      .test('valid-address-length', 'Stellar address must be either 56 characters (standard) or 69 characters (muxed)', (value) => {
+        return value.length === 56 || value.length === 69;
+      }),
     amount: Yup.string()
       .required('Amount is required')
       .test('min-amount', 'Minimal amount to withdraw is 5 XLM', (value) => {
@@ -49,6 +54,16 @@ export const withdrawFormSchema = (currentBalance: number) => {
       }),
   })
 }
+
+export const topUpFormSchema = object().shape({
+  email: Yup.string()
+    .required('Email is required')
+    .email('Please enter a valid email.'),
+  amount: Yup.number()
+    .required('Amount is required')
+    .min(1, 'Minimum amount to top-up is 1 USD')
+    .max(1000, 'Maximum amount to top-up is 1000 USD')
+})
 
 export const signInFormSchema = Yup.object().shape({
   usernameOrEmail: Yup.string()

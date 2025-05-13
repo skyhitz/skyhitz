@@ -36,18 +36,18 @@ const containerStyle = {
   default: 'px-5 py-3 w-40',
   small: 'px-2 py-2 w-20',
   large: 'px-10 py-3 w-72',
-  primary: 'bg-blue',
+  primary: 'bg-[--button-bg-color]',
   secondary: 'bg-grey',
   white: 'bg-white',
   text: 'flex mx-auto mt-8',
 }
 
 const disabledStyle = {
-  default: 'bg-grey-dark',
-  large: 'bg-grey-dark',
-  primary: 'bg-gray-700/20',
-  secondary: 'bg-grey-dark',
-  white: 'bg-grey-dark',
+  default: 'bg-[--button-bg-color] opacity-50 cursor-not-allowed',
+  large: 'bg-[--button-bg-color] opacity-50 cursor-not-allowed',
+  primary: 'bg-[--button-bg-color] opacity-50 cursor-not-allowed',
+  secondary: 'bg-[--button-bg-color] opacity-50 cursor-not-allowed',
+  white: 'bg-[--button-bg-color] opacity-50 cursor-not-allowed',
   text: 'text-white',
 }
 

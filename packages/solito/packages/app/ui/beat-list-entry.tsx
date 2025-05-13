@@ -100,10 +100,6 @@ export function BeatListEntry({
                 className="hidden flex-row items-center md:flex"
                 onPress={() => push(`/dashboard/beat/${entry.id}`)}
               >
-                <View className="mr-3 flex flex-row items-center">
-                  <Stellar size={10} color="var(--primary-color)" />
-                  <P className="ml-1 text-xs">{tvlFormatted}</P>
-                </View>
                 <APRText apr={aprFormatted} />
               </Pressable>
             ) : null}

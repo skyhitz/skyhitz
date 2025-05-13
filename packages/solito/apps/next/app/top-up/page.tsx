@@ -17,10 +17,12 @@ export const metadata: Metadata = {
 export default function TopUpPage() {
   return (
     <ComponentAuthGuard>
-      <SafeAreaView className="bg-black">
+      <SafeAreaView>
         <ScrollView>
           <View className="mx-auto flex min-h-screen w-full items-center justify-center px-4 py-8">
-            <H1 className="text-center text-lg text-white mb-6">Top Up</H1>
+            <H1 className="text-center text-lg text-white mb-6 font-unbounded">
+              Top Up
+            </H1>
             <CheckoutForm />
           </View>
         </ScrollView>

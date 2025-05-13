@@ -17,7 +17,7 @@ export const themes = {
     // UI elements
     '--border-color': '#E0E0E0',
     '--card-bg-color': '#FFFFFF',
-    '--button-bg-color': '#F5F5F5',
+    '--button-bg-color': '#19aafe',
     '--button-text-color': '#000000',
     '--invest-button-bg-color': '#19aafe',
     '--invest-button-text-color': '#FFFFFF',

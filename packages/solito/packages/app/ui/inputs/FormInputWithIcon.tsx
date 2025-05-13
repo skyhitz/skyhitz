@@ -25,11 +25,11 @@ export function FormInputWithIcon({
   ...props
 }: FormInputWithIconProps) {
   // Handle both direct error prop and Formik integration
-  const formikProps = name ? useField(name) : [];
-  const [field, meta, helpers] = formikProps as any;
-  
+  const formikProps = name ? useField(name) : []
+  const [field, meta, helpers] = formikProps as any
+
   // Use either direct error prop or formik error
-  const hasError = propError || (meta?.touched && meta?.error);
+  const hasError = propError || (meta?.touched && meta?.error)
   const errorMessage = propError || (meta?.touched ? meta?.error : undefined)
 
   return (
@@ -37,14 +37,14 @@ export function FormInputWithIcon({
       {label && (
         <Text className="mb-1 text-sm font-medium text-gray-300">{label}</Text>
       )}
-      
+
       <View className="relative flex flex-row items-center rounded-lg border bg-gray-900 focus-within:border-blue-500">
         {icon && (
-          <View className="absolute left-3 z-10">
+          <View className="absolute left-3 z-10 text-[--text-color]">
             {icon}
           </View>
         )}
-        
+
         <TextInput
           value={field?.value !== undefined ? field.value : props.value}
           onChangeText={helpers?.setValue || props.onChangeText}
@@ -56,7 +56,7 @@ export function FormInputWithIcon({
           {...props}
         />
       </View>
-      
+
       {hasError && (
         <Text className="mt-1 text-xs text-red-500">{errorMessage}</Text>
       )}

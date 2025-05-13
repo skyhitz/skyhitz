@@ -8,10 +8,12 @@ import Like from 'app/ui/icons/like'
 import StarBorder from 'app/ui/icons/star-border'
 import { ProfileRow } from './profileRow'
 import { Link, TextLink } from 'solito/link'
-import Dollar from 'app/ui/icons/dollar'
+import TopUp from 'app/ui/icons/top-up'
+import Send from 'app/ui/icons/send'
 import { useRouter } from 'solito/navigation'
 import { useState, useEffect, useRef } from 'react'
 import { LowBalanceModal } from './LowBalanceModal'
+import { SendXLMModal } from './SendXLMModal'
 import { User } from 'app/api/graphql/types'
 import {
   useUserCollectionQuery,
@@ -22,9 +24,11 @@ import {
 import { P, ActivityIndicator } from 'app/design/typography'
 import { useToast } from 'app/provider/toast'
 import { useTheme } from 'app/state/theme/useTheme'
+import Stellar from 'app/ui/icons/stellar'
 
 export function ProfileScreen({ user }: { user: User }) {
-  const [modalVisible, setModalVisible] = useState<boolean>(false)
+  const [lowBalanceModalVisible, setLowBalanceModalVisible] = useState<boolean>(false)
+  const [sendModalVisible, setSendModalVisible] = useState<boolean>(false)
   const [isClaimingEarnings, setIsClaimingEarnings] = useState(false)
   const { data: credits, refetch: refetchUserCredits } = useUserCreditsQuery()
   const { push } = useRouter()
@@ -81,7 +85,7 @@ export function ProfileScreen({ user }: { user: User }) {
           } else {
             // Generic error
             toast.show(response?.message || 'Failed to claim earnings', {
-              type: 'danger'
+              type: 'danger',
             })
           }
         }
@@ -99,9 +103,9 @@ export function ProfileScreen({ user }: { user: User }) {
   const handleWithdraw = () => {
     // Use hardcoded minimum withdrawal amount (5 XLM) as in the legacy app
     if (credits?.userCredits && credits.userCredits < 5) {
-      setModalVisible(true)
+      setLowBalanceModalVisible(true)
     } else {
-      push('/dashboard/profile/edit?withdraw=true')
+      setSendModalVisible(true)
     }
   }
 
@@ -128,36 +132,34 @@ export function ProfileScreen({ user }: { user: User }) {
         </View>
 
         <View className="mt-8 w-full items-center justify-center px-4">
-          <View className="mb-0.5 flex w-full max-w-lg flex-row items-center justify-between">
+          <View className="mb-0.5 flex w-full flex-row items-center justify-between">
             <View className="ml-2">
               {isClaimingEarnings ? (
                 <ActivityIndicator size="small" />
               ) : (
-                <P className="font-bold" style={{ color: 'var(--text-color)' }}>
+                <P className="flex flex-row items-center font-bold font-unbounded text-[--text-color]">
+                  <Stellar size={18} className="mr-2" />
                   {`${credits?.userCredits || 0} XLM`}
                 </P>
               )}
             </View>
             <View className="mr-2">
               <P
-                className="cursor-pointer font-bold underline decoration-2 underline-offset-4"
-                style={{
-                  color: 'var(--text-color)',
-                  textDecorationColor: 'var(--text-color)',
-                }}
+                className="cursor-pointer flex flex-row items-center font-bold decoration-2 font-unbounded text-[--text-color]"
                 onPress={handleWithdraw}
               >
-                Withdraw
+                <Send size={18} className="text-blue mr-2" />
+                Send
               </P>
             </View>
           </View>
 
-          <View className="flex w-full max-w-lg flex-col">
+          <View className="flex w-full flex-col">
             <TextLink href="/dashboard/profile/likes">
               <ProfileRow
                 title="Likes"
                 icon={
-                  <Like className="h-5 w-5 fill-none stroke-current stroke-2 text-white" />
+                  <Like className="h-5 w-5 fill-none stroke-current stroke-2 text-[--text-color]" />
                 }
                 count={userLikesData?.userLikes?.length || 0}
               />
@@ -167,7 +169,7 @@ export function ProfileScreen({ user }: { user: User }) {
               <ProfileRow
                 title="Collection"
                 icon={
-                  <StarBorder className="h-5 w-5 fill-none stroke-current stroke-2 text-white" />
+                  <StarBorder className="h-5 w-5 fill-none stroke-current stroke-2 text-[--text-color]" />
                 }
                 count={userCollectionData?.userEntries?.length || 0}
               />
@@ -177,7 +179,7 @@ export function ProfileScreen({ user }: { user: User }) {
               <ProfileRow
                 title="Top-up"
                 icon={
-                  <Dollar className="h-5 w-5 fill-none stroke-current stroke-2 text-white" />
+                  <TopUp className="h-5 w-5 fill-none stroke-current stroke-2 text-[--text-color]" />
                 }
               />
             </TextLink>
@@ -186,9 +188,18 @@ export function ProfileScreen({ user }: { user: User }) {
       </View>
 
       <LowBalanceModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
+        visible={lowBalanceModalVisible}
+        onClose={() => setLowBalanceModalVisible(false)}
         minWithdrawalAmount={5}
+      />
+      
+      <SendXLMModal
+        visible={sendModalVisible}
+        onClose={() => {
+          setSendModalVisible(false);
+          refetchUserCredits();
+        }}
+        currentBalance={credits?.userCredits || 0}
       />
     </SafeAreaView>
   )

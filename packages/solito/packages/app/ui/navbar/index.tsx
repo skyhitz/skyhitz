@@ -18,7 +18,7 @@ const Navbar = ({ className }: { className?: string }) => {
           <View className="flex flex-row items-center justify-start">
             <View className="flex min-h-[2.25rem] flex-row items-center">
               <SkyhitzLogo id="navbar" />
-              <Text className="font-raleway pl-4 text-sm tracking-[12px] text-gray-600 sm:text-lg">
+              <Text className="font-raleway pl-4 text-base tracking-[12px] text-gray-600 sm:text-lg">
                 SKYHITZ
               </Text>
             </View>

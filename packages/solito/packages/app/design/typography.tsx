@@ -1,4 +1,4 @@
-import { ComponentProps, forwardRef } from 'react'
+import { ComponentProps } from 'react'
 import {
   Text,
   Pressable,
@@ -75,7 +75,9 @@ export function H3({
   )
 }
 
-remapProps(TextLink, { className: 'style' })
+if (remapProps) {
+  remapProps(TextLink, { className: 'style' })
+}
 
 /**
  * This is a more advanced component with custom styles and per-platform functionality
