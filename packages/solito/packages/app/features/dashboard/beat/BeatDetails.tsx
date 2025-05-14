@@ -9,7 +9,6 @@ type Props = {
 }
 
 export function Details({ id, link }: Props) {
-  
   const Row = ({
     label,
     trailingWidget,
@@ -28,13 +27,21 @@ export function Details({ id, link }: Props) {
       </View>
     )
   }
-  
+
   return (
     <View className="w-full mt-4">
       <View className="bg-[--bg-secondary-color] p-5 truncate rounded-lg">
         <Row
           label="IPFS Hash"
-          trailingWidget={<A href={link} className="text-sm text-[--primary-color]">{id}</A>}
+          trailingWidget={
+            <A
+              href={link}
+              target="_blank"
+              className="text-sm text-[--primary-color]"
+            >
+              {id}
+            </A>
+          }
         />
       </View>
     </View>
