@@ -2,9 +2,9 @@
 import { Entry } from 'app/api/graphql/types'
 import { videoSrc } from 'app/utils/entry'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Pressable, View } from 'react-native'
+import { Pressable } from 'react-native'
 import PlayIcon from 'app/ui/icons/play'
-import { H3, P } from 'app/design/typography'
+import PauseIcon from 'app/ui/icons/pause'
 
 interface PlayButtonProps {
   entry: Entry
@@ -20,12 +20,12 @@ export function PlayButton({ entry }: PlayButtonProps) {
     if (typeof window !== 'undefined') {
       audioRef.current = new Audio(videoUrl)
       audioRef.current.preload = 'metadata'
-      
+
       // Event listeners
       audioRef.current.addEventListener('ended', () => {
         setIsPlaying(false)
       })
-      
+
       return () => {
         if (audioRef.current) {
           audioRef.current.pause()
@@ -39,7 +39,7 @@ export function PlayButton({ entry }: PlayButtonProps) {
 
   const togglePlay = useCallback(() => {
     if (!audioRef.current) return
-    
+
     if (isPlaying) {
       audioRef.current.pause()
       setIsPlaying(false)
@@ -53,20 +53,20 @@ export function PlayButton({ entry }: PlayButtonProps) {
   }, [isPlaying])
 
   return (
-    <View className="mb-4">
-      <Pressable
-        onPress={togglePlay}
-        className="flex flex-row items-center justify-center rounded-full bg-cyan-500 px-6 py-3"
-      >
-        <PlayIcon className="mr-2" fill={isPlaying ? 'white' : 'white'} />
-        <P className="font-semibold text-white">{isPlaying ? 'Pause' : 'Play'}</P>
-      </Pressable>
-      <View className="mt-2">
-        <H3 className="text-lg font-bold">{entry.title}</H3>
-        {entry.artist && (
-          <P className="text-sm text-gray-400">{entry.artist}</P>
-        )}
-      </View>
-    </View>
+    <Pressable onPress={togglePlay}>
+      {isPlaying ? (
+        <PauseIcon
+          className="text-gray-600"
+          size={24}
+          stroke="var(--text-color)"
+        />
+      ) : (
+        <PlayIcon
+          className="text-gray-600"
+          size={24}
+          stroke="var(--text-color)"
+        />
+      )}
+    </Pressable>
   )
 }

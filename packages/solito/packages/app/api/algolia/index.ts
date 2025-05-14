@@ -102,3 +102,15 @@ export const blogIndex = {
     return result as T
   },
 }
+
+// Shares index for ownership data access
+export const sharesIndex = {
+  search: async <T>(query: string, options: any = {}) => {
+    const result = await searchIndex(indexNames.shares, query, options)
+    return result
+  },
+  getObject: async <T>(objectID: string) => {
+    const result = await getObject(indexNames.shares, objectID)
+    return result as T
+  },
+}

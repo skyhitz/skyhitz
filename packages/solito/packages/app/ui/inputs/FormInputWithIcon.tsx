@@ -38,7 +38,7 @@ export function FormInputWithIcon({
         <Text className="mb-1 text-sm font-medium text-gray-300">{label}</Text>
       )}
 
-      <View className="relative flex flex-row items-center rounded-lg border bg-gray-900 focus-within:border-blue-500">
+      <View className="relative flex flex-row items-center rounded-lg border bg-[--bg-color] focus-within:border-[--primary-color]">
         {icon && (
           <View className="absolute left-3 z-10 text-[--text-color]">
             {icon}
@@ -50,7 +50,7 @@ export function FormInputWithIcon({
           onChangeText={helpers?.setValue || props.onChangeText}
           onBlur={field ? () => helpers.setTouched(true) : props.onBlur}
           placeholderTextColor="#6b7280"
-          className={`flex-1 rounded-lg py-3 px-3 text-white ${
+          className={`flex-1 rounded-lg py-3 px-3 text-[--text-color] outline-none ${
             icon ? 'pl-10' : 'pl-3'
           } ${inputClassName} ${hasError ? 'border-red' : ''}`}
           {...props}

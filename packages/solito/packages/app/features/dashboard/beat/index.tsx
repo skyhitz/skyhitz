@@ -53,47 +53,6 @@ const Content = ({ entry }: { entry: Entry }) => {
           {/* Right column with title, controls, etc. */}
           <View className="flex w-1/2">
             <BeatSummaryColumn entry={entry} />
-
-            {/* Control buttons */}
-            <View className="mt-6 flex-row items-center space-x-4">
-              <PlayButton entry={entry} />
-              <ActionButtons entry={entry} />
-            </View>
-
-            {/* Invest button */}
-            <View className="mt-8">
-              <Pressable
-                style={{
-                  backgroundColor: 'var(--invest-button-bg-color)',
-                  borderRadius: 8,
-                  padding: 16,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  shadowColor: isDark ? '#000' : '#ccc',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 4,
-                  elevation: 2,
-                }}
-                onPress={() => {
-                  console.log('Show invest modal')
-                }}
-              >
-                <P
-                  style={{
-                    color: 'var(--invest-button-text-color)',
-                    fontWeight: '600',
-                    fontSize: 16,
-                    textAlign: 'center',
-                  }}
-                >
-                  Invest
-                </P>
-              </Pressable>
-            </View>
-
-            <ClientLikesList entry={entry} />
           </View>
         </View>
       </View>

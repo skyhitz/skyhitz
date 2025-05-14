@@ -1,8 +1,7 @@
 'use client'
-import { IconProps } from 'app/types'
 import Svg, { Path } from 'react-native-svg'
 
-function Icon({ size = 24, color = 'currentColor' }: IconProps) {
+function Icon({ size = 24, color = 'currentColor', className = '' }) {
   return (
     <Svg
       fill="none"
@@ -10,6 +9,7 @@ function Icon({ size = 24, color = 'currentColor' }: IconProps) {
       height={size}
       width={size}
       id="Download-Button-2--Streamline-Micro"
+      className={className}
     >
       <Path
         stroke={color}

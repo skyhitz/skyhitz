@@ -5,12 +5,12 @@ import { videoSrc } from 'app/utils/entry'
 import { useCallback } from 'react'
 import { Pressable, View } from 'react-native'
 import LikeIcon from 'app/ui/icons/like'
-import ShareIcon from 'app/ui/icons/share'
 import DownloadIcon from 'app/ui/icons/download'
-import { P } from 'app/design/typography'
 import { Platform } from 'react-native'
 import { useUserStore } from 'app/state/user'
 import { useToast } from 'app/provider/toast'
+import { ShareButton } from 'app/ui/buttons/ShareButton'
+import { PlayButton } from './PlayButton'
 
 interface ActionButtonsProps {
   entry: Entry
@@ -23,29 +23,15 @@ export function ActionButtons({ entry }: ActionButtonsProps) {
 
   const handleLike = useCallback(() => {
     if (!user) {
-      toast.show('You need to be logged in to like this beat', { type: 'error' })
+      toast.show('You need to be logged in to like this beat', {
+        type: 'error',
+      })
       return
     }
     likeEntry()
   }, [likeEntry, user, toast])
 
-  const handleShare = useCallback(() => {
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      navigator
-        .share({
-          title: entry.title,
-          text: `Check out ${entry.title} on Skyhitz`,
-          url: `https://skyhitz.io/dashboard/beat/${entry.id}`,
-        })
-        .catch((error) => console.error('Error sharing:', error))
-    } else {
-      // Fallback for platforms without navigator.share
-      if (typeof navigator !== 'undefined' && navigator.clipboard) {
-        navigator.clipboard.writeText(`https://skyhitz.io/dashboard/beat/${entry.id}`)
-        toast.show('URL copied to clipboard', { type: 'success' })
-      }
-    }
-  }, [entry, toast])
+  // This will now be handled by the ShareButton component
 
   const handleDownload = useCallback(() => {
     if (Platform.OS !== 'web') {
@@ -63,29 +49,30 @@ export function ActionButtons({ entry }: ActionButtonsProps) {
   }, [entry, toast])
 
   return (
-    <View className="my-4 flex flex-row items-center">
-      <Pressable
-        onPress={handleLike}
-        disabled={toggleLikeLoading}
-        className="mr-4 flex flex-row items-center"
-      >
-        <LikeIcon 
-          fill={isLiked ? '#FF5757' : 'none'} 
-          stroke={isLiked ? '#FF5757' : 'white'} 
-          className="mr-1"
+    <>
+      <PlayButton entry={entry} />
+      {/* Like button */}
+      <Pressable onPress={handleLike} disabled={toggleLikeLoading}>
+        <LikeIcon
+          fill={isLiked ? '#FF5757' : 'none'}
+          stroke={isLiked ? '#FF5757' : 'var(--text-color)'}
+          width={22}
+          height={22}
         />
-        <P className="text-sm">{isLiked ? 'Liked' : 'Like'}</P>
       </Pressable>
-      
-      <Pressable onPress={handleShare} className="mr-4 flex flex-row items-center">
-        <ShareIcon className="mr-1" />
-        <P className="text-sm">Share</P>
+
+      {/* Share button */}
+      <ShareButton
+        url={`https://skyhitz.io/dashboard/beat/${entry.id}`}
+        title="Share this beat!"
+      />
+
+      {/* Download button */}
+      <Pressable onPress={handleDownload}>
+        <View className="w-6 h-6 flex items-center justify-center">
+          <DownloadIcon className="text-[--text-color]" size={20} />
+        </View>
       </Pressable>
-      
-      <Pressable onPress={handleDownload} className="flex flex-row items-center">
-        <DownloadIcon className="mr-1" />
-        <P className="text-sm">Download</P>
-      </Pressable>
-    </View>
+    </>
   )
 }

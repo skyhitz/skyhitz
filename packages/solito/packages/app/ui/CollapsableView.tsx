@@ -26,7 +26,7 @@ export const CollapsableView = ({
 
   return (
     <View
-      className={`mt-8 w-full overflow-hidden rounded-lg border border-gray-800 ${
+      className={`mt-8 w-full overflow-hidden rounded-lg border border-[--bg-secondary-color] ${
         className ?? ''
       }`}
       style={style}
@@ -51,9 +51,7 @@ export const CollapsableView = ({
       </Pressable>
 
       <AnimateHeight hide={collapsed}>
-        <View className={'overflow-hidden text-gray-400'}>
-          {children}
-        </View>
+        <View className={'overflow-hidden text-gray-400'}>{children}</View>
       </AnimateHeight>
     </View>
   )

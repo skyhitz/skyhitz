@@ -2,14 +2,15 @@
 import { View } from 'react-native'
 import { Button } from 'app/design/button'
 import { Entry } from 'app/api/graphql/types'
-import Dollar from 'app/ui/icons/dollar'
+import Stellar from 'app/ui/icons/stellar'
 import { FormInputWithIcon } from 'app/ui/inputs/FormInputWithIcon'
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import { useToast } from 'app/provider/toast'
 import { useUserStore } from 'app/state/user'
-import { H2, P } from 'app/design/typography'
+import { P } from 'app/design/typography'
 import { gql, useMutation, useQuery } from '@apollo/client'
 import { useGetEntry } from 'app/hooks/algolia/useGetEntry'
+import { sharesIndex } from 'app/api/algolia'
 
 // Define the GraphQL mutations and queries we need
 const INVEST_ENTRY = gql`
@@ -28,6 +29,8 @@ const USER_CREDITS = gql`
 const lumensToStroops = (lumens: number) => (lumens * 10000000).toString()
 const stroopsToLumens = (stroops: string) => parseInt(stroops) / 10000000
 
+type Share = { shares: number }
+
 type Props = {
   entry: Entry
 }
@@ -38,7 +41,7 @@ export function CreateBid({ entry }: Props) {
 
   const [invest, { loading: investLoading }] = useMutation(INVEST_ENTRY)
   const { data: creditsData, refetch: refetchCredits } = useQuery(USER_CREDITS)
-  
+
   const [equityToBuy, setEquityToBuy] = useState('')
   const toast = useToast()
   const [loading, setLoading] = useState<boolean>(false)
@@ -46,6 +49,61 @@ export function CreateBid({ entry }: Props) {
   const { refetch } = useGetEntry({
     id: entry.id,
   })
+
+  // Fetch user's shares for this entry
+  const fetchShares = async () => {
+    if (!user) return
+
+    try {
+      // Search for shares where entryId and userId match
+      const { hits } = await sharesIndex.search('', {
+        filters: `entryId:${entry.id} AND userId:${user.id}`,
+      })
+
+      const sharesObject = hits[0] as unknown as Share
+      const userStroops = sharesObject ? sharesObject.shares : 0
+      setShares(userStroops)
+    } catch (error) {
+      console.error('Error fetching shares:', error)
+    }
+  }
+
+  // Fetch shares when user changes
+  useEffect(() => {
+    fetchShares()
+  }, [user, entry.id])
+
+  // Calculate the equity to buy when amount changes
+  useEffect(() => {
+    if (!amountToInvest) {
+      setEquityToBuy('')
+      return
+    }
+
+    if (Number(entry.tvl) === 0 || !entry?.tvl) {
+      setEquityToBuy('100')
+      return
+    }
+
+    const amountInStroops = parseInt(
+      lumensToStroops(parseInt(amountToInvest, 10)),
+      10
+    )
+    const entryTvl = Number(entry.tvl)
+    const newTvl = entryTvl + amountInStroops
+    const currentOwnershipPercentage =
+      entryTvl > 0 ? (shares / entryTvl) * 100 : 0
+
+    // Calculate the user's new ownership percentage after the investment
+    const newUserStroops = shares + amountInStroops
+    const newOwnershipPercentage = (newUserStroops / newTvl) * 100
+
+    // Calculate the additional percentage (what they're buying)
+    const additionalPercentage =
+      newOwnershipPercentage - currentOwnershipPercentage
+
+    setEquityToBuy(additionalPercentage.toFixed(4))
+  }, [amountToInvest, entry.tvl, shares])
 
   const onSubmit = useCallback(async () => {
     if (!user) {
@@ -71,7 +129,8 @@ export function CreateBid({ entry }: Props) {
         toast.show('Investment successful!', { type: 'success' })
         setAmountToInvest('')
         refetchCredits()
-        refetch()
+        refetch() // Refresh entry data after investment
+        fetchShares() // Update shares data after successful investment
       } else {
         toast.show('Failed to process investment', { type: 'error' })
       }
@@ -83,35 +142,72 @@ export function CreateBid({ entry }: Props) {
     }
   }, [amountToInvest, entry.id, invest, refetch, refetchCredits, toast, user])
 
-  // Calculate available credits
+  // Calculate available credits and ownership percentage
   const userCredits = creditsData?.userCredits || 0
+  const ownershipPercentage = entry.tvl ? (shares / Number(entry.tvl)) * 100 : 0
 
   return (
-    <View className="mt-6 w-full rounded-lg bg-gray-900 p-4">
-      <H2 className="mb-4 text-xl font-bold">Invest in this beat</H2>
-      
-      <View className="mb-4">
-        <P className="mb-2">Your balance: {userCredits} XLM</P>
-        
+    <View className="my-6 w-full rounded-lg bg-[--bg-secondary-color] p-4">
+      <View className="mb-4 gap-2">
+        <View className="flex-row">
+          <P className="text-[--text-secondary-color] mr-1 font-unbounded text-xs">
+            TVL:{' '}
+          </P>
+          <P className="font-unbounded text-xs">
+            {`${stroopsToLumens(entry.tvl?.toString() || '0')} XLM`}
+          </P>
+        </View>
+        <View className="flex-row">
+          <P className="text-[--text-secondary-color] mr-1 font-unbounded text-xs">
+            APR:{' '}
+          </P>
+          <P className="text-[--primary-color] font-unbounded text-xs">
+            {`${entry.apr}%`}
+          </P>
+        </View>
+        <View className="flex-row items-center">
+          <P className="text-[--text-secondary-color] mr-1 font-unbounded text-xs">
+            Share:{' '}
+          </P>
+          <P className="text-[--text-color] font-unbounded text-xs">
+            {`${ownershipPercentage.toFixed(2)}%`}
+          </P>
+          {equityToBuy ? (
+            <P className="!text-[--primary-color] font-unbounded text-xs">
+              {` +${Number(equityToBuy).toFixed(2)}%`}
+            </P>
+          ) : null}
+        </View>
+        <View className="flex-row">
+          <P className="text-[--text-secondary-color] text-xs font-unbounded">
+            Your balance:{' '}
+          </P>
+          <P className="text-[--text-color] text-xs font-unbounded">
+            {`${userCredits} XLM`}
+          </P>
+        </View>
+
         <FormInputWithIcon
-          icon={<Dollar />}
+          icon={<Stellar size={18} />}
           value={amountToInvest}
           onChangeText={setAmountToInvest}
           placeholder="Amount to invest (XLM)"
           keyboardType="numeric"
+          className="my-4"
         />
       </View>
-      
+
       <Button
         onPress={onSubmit}
         loading={loading || investLoading}
         disabled={!user || !amountToInvest || loading || investLoading}
         text="Invest Now"
-        className="w-full"
+        className="w-full bg-[--invest-button-bg-color] hover:bg-[--invest-button-bg-color] border-0 font-semibold"
       />
-      
-      <P className="mt-2 text-center text-xs text-gray-400">
-        By investing, you are purchasing shares in this beat's future earnings
+
+      <P className="mt-4 text-center text-xs text-[--text-secondary-color]">
+        By investing, you are purchasing shares in this creation's future
+        earnings.
       </P>
     </View>
   )

@@ -6,6 +6,7 @@ import { H3, P } from 'app/design/typography'
 import { gql, useQuery } from '@apollo/client'
 import { CollapsableView } from 'app/ui/CollapsableView'
 import { UserAvatar } from 'app/ui/user-avatar'
+import Like from 'app/ui/icons/like'
 
 // Query to fetch users who liked the entry
 const ENTRY_LIKES = gql`
@@ -45,7 +46,7 @@ export default function ClientLikesList({ entry }: Props): JSX.Element {
     // For web, use a native anchor tag that doesn't require router
     if (Platform.OS === 'web') {
       return (
-        <a 
+        <a
           href={`/dashboard/profile/${item.id}`}
           className="mb-2 flex flex-row items-center rounded-md p-2 hover:bg-gray-800 no-underline"
         >
@@ -65,10 +66,10 @@ export default function ClientLikesList({ entry }: Props): JSX.Element {
         </a>
       )
     }
-    
+
     // For native, use a Pressable with a window.location approach
     return (
-      <Pressable 
+      <Pressable
         onPress={() => {
           if (Platform.OS === 'web') {
             window.location.href = `/dashboard/profile/${item.id}`
@@ -97,9 +98,10 @@ export default function ClientLikesList({ entry }: Props): JSX.Element {
 
   return (
     <CollapsableView
-      headerText="Liked By"
+      headerText="Likes"
       initCollapsed={true}
       className="mt-4 w-full"
+      icon={Like}
     >
       {loading ? (
         <P className="py-2 text-center text-gray-400">Loading likes...</P>
