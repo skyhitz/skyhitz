@@ -1,5 +1,4 @@
 'use client'
-import { CollapsableView } from 'app/ui/CollapsableView'
 import { View } from 'react-native'
 import { ReactElement } from 'react'
 import { A, P } from 'app/design/typography'
