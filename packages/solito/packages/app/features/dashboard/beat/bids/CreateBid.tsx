@@ -8,22 +8,10 @@ import { useCallback, useState, useEffect } from 'react'
 import { useToast } from 'app/provider/toast'
 import { useUserStore } from 'app/state/user'
 import { P } from 'app/design/typography'
-import { gql, useMutation, useQuery } from '@apollo/client'
+import { useMutation, useQuery } from '@apollo/client'
 import { useGetEntry } from 'app/hooks/algolia/useGetEntry'
 import { sharesIndex } from 'app/api/algolia'
-
-// Define the GraphQL mutations and queries we need
-const INVEST_ENTRY = gql`
-  mutation InvestEntry($id: String!, $amount: String!) {
-    investEntry(id: $id, amount: $amount)
-  }
-`
-
-const USER_CREDITS = gql`
-  query UserCredits {
-    userCredits
-  }
-`
+import { INVEST_ENTRY, USER_CREDITS } from 'app/api/graphql/operations'
 
 // Helper functions for XLM conversion
 const lumensToStroops = (lumens: number) => (lumens * 10000000).toString()
@@ -105,6 +93,9 @@ export function CreateBid({ entry }: Props) {
     setEquityToBuy(additionalPercentage.toFixed(4))
   }, [amountToInvest, entry.tvl, shares])
 
+  // Minimum investment in XLM
+  const MIN_INVESTMENT_XLM = 1
+
   const onSubmit = useCallback(async () => {
     if (!user) {
       toast.show('You need to be logged in to invest', { type: 'error' })
@@ -116,23 +107,33 @@ export function CreateBid({ entry }: Props) {
       return
     }
 
+    const numAmount = parseInt(amountToInvest, 10)
+    if (numAmount < MIN_INVESTMENT_XLM) {
+      toast.show(`Minimum investment is ${MIN_INVESTMENT_XLM} XLM`, {
+        type: 'error',
+      })
+      return
+    }
+
     try {
       setLoading(true)
       const { data } = await invest({
         variables: {
           id: entry.id,
-          amount: lumensToStroops(parseInt(amountToInvest, 10)),
+          amount: parseFloat(lumensToStroops(parseInt(amountToInvest, 10))),
         },
       })
 
-      if (data?.investEntry) {
+      if (data?.investEntry?.success) {
         toast.show('Investment successful!', { type: 'success' })
         setAmountToInvest('')
         refetchCredits()
         refetch() // Refresh entry data after investment
         fetchShares() // Update shares data after successful investment
       } else {
-        toast.show('Failed to process investment', { type: 'error' })
+        const errorMessage =
+          data?.investEntry?.message || 'Failed to process investment'
+        toast.show(errorMessage, { type: 'error' })
       }
     } catch (error) {
       console.error('Investment error:', error)
@@ -191,16 +192,25 @@ export function CreateBid({ entry }: Props) {
           icon={<Stellar size={18} />}
           value={amountToInvest}
           onChangeText={setAmountToInvest}
-          placeholder="Amount to invest (XLM)"
+          placeholder="Amount to invest (min 1 XLM)"
           keyboardType="numeric"
           className="my-4"
         />
+        <P className="text-center text-xs text-[--text-secondary-color] italic mt-1 mb-3">
+          Minimum investment: 1 XLM
+        </P>
       </View>
 
       <Button
         onPress={onSubmit}
         loading={loading || investLoading}
-        disabled={!user || !amountToInvest || loading || investLoading}
+        disabled={
+          !user ||
+          !amountToInvest ||
+          parseInt(amountToInvest, 10) < MIN_INVESTMENT_XLM ||
+          loading ||
+          investLoading
+        }
         text="Invest Now"
         className="w-full bg-[--invest-button-bg-color] hover:bg-[--invest-button-bg-color] border-0 font-semibold"
       />

@@ -13,11 +13,11 @@ export function CopyBeatUrlButton({ beatUrl }: CopyBeatUrlButtonProps) {
 
   const handleCopy = React.useCallback(async () => {
     try {
-      await Clipboard.setStringAsync(beatUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await Clipboard.setStringAsync(beatUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
     } catch (error) {
-      console.error('Failed to copy text: ', error);
+      console.error('Failed to copy text: ', error)
     }
   }, [beatUrl])
 
@@ -26,8 +26,8 @@ export function CopyBeatUrlButton({ beatUrl }: CopyBeatUrlButtonProps) {
       onPress={handleCopy}
       className="flex-row items-center rounded-md bg-white/10 px-3 py-2"
     >
-      <Copy className="mr-2 h-4 w-4 stroke-current text-white" />
-      <Text className="text-sm text-white">
+      <Copy className="mr-2 h-4 w-4 stroke-current text-[--text-color]" />
+      <Text className="text-sm text-[--text-color]">
         {copied ? 'Copied!' : 'Copy Link'}
       </Text>
     </Pressable>

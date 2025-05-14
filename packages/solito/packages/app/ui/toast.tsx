@@ -1,5 +1,5 @@
 'use client'
-import React from 'react'
+import * as React from 'react'
 import { View, Text, Pressable } from 'react-native'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
 
@@ -14,11 +14,12 @@ const Toast = ({ message, type, onDismiss }: ToastProps) => {
   const isError = type === 'error'
   const isSuccess = type === 'success'
 
+  // Use theme CSS variables instead of hardcoded colors
   const bgColor = isError
-    ? 'bg-red-500'
+    ? 'bg-[--error-bg-color]'
     : isSuccess
-    ? 'bg-green-500'
-    : 'bg-blue-500'
+    ? 'bg-[--success-bg-color]'
+    : 'bg-[--primary-color]'
 
   return (
     <View

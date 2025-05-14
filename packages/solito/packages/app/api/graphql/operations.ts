@@ -1,5 +1,15 @@
 import { gql } from '@apollo/client'
 
+// Investment operations
+export const INVEST_ENTRY = gql`
+  mutation InvestEntry($id: String!, $amount: Float!) {
+    investEntry(id: $id, amount: $amount) {
+      success
+      message
+    }
+  }
+`
+
 // Authentication mutations
 export const REQUEST_TOKEN = gql`
   mutation RequestToken($usernameOrEmail: String!) {
@@ -204,6 +214,27 @@ export const CLAIM_EARNINGS = gql`
       message
       totalClaimedAmount
       lastClaimTime
+    }
+  }
+`
+
+// Like operations
+export const LIKE_ENTRY = gql`
+  mutation LikeEntry($id: String!, $like: Boolean!) {
+    likeEntry(id: $id, like: $like)
+  }
+`
+
+export const ENTRY_LIKES = gql`
+  query EntryLikes($id: String!) {
+    entryLikes(id: $id) {
+      users {
+        id
+        username
+        displayName
+        avatarUrl
+        description
+      }
     }
   }
 `

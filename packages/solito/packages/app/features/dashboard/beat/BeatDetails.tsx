@@ -31,7 +31,7 @@ export function Details({ id, link }: Props) {
     <View className="w-full mt-4">
       <View className="bg-[--bg-secondary-color] p-5 truncate rounded-lg">
         <Row
-          label="IPFS Hash"
+          label="Metadata:"
           trailingWidget={
             <A
               href={link}

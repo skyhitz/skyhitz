@@ -1,53 +1,90 @@
-import * as React from 'react'
+'use client'
 import { Pressable } from 'react-native'
-import Svg, { SvgProps, Path } from 'react-native-svg'
+import Like from 'app/ui/icons/like'
 import { Entry } from 'app/api/graphql/types'
-import { useTheme } from 'app/state/theme/useTheme'
+import { useUserStore } from 'app/state/user'
+import { useToast } from 'app/provider/toast'
+import { useMutation, useQuery } from '@apollo/client'
+import useLikeCache from 'app/hooks/useLikeCache'
+import { lumensToStroops } from 'app/utils'
+import { LIKE_ENTRY, INVEST_ENTRY, USER_LIKES } from 'app/api/graphql/operations'
+
+// Using imported GraphQL operations from operations.ts
 
 interface Props {
   size?: number
+  className?: string
   entry: Entry
 }
 
-const LikeIcon = ({
-  size = 24,
-  fill = "none",
-  stroke = "#6B7280",
-  ...props
-}: SvgProps & { size?: number }) => {
-  return (
-    <Svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill={fill}
-      stroke={stroke}
-      strokeWidth={1.5}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <Path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
-    </Svg>
-  )
-}
+function LikeButton({ size = 24, className, entry }: Props) {
+  const user = useUserStore((state) => state.user)
+  const toast = useToast()
 
-const LikeButton = ({ size = 24, entry }: Props) => {
-  const { isDark } = useTheme()
-  // For the prototype, we're using local state since Entry type doesn't have a liked property
-  const [liked, setLiked] = React.useState(false)
+  // Setup GraphQL operations
+  const [likeEntry, { loading: likeLoading }] = useMutation(LIKE_ENTRY)
+  const [invest] = useMutation(INVEST_ENTRY)
+  const { data: userLikesData } = useQuery(USER_LIKES, { skip: !user })
 
-  const handlePress = () => {
-    // In the real implementation, this would call an API to like/unlike
-    setLiked(!liked)
+  // Get cache manipulation helpers
+  const { addLikeToCache, removeLikeFromCache } = useLikeCache()
+
+  // Check if this entry is in the user's likes
+  const isLiked = userLikesData?.userLikes
+    ? userLikesData.userLikes.some((item: Entry) => item.id === entry.id)
+    : false
+
+  // Handle press event
+  const handlePress = async () => {
+    if (!user) {
+      toast.show('You need to be logged in to like this beat', {
+        type: 'error',
+      })
+      return
+    }
+
+    // Optimistically update the UI through cache manipulation
+    isLiked ? removeLikeFromCache(entry) : addLikeToCache(entry)
+
+    try {
+      // Execute the API call
+      const { data } = await likeEntry({
+        variables: {
+          id: entry.id,
+          like: !isLiked, // Pass the new like state
+        },
+      })
+
+      // Also invest a small amount when liking (like in the legacy app)
+      await invest({
+        variables: {
+          id: entry.id,
+          amount: lumensToStroops(0.2),
+        },
+      })
+    } catch (error) {
+      // Revert cache on error
+      isLiked ? addLikeToCache(entry) : removeLikeFromCache(entry)
+      console.error('Like error:', error)
+      toast.show('Error updating like status', { type: 'error' })
+    }
   }
 
   return (
-    <Pressable onPress={handlePress} className="mr-3">
-      <LikeIcon 
-        size={size} 
-        fill={liked ? 'var(--primary-color)' : 'none'} 
-        stroke={liked ? 'var(--primary-color)' : 'var(--text-secondary-color)'}
+    <Pressable
+      onPress={handlePress}
+      disabled={likeLoading}
+      className={className}
+    >
+      <Like
+        width={size}
+        height={size}
+        fill={isLiked ? 'var(--text-secondary-color)' : 'none'}
+        stroke={
+          isLiked
+            ? 'var(--text-secondary-color)'
+            : 'var(--text-secondary-color)'
+        }
       />
     </Pressable>
   )

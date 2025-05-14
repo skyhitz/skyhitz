@@ -12,6 +12,7 @@ type CommonImageProps = {
   quality?: number
   fill?: boolean
   style?: any
+  contentFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down'
 }
 
 type WebImageProps = CommonImageProps & {
@@ -27,7 +28,7 @@ export type ImageProps = (WebImageProps | NativeImageProps) & {
 }
 
 export default function Image(props: ImageProps) {
-  const { source, alt = '', style, className, width, height, quality, fill, ...rest } = props
+  const { source, alt = '', style, className, width, height, quality, fill, contentFit, ...rest } = props
   
   if (Platform.OS === 'web') {
     // Extract src from source for web
@@ -46,6 +47,7 @@ export default function Image(props: ImageProps) {
       alt,
       style,
       quality: quality || 90,
+      contentFit,
       ...rest
     }
 
@@ -60,7 +62,15 @@ export default function Image(props: ImageProps) {
     return <SolitoImage {...imgProps} />
   } else {
     // React Native implementation - className is not applicable in React Native
-    // Just use the style prop and pass all other props through
-    return <RNImage source={source} style={style} {...rest} />
+    // For React Native, we need to determine if we're using Expo Image or RN Image
+    const imageProps: any = { source, style, ...rest }
+    
+    // Only pass contentFit if it's going to be used
+    if (contentFit) {
+      // This should work for Expo Image which supports contentFit
+      imageProps.contentFit = contentFit
+    }
+    
+    return <RNImage {...imageProps} />
   }
 }

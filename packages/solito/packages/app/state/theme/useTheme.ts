@@ -23,6 +23,8 @@ export const themes = {
     '--invest-button-text-color': '#FFFFFF',
     '--description-bg-color': '#F9F9F9',
     '--bg-secondary-color': '#F9F9F9',
+    '--success-bg-color': '#5ce67e',
+    '--error-bg-color': '#ff444a',
   }),
   dark: vars({
     // Base colors
@@ -43,6 +45,8 @@ export const themes = {
     '--invest-button-text-color': '#FFFFFF',
     '--description-bg-color': '#000000',
     '--bg-secondary-color': '#1A1A1A',
+    '--success-bg-color': '#5ce67e',
+    '--error-bg-color': '#ff444a',
   }),
 }
 
