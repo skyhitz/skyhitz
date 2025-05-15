@@ -3,6 +3,7 @@ import 'app/design/global.css'
 import { inter, raleway, unbounded } from './fonts'
 import { Provider } from 'app/provider/index'
 import { ThemeProvider } from 'app/provider/theme'
+import { MainLayout } from './shared-layouts/MainLayout'
 
 export const metadata = {
   title: 'Skyhitz',
@@ -26,7 +27,9 @@ export default function RootLayout({
     >
       <ThemeProvider>
         <StylesProvider>
-          <Provider>{children}</Provider>
+          <Provider>
+            <MainLayout>{children}</MainLayout>
+          </Provider>
         </StylesProvider>
       </ThemeProvider>
     </html>

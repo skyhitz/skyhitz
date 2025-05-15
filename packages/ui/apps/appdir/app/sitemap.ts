@@ -16,13 +16,13 @@ const pages: MetadataRoute.Sitemap = [
     lastModified,
   },
   {
-    url: `${SITE_URL}/dashboard/chart`,
+    url: `${SITE_URL}/chart`,
     priority: 0.8,
     changeFrequency: 'weekly',
     lastModified,
   },
   {
-    url: `${SITE_URL}/dashboard/search`,
+    url: `${SITE_URL}/search`,
     priority: 0.7,
     changeFrequency: 'weekly',
     lastModified,
@@ -54,7 +54,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ])
 
   const entriesPages: MetadataRoute.Sitemap = entries.map(({ id }) => ({
-    url: `${SITE_URL}/dashboard/beat/${id}`,
+    url: `${SITE_URL}/beat/${id}`,
   }))
 
   const postsPages: MetadataRoute.Sitemap = posts.map(({ slug }) => ({
@@ -63,7 +63,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }))
 
   const userPages: MetadataRoute.Sitemap = users.map(({ id }) => ({
-    url: `${SITE_URL}/dashboard/collector/${id}`,
+    url: `${SITE_URL}/collector/${id}`,
   }))
 
   return [...pages, ...entriesPages, ...postsPages, ...userPages]

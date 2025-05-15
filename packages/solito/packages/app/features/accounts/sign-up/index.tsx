@@ -16,10 +16,10 @@ export function SignUp({ signedXDR }: SignUpProps = {}) {
   const { replace } = useRouter()
   const isAuthenticated = useIsAuthenticated()
 
-  // If already authenticated, redirect to dashboard
+  // If already authenticated, redirect to search page
   useEffect(() => {
     if (isAuthenticated) {
-      replace('/dashboard')
+      replace('/search')
     }
   }, [isAuthenticated, replace])
 

@@ -2,6 +2,7 @@
 import { View } from 'react-native'
 import { Button } from 'app/design/button'
 import { Formik, FormikProps } from 'formik'
+import { useEffect } from 'react'
 import StyledTextInput from 'app/features/accounts/styledTextInput'
 import { useCreateUserWithEmailMutation } from 'app/api/graphql/mutations'
 import { signUpFormSchema } from 'app/validation'
@@ -18,17 +19,19 @@ export function SignUpForm({ signedXDR }: SignUpFormProps = {}) {
   const router = useRouter()
   const { updateUser } = useUserState()
   
-  const [createUserWithEmail, { loading, error }] = useCreateUserWithEmailMutation({
-    onCompleted: (data) => {
-      if (data?.createUserWithEmail?.user) {
-        // Update user state with returned user data
-        updateUser(data.createUserWithEmail.user)
-        
-        // Navigate to dashboard
-        router.replace('/dashboard')
-      }
-    },
-  })
+  // Use the hook without passing options
+  const [createUserWithEmail, { loading, error, called, data }] = useCreateUserWithEmailMutation()
+  
+  // Effect to handle navigation and user update after successful signup
+  useEffect(() => {
+    if (data?.createUserWithEmail?.user) {
+      // Update user state with returned user data
+      updateUser(data.createUserWithEmail.user)
+      
+      // Navigate to search page (formerly dashboard)
+      router.replace('/search')
+    }
+  }, [data, router, updateUser])
   
   const handleSignUp = async (formData: FormData) => {
     if (loading) return

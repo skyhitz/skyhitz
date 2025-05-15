@@ -238,3 +238,9 @@ export const ENTRY_LIKES = gql`
     }
   }
 `
+
+export const SET_LAST_PLAYED_ENTRY = gql`
+  mutation setLastPlayedEntry($entryId: String!) {
+    setLastPlayedEntry(entryId: $entryId)
+  }
+`

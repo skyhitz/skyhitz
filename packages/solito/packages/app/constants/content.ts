@@ -98,8 +98,8 @@ export const footer = {
     {
       title: 'Explore',
       links: [
-        { name: 'Music', href: '/dashboard/search' },
-        { name: 'Trending', href: '/dashboard/chart' },
+        { name: 'Music', href: '/search' },
+        { name: 'Trending', href: '/chart' },
       ],
     },
     {

@@ -1,10 +1,9 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 
-import HomeProvider from 'app/features/home/provider'
 import { UserDetailScreen } from 'app/features/user/detail-screen'
 import { SignIn } from 'app/features/accounts/sign-in'
 import { SignUp } from 'app/features/accounts/sign-up'
-import DashboardScreen from 'app/features/dashboard'
+import { HomeScreen } from 'app/features/home/screen'
 
 const Stack = createNativeStackNavigator<{
   home: undefined
@@ -13,7 +12,6 @@ const Stack = createNativeStackNavigator<{
   }
   'sign-in': undefined
   'sign-up': undefined
-  dashboard: undefined
 }>()
 
 export function NativeNavigation() {
@@ -21,7 +19,7 @@ export function NativeNavigation() {
     <Stack.Navigator initialRouteName="home">
       <Stack.Screen
         name="home"
-        component={HomeProvider}
+        component={HomeScreen}
         options={{
           title: 'Home',
           headerShown: false,
@@ -47,14 +45,6 @@ export function NativeNavigation() {
         component={SignUp}
         options={{
           title: 'Sign Up',
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="dashboard"
-        component={DashboardScreen}
-        options={{
-          title: 'Dashboard',
           headerShown: false,
         }}
       />

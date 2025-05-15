@@ -35,6 +35,9 @@ module.exports = {
     '@react-native-community',
     'expo-clipboard',
     'expo-modules-core',
+    // Add expo-video and expo-audio for proper transpilation
+    'expo-video',
+    'expo-audio',
   ],
   images: {
     remotePatterns: [
@@ -49,6 +52,47 @@ module.exports = {
 
   // reanimated doesn't support strict mode on web
   reactStrictMode: false,
+
+  // Redirects from old dashboard routes to new simplified routes
+  async redirects() {
+    return [
+      {
+        source: '/dashboard/beat/:id',
+        destination: '/beat/:id',
+        permanent: true,
+      },
+      {
+        source: '/dashboard/chart',
+        destination: '/chart',
+        permanent: true,
+      },
+      {
+        source: '/dashboard/profile',
+        destination: '/profile',
+        permanent: true,
+      },
+      {
+        source: '/dashboard/profile/likes',
+        destination: '/profile/likes',
+        permanent: true,
+      },
+      {
+        source: '/dashboard/profile/collection',
+        destination: '/profile/collection',
+        permanent: true,
+      },
+      {
+        source: '/dashboard/profile/edit',
+        destination: '/profile/edit',
+        permanent: true,
+      },
+      {
+        source: '/dashboard/search',
+        destination: '/search',
+        permanent: true,
+      },
+    ]
+  },
 
   // Configure webpack properly for React Native Web
   webpack: (config, options) => {
