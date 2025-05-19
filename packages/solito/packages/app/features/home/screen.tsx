@@ -65,11 +65,11 @@ export function HomeScreen(props: HomePageProps) {
       className={`flex h-full w-full pt-[${insets.top}px] pb-[${insets.bottom}px] bg-[--bg-color]`}
     >
       <Navbar />
-      <Hero {...header} />
-      <CtaBanner {...cta} />
-      <Featured {...featured} />
-      <Faq {...faq} />
-      <BlogSection posts={posts} />
+      {header && <Hero {...header} />}
+      {cta && <CtaBanner {...cta} />}
+      {featured && <Featured {...featured} />}
+      {faq && <Faq {...faq} />}
+      {posts && <BlogSection posts={posts} />}
       <Footer />
     </View>
   )

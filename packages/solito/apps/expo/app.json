@@ -4,10 +4,7 @@
     "slug": "solito-blank",
     "version": "1.0.0",
     "scheme": "solito-blank",
-    "platforms": [
-      "ios",
-      "android"
-    ],
+    "platforms": ["ios", "android"],
     "ios": {
       "bundleIdentifier": "com.solito.blank"
     },
@@ -20,9 +17,6 @@
       "bundler": "metro"
     },
     "userInterfaceStyle": "automatic",
-    "plugins": [
-      "expo-audio",
-      "expo-video"
-    ]
+    "plugins": ["expo-audio", "expo-video", "expo-font", "expo-secure-store"]
   }
 }

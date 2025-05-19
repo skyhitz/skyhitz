@@ -6,6 +6,14 @@
       "app/*": ["./packages/app/*"]
     },
     "baseUrl": ".",
-    "jsx": "react-jsx"
-  }
+    "jsx": "react-jsx",
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "typeRoots": ["./node_modules/@types", "./types"],
+    "types": ["node"]
+  },
+  "include": ["packages/**/*", "apps/**/*", "types/**/*"],
+  "exclude": ["**/node_modules/*", "**/android/*", "**/ios/*"]
 }

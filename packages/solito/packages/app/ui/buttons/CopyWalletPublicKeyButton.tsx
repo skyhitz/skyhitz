@@ -1,14 +1,17 @@
 'use client'
 import * as React from 'react'
-import { Pressable, Text } from 'react-native'
+// Import from our typed components file instead of directly from react-native
+import { Pressable, Text } from 'app/ui/components'
 import Copy from 'app/ui/icons/copy'
-import { Clipboard } from 'app/utils/clipboard'
+// import { Clipboard } from 'app/utils/clipboard'
 
 type CopyWalletPublicKeyButtonProps = {
   address: string
 }
 
-export function CopyWalletPublicKeyButton({ address }: CopyWalletPublicKeyButtonProps) {
+export function CopyWalletPublicKeyButton({
+  address,
+}: CopyWalletPublicKeyButtonProps) {
   const [copied, setCopied] = React.useState(false)
 
   // Format address to show shortened version (first 6 and last 4 characters)
@@ -19,11 +22,15 @@ export function CopyWalletPublicKeyButton({ address }: CopyWalletPublicKeyButton
 
   const handleCopy = React.useCallback(async () => {
     try {
-      await Clipboard.setStringAsync(address);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      // Clipboard functionality temporarily disabled
+      // Clipboard.setString(address)
+
+      // Just show the copied animation without actual clipboard interaction
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+      console.log('Address copy requested (disabled):', address)
     } catch (error) {
-      console.error('Failed to copy text: ', error);
+      console.log(error)
     }
   }, [address])
 

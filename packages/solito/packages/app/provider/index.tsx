@@ -15,17 +15,17 @@ export function Provider({ children }: Props) {
   return (
     <GraphQLProvider>
       <SafeArea>
-        <AuthProvider>
-          <ToastProvider>
-            <NavigationProvider>
+        <NavigationProvider>
+          <AuthProvider>
+            <ToastProvider>
               <PlaybackProvider>
                 <SolitoImageProvider nextJsURL="https://skyhitz.io">
                   {children}
                 </SolitoImageProvider>
               </PlaybackProvider>
-            </NavigationProvider>
-          </ToastProvider>
-        </AuthProvider>
+            </ToastProvider>
+          </AuthProvider>
+        </NavigationProvider>
       </SafeArea>
     </GraphQLProvider>
   )

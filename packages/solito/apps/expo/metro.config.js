@@ -1,17 +1,16 @@
 // Learn more https://docs.expo.dev/guides/monorepos
-// Learn more https://docs.expo.io/guides/customizing-metro
-/**
- * @type {import('expo/metro-config')}
- */
-const { getDefaultConfig } = require('expo/metro-config')
-const { withNativeWind } = require('nativewind/metro')
 const path = require('path')
+const { withNativeWind } = require('nativewind/metro')
+const { getDefaultConfig } = require('@expo/metro-config')
 
+// Define the project root and workspace root
 const projectRoot = __dirname
 const workspaceRoot = path.resolve(projectRoot, '../..')
 
+// Create a config based on Expo's default
 const config = getDefaultConfig(projectRoot)
 
+// Configure for monorepo
 config.watchFolders = [workspaceRoot]
 config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),
@@ -19,15 +18,11 @@ config.resolver.nodeModulesPaths = [
 ]
 config.resolver.disableHierarchicalLookup = true
 
-// Set transform options
-config.transformer.getTransformOptions = async () => ({
-  transform: {
-    experimentalImportSupport: false,
-    inlineRequires: true,
-  },
-})
+// Fix for module resolution in monorepo
+config.resolver.extraNodeModules = {
+  '@': path.resolve(projectRoot),
+}
 
-// Export the config with NativeWind support
-// Use absolute path to ensure Metro can find the CSS file
+// Support NativeWind with the shared CSS file
 const cssPath = path.resolve(workspaceRoot, 'packages/app/design/global.css')
 module.exports = withNativeWind(config, { input: cssPath })

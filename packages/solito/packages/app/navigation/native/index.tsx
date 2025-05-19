@@ -1,17 +1,23 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 
-import { UserDetailScreen } from 'app/features/user/detail-screen'
 import { SignIn } from 'app/features/accounts/sign-in'
 import { SignUp } from 'app/features/accounts/sign-up'
 import { HomeScreen } from 'app/features/home/screen'
+// import { ChartScreen } from 'app/features/chart'
 
 const Stack = createNativeStackNavigator<{
   home: undefined
-  'user-detail': {
-    id: string
-  }
   'sign-in': undefined
   'sign-up': undefined
+  chart: undefined
+  beat: {
+    id: string
+  }
+  profile: undefined
+  'profile/likes': undefined
+  'profile/collection': undefined
+  'profile/edit': undefined
+  search: undefined
 }>()
 
 export function NativeNavigation() {
@@ -23,13 +29,6 @@ export function NativeNavigation() {
         options={{
           title: 'Home',
           headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="user-detail"
-        component={UserDetailScreen}
-        options={{
-          title: 'User',
         }}
       />
       <Stack.Screen
@@ -45,6 +44,64 @@ export function NativeNavigation() {
         component={SignUp}
         options={{
           title: 'Sign Up',
+          headerShown: false,
+        }}
+      />
+
+      {/* Import and add the other screen components when needed */}
+      {/* <Stack.Screen
+        name="chart"
+        component={ChartScreen}
+        options={{
+          title: 'Chart',
+          headerShown: false,
+        }}
+      /> */}
+      <Stack.Screen
+        name="beat"
+        component={HomeScreen}
+        options={{
+          title: 'Beat',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="profile"
+        component={HomeScreen}
+        options={{
+          title: 'Profile',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="profile/likes"
+        component={HomeScreen}
+        options={{
+          title: 'Likes',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="profile/collection"
+        component={HomeScreen}
+        options={{
+          title: 'Collection',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="profile/edit"
+        component={HomeScreen}
+        options={{
+          title: 'Edit Profile',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="search"
+        component={HomeScreen}
+        options={{
+          title: 'Search',
           headerShown: false,
         }}
       />

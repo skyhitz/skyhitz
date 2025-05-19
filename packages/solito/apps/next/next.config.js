@@ -33,11 +33,11 @@ module.exports = {
     'react-native-svg',
     'react-native-htmlview',
     '@react-native-community',
-    'expo-clipboard',
     'expo-modules-core',
     // Add expo-video and expo-audio for proper transpilation
     'expo-video',
     'expo-audio',
+    'expo-clipboard',
   ],
   images: {
     remotePatterns: [

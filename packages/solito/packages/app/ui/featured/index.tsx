@@ -4,7 +4,7 @@ import { View } from 'react-native'
 import { H2, P } from 'app/design/typography'
 // Remove incorrect type import
 import { SolitoImage } from 'app/design/solito-image'
-export function Featured({ title, subtitle, features, imgUrl }: any) {
+export function Featured({ title, subtitle, features = [], imgUrl }: any) {
   return (
     <View className="overflow-hidden py-32 bg-[--bg-color]">
       <View className="mx-auto max-w-7xl md:px-6 lg:px-8">

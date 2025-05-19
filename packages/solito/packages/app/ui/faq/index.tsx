@@ -4,9 +4,19 @@ import { Pressable, View } from 'react-native'
 import { AnimatePresence, MotiView } from 'moti'
 import { useState } from 'react'
 import { AnimateHeight } from '../animate-height'
-import { FaqProps } from 'app/types'
 
-export default function Faq({ title, faqs }: FaqProps) {
+// Define the props interface directly to avoid import errors
+interface FaqItemProps {
+  question: string
+  answer: string
+}
+
+interface FaqComponentProps {
+  title?: string
+  faqs?: FaqItemProps[]
+}
+
+export default function Faq({ title, faqs = [] }: FaqComponentProps) {
   const [openFaq, setOpenFaq] = useState(-1)
 
   const handleOnPress = (index: number) => {

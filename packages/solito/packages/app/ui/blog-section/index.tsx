@@ -3,7 +3,7 @@ import { View } from 'react-native'
 import Card from 'app/ui/card'
 import { TextLink } from 'solito/link'
 
-export default function BlogSection({ posts }: { posts: any[] }) {
+export default function BlogSection({ posts = [] }: { posts?: any[] }) {
   return (
     <View className="mx-auto w-full max-w-7xl px-6 pb-24 md:pb-32 lg:px-8">
       <View className="mx-auto w-full">

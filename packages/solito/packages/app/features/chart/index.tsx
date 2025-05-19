@@ -7,7 +7,7 @@ import { Entry } from 'app/api/graphql/types'
 import { SafeAreaView } from 'app/design/safe-area-view'
 import Footer from 'app/ui/footer'
 
-export function ChartScreen({ entries }: { entries: Entry[] }) {
+export function ChartScreen({ entries = [] }: { entries?: Entry[] }) {
   const {
     data: extraEntries,
     isLoadingMore,
