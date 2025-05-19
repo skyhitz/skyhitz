@@ -17,6 +17,7 @@ import {
   Raleway_300Light,
   Raleway_500Medium,
 } from '@expo-google-fonts/raleway'
+import { ThemeProvider } from 'app/provider/theme'
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -38,8 +39,10 @@ export default function App() {
   }
 
   return (
-    <Provider>
-      <NativeNavigation />
-    </Provider>
+    <ThemeProvider>
+      <Provider>
+        <NativeNavigation />
+      </Provider>
+    </ThemeProvider>
   )
 }

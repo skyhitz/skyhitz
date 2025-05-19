@@ -21,5 +21,9 @@ export function ThemeProvider({ children }: Props) {
   if (Platform.OS === 'web') {
     return <body style={theme}>{children}</body>
   }
-  return <View style={theme}>{children}</View>
+  return (
+    <View className="flex-1" style={theme}>
+      {children}
+    </View>
+  )
 }
