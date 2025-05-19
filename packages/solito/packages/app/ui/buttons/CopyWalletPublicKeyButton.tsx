@@ -3,7 +3,7 @@ import * as React from 'react'
 // Import from our typed components file instead of directly from react-native
 import { Pressable, Text } from 'app/ui/components'
 import Copy from 'app/ui/icons/copy'
-// import { Clipboard } from 'app/utils/clipboard'
+import { Clipboard } from 'app/utils/clipboard'
 
 type CopyWalletPublicKeyButtonProps = {
   address: string
@@ -22,15 +22,11 @@ export function CopyWalletPublicKeyButton({
 
   const handleCopy = React.useCallback(async () => {
     try {
-      // Clipboard functionality temporarily disabled
-      // Clipboard.setString(address)
-
-      // Just show the copied animation without actual clipboard interaction
+      await Clipboard.setStringAsync(address)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
-      console.log('Address copy requested (disabled):', address)
     } catch (error) {
-      console.log(error)
+      console.log('Failed to copy text:', error)
     }
   }, [address])
 

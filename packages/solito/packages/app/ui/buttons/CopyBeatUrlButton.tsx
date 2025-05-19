@@ -3,7 +3,7 @@ import * as React from 'react'
 // Import from our typed components file instead of directly from react-native
 import { Pressable, Text } from 'app/ui/components'
 import Copy from 'app/ui/icons/copy'
-// import { Clipboard } from 'app/utils/clipboard'
+import { Clipboard } from 'app/utils/clipboard'
 
 type CopyBeatUrlButtonProps = {
   beatUrl: string
@@ -14,15 +14,11 @@ export function CopyBeatUrlButton({ beatUrl }: CopyBeatUrlButtonProps) {
 
   const handleCopy = React.useCallback(async () => {
     try {
-      // Clipboard functionality temporarily disabled
-      // Clipboard.setString(beatUrl)
-
-      // Just show the copied animation without actual clipboard interaction
+      await Clipboard.setStringAsync(beatUrl)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
-      console.log('URL copy requested (disabled):', beatUrl)
     } catch (error) {
-      console.log(error)
+      console.log('Failed to copy text:', error)
     }
   }, [beatUrl])
 
