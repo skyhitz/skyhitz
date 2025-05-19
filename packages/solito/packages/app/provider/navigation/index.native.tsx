@@ -26,6 +26,8 @@ export function NavigationProvider({
               'profile/collection': 'profile/collection',
               'profile/edit': 'profile/edit',
               'search': 'search',
+              'blog': 'blog',
+              'blog/[slug]': 'blog/:slug',
             },
           },
         }),

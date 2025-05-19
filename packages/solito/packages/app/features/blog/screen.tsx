@@ -48,15 +48,15 @@ const PostWrapper = ({ imageUrl, title, publishedAtTimestamp, slug }: Post) => {
   )
 }
 
-export function BlogScreen({ posts }: { posts: any[] }) {
+export function BlogScreen({ posts = [] }: { posts?: any[] }) {
   const insets = useSafeArea()
   const { theme } = useTheme()
   const {
-    data: extraPosts,
-    isLoadingMore,
-    onNextPage,
-    loadMoreEnabled,
-  } = useBlogPosts(1)
+    data: extraPosts = [],
+    isLoadingMore = false,
+    onNextPage = () => {},
+    loadMoreEnabled = false,
+  } = useBlogPosts(1) || {}
 
   return (
     <View
@@ -72,13 +72,23 @@ export function BlogScreen({ posts }: { posts: any[] }) {
         <H1 className="mb-4 mt-10 text-4xl text-[--text-color]">Blog</H1>
         <View style={{ borderBottomWidth: 1, borderBottomColor: 'var(--border-color)', marginVertical: 32 }} />
         <View className="gap-16">
-          {posts.map((props, index) => {
-            return <PostWrapper key={index} {...props} />
-          })}
+          {posts && posts.length > 0 ? (
+            posts.map((props, index) => (
+              <PostWrapper key={`post-${index}`} {...props} />
+            ))
+          ) : null}
 
-          {extraPosts.map((props, index) => {
-            return <PostWrapper key={index} {...props} />
-          })}
+          {extraPosts && extraPosts.length > 0 ? (
+            extraPosts.map((props, index) => (
+              <PostWrapper key={`extra-${index}`} {...props} />
+            ))
+          ) : null}
+
+          {(!posts || posts.length === 0) && (!extraPosts || extraPosts.length === 0) && (
+            <View className="py-12 items-center">
+              <P className="text-[--secondary-color]">Loading blog posts...</P>
+            </View>
+          )}
         </View>
         <View className="mt-16 flex h-12 items-center justify-center">
           {isLoadingMore ? (

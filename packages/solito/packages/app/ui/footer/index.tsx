@@ -5,10 +5,12 @@ import { SkyhitzLogo } from 'app/ui/logo'
 import { footer } from 'app/constants/content'
 import ThemeSwitcher from '../ThemeSwitcher'
 
-export default function Footer() {
+export default function Footer({ className }: { className?: string }) {
   const { companyName, sections } = footer
   return (
-    <View className="mx-auto w-full max-w-7xl px-6 pb-12 lg:px-8">
+    <View
+      className={`mx-auto w-full max-w-7xl px-6 pb-12 lg:px-8 ${className}`}
+    >
       <View className="xl:grid xl:grid-cols-2 xl:gap-8">
         <View />
         <View className="gap-8 sm:grid sm:grid-cols-3">

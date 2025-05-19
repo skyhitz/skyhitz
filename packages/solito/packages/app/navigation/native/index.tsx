@@ -3,6 +3,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { SignIn } from 'app/features/accounts/sign-in'
 import { SignUp } from 'app/features/accounts/sign-up'
 import { HomeScreen } from 'app/features/home/screen'
+import { BlogScreenNative } from 'app/features/blog'
+import { PostScreenNative } from 'app/features/post/index.native'
 // import { ChartScreen } from 'app/features/chart'
 
 const Stack = createNativeStackNavigator<{
@@ -18,6 +20,10 @@ const Stack = createNativeStackNavigator<{
   'profile/collection': undefined
   'profile/edit': undefined
   search: undefined
+  blog: undefined
+  'blog/[slug]': {
+    slug: string
+  }
 }>()
 
 export function NativeNavigation() {
@@ -57,6 +63,22 @@ export function NativeNavigation() {
           headerShown: false,
         }}
       /> */}
+      <Stack.Screen
+        name="blog"
+        component={BlogScreenNative}
+        options={{
+          title: 'Blog',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="blog/[slug]"
+        component={PostScreenNative}
+        options={{
+          title: 'Blog Post',
+          headerShown: false,
+        }}
+      />
       <Stack.Screen
         name="beat"
         component={HomeScreen}

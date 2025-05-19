@@ -11,7 +11,9 @@ import { LocalProdConfig } from './config.local-prod'
  * - 'production': Remote production API + UI in production mode
  * - 'development': Legacy staging mode (kept for backward compatibility)
  */
-const ENV = process.env.NEXT_PUBLIC_EXPO_SKYHITZ_ENV
+
+// Get the environment value
+const ENV = process.env.NEXT_PUBLIC_EXPO_SKYHITZ_ENV || 'production'
 
 // Default to test mode if not specified
 let config: ConfigInterface = DevelopmentConfig
