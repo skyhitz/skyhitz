@@ -166,27 +166,31 @@ export function CreateBid({ entry }: Props) {
             {`${entry.apr}%`}
           </P>
         </View>
-        <View className="flex-row items-center">
-          <P className="text-[--text-secondary-color] mr-1 font-unbounded text-xs">
-            Share:{' '}
-          </P>
-          <P className="text-[--text-color] font-unbounded text-xs">
-            {`${ownershipPercentage.toFixed(2)}%`}
-          </P>
-          {equityToBuy ? (
-            <P className="!text-[--primary-color] font-unbounded text-xs">
-              {` +${Number(equityToBuy).toFixed(2)}%`}
+        {user && (
+          <View className="flex-row items-center">
+            <P className="text-[--text-secondary-color] mr-1 font-unbounded text-xs">
+              Share:{' '}
             </P>
-          ) : null}
-        </View>
-        <View className="flex-row">
-          <P className="text-[--text-secondary-color] text-xs font-unbounded">
-            Your balance:{' '}
-          </P>
-          <P className="text-[--text-color] text-xs font-unbounded">
-            {`${userCredits} XLM`}
-          </P>
-        </View>
+            <P className="text-[--text-color] font-unbounded text-xs">
+              {`${ownershipPercentage.toFixed(2)}%`}
+            </P>
+            {equityToBuy ? (
+              <P className="!text-[--primary-color] font-unbounded text-xs">
+                {` +${Number(equityToBuy).toFixed(2)}%`}
+              </P>
+            ) : null}
+          </View>
+        )}
+        {user && (
+          <View className="flex-row">
+            <P className="text-[--text-secondary-color] text-xs font-unbounded">
+              Your balance:{' '}
+            </P>
+            <P className="text-[--text-color] text-xs font-unbounded">
+              {`${userCredits} XLM`}
+            </P>
+          </View>
+        )}
 
         <FormInputWithIcon
           icon={<Stellar size={18} />}
