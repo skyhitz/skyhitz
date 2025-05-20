@@ -152,6 +152,41 @@ export async function fetchBlogPosts(page = 0, hitsPerPage = 20) {
   }
 }
 
+/**
+ * Fetches blog posts for the home page
+ * @param hitsPerPage Number of posts to fetch
+ * @returns An array of HomePost objects
+ */
+export async function fetchHomePagePosts(hitsPerPage = 3) {
+  try {
+    const response = await blogIndex.search('', { hitsPerPage })
+
+    if (isEmpty(response.hits)) {
+      return []
+    }
+
+    return response.hits.map((hit) => {
+      const postData = hit as unknown as Record<string, any>
+      return {
+        id: postData.objectID || '',
+        title: postData.title || '',
+        content: postData.content || '',
+        excerpt: postData.excerpt || '',
+        slug: postData.slug || '',
+        publishedAt: postData.publishedAt || Date.now(),
+        imageUrl: postData.imageUrl || '',
+        author: postData.author || '',
+        tag: postData.tag || 'general', // Default tag value
+        publishedAtTimestamp:
+          postData.publishedAtTimestamp || Math.floor(Date.now() / 1000),
+      } as Post
+    })
+  } catch (error) {
+    console.error('Error fetching home page posts:', error)
+    return []
+  }
+}
+
 // Shares index for ownership data access
 export const sharesIndex = {
   search: async <T>(query: string, options: any = {}) => {

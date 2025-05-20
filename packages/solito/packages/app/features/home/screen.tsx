@@ -7,22 +7,9 @@ import { Featured } from 'app/ui/featured'
 import Footer from 'app/ui/footer'
 import { Hero } from 'app/ui/hero'
 import { Navbar } from 'app/ui/navbar/Navbar'
-import { View } from 'react-native'
+import { ScrollView, View } from 'react-native'
 import { JSX } from 'react'
-// Define a simplified HomePageProps type that matches the structure expected by our component
-// Define a local Post type since it might have changed in the main types file
-type Post = {
-  id: string
-  title: string
-  content: string
-  excerpt: string
-  slug: string
-  publishedAt: number
-  imageUrl: string
-  author: string
-  tag: string
-  publishedAtTimestamp: number
-}
+import { Post } from 'app/types/index'
 
 type HomePageProps = {
   posts: Post[]
@@ -63,15 +50,21 @@ export function HomeScreen(props: HomePageProps) {
 
   return (
     <View
-      className={`flex h-full w-full pt-[${insets.top}px] pb-[${insets.bottom}px] bg-[--bg-color]`}
+      className="flex-1 bg-[--bg-color]"
+      style={{
+        paddingTop: insets.top,
+        paddingBottom: insets.bottom,
+      }}
     >
       <Navbar />
-      {header && <Hero {...header} />}
-      {cta && <CtaBanner {...cta} />}
-      {featured && <Featured {...featured} />}
-      {faq && <Faq {...faq} />}
-      {posts && <BlogSection posts={posts} />}
-      <Footer />
+      <ScrollView className="flex-1 w-full">
+        {header && <Hero {...header} />}
+        {cta && <CtaBanner {...cta} />}
+        {featured && <Featured {...featured} />}
+        {faq && <Faq {...faq} />}
+        {posts && <BlogSection posts={posts} />}
+        <Footer />
+      </ScrollView>
     </View>
   )
 }

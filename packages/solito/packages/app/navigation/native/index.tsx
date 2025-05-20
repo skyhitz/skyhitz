@@ -2,10 +2,9 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack'
 
 import { SignIn } from 'app/features/accounts/sign-in'
 import { SignUp } from 'app/features/accounts/sign-up'
-import { HomeScreen } from 'app/features/home/screen'
-import { BlogScreenNative } from 'app/features/blog'
+import { BlogScreenNative } from 'app/features/blog/index.native'
 import { PostScreenNative } from 'app/features/post/index.native'
-// import { ChartScreen } from 'app/features/chart'
+import { HomeScreenNative } from 'app/features/home/index.native'
 
 const Stack = createNativeStackNavigator<{
   home: undefined
@@ -31,7 +30,7 @@ export function NativeNavigation() {
     <Stack.Navigator initialRouteName="home">
       <Stack.Screen
         name="home"
-        component={HomeScreen}
+        component={HomeScreenNative}
         options={{
           title: 'Home',
           headerShown: false,
@@ -81,7 +80,7 @@ export function NativeNavigation() {
       />
       <Stack.Screen
         name="beat"
-        component={HomeScreen}
+        component={HomeScreenNative}
         options={{
           title: 'Beat',
           headerShown: false,
@@ -89,7 +88,7 @@ export function NativeNavigation() {
       />
       <Stack.Screen
         name="profile"
-        component={HomeScreen}
+        component={HomeScreenNative}
         options={{
           title: 'Profile',
           headerShown: false,
@@ -97,7 +96,7 @@ export function NativeNavigation() {
       />
       <Stack.Screen
         name="profile/likes"
-        component={HomeScreen}
+        component={HomeScreenNative}
         options={{
           title: 'Likes',
           headerShown: false,
@@ -105,7 +104,7 @@ export function NativeNavigation() {
       />
       <Stack.Screen
         name="profile/collection"
-        component={HomeScreen}
+        component={HomeScreenNative}
         options={{
           title: 'Collection',
           headerShown: false,
@@ -113,7 +112,7 @@ export function NativeNavigation() {
       />
       <Stack.Screen
         name="profile/edit"
-        component={HomeScreen}
+        component={HomeScreenNative}
         options={{
           title: 'Edit Profile',
           headerShown: false,
@@ -121,7 +120,7 @@ export function NativeNavigation() {
       />
       <Stack.Screen
         name="search"
-        component={HomeScreen}
+        component={HomeScreenNative}
         options={{
           title: 'Search',
           headerShown: false,
