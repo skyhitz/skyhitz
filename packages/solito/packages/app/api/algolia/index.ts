@@ -1,6 +1,9 @@
 import { Config } from 'app/config'
 import * as algoliaModule from 'algoliasearch'
 const { algoliasearch } = algoliaModule
+import { filter, isEmpty } from 'ramda'
+import { isSome } from 'app/utils'
+import { Post } from 'app/types/index'
 
 export const appDomain = Config.APP_URL.replace('https://', '')
 
@@ -83,7 +86,11 @@ export const usersIndex = {
 // Rating entries index for the chart functionality
 export const ratingEntriesIndex = {
   search: async <T>(query: string, options: any = {}) => {
-    const result = await searchIndex(indexNames.entriesRatingDesc, query, options)
+    const result = await searchIndex(
+      indexNames.entriesRatingDesc,
+      query,
+      options
+    )
     return result
   },
   getObject: async <T>(objectID: string) => {
@@ -101,6 +108,48 @@ export const blogIndex = {
     const result = await getObject(indexNames.blog, objectID)
     return result as T
   },
+}
+
+export async function fetchPost(slug: string) {
+  try {
+    const response = await algoliaClient.searchSingleIndex({
+      indexName: indexNames.blog,
+      searchParams: {
+        query: '',
+        filters: `objectID:${slug}`,
+      },
+    })
+
+    if (isEmpty(response.hits)) {
+      return {} as Post
+    }
+
+    return response.hits[0] as unknown as Post
+  } catch (error) {
+    console.error('Error fetching blog post:', error)
+    return {} as Post
+  }
+}
+
+export async function fetchBlogPosts(page = 0, hitsPerPage = 20) {
+  try {
+    const response = await algoliaClient.searchSingleIndex({
+      indexName: indexNames.blog,
+      searchParams: {
+        query: '',
+        page,
+        hitsPerPage,
+      },
+    })
+
+    return filter(
+      isSome,
+      response.hits as unknown as Post[]
+    ) as NonNullable<Post>[]
+  } catch (error) {
+    console.error('Error fetching blog posts:', error)
+    return []
+  }
 }
 
 // Shares index for ownership data access
