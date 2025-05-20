@@ -48,10 +48,12 @@ export default function Footer({ className }: { className?: string }) {
       </View>
 
       <View className="flex flex-row items-center justify-between mt-16">
-        <P className="flex flex-row items-center gap-4 text-xs text-[--text-color]">
-          <SkyhitzLogo size={25} id="footer" /> © {new Date().getFullYear()}{' '}
-          {companyName} - All Rights Reserved.
-        </P>
+        <View className="flex flex-row items-center gap-4">
+          <SkyhitzLogo size={25} id="footer" />
+          <P className="text-xs text-[--text-color]">
+            © {new Date().getFullYear()} {companyName} - All Rights Reserved.
+          </P>
+        </View>
         <ThemeSwitcher />
       </View>
     </View>
