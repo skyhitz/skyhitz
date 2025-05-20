@@ -22,16 +22,6 @@ export const Navbar = ({ className }: { className?: string }) => {
             </View>
           </View>
         </TextLink>
-        {user || userLoading ? null : (
-          <View className="ml-8 hidden flex-row items-center sm:flex">
-            <TextLink href="/chart">
-              <P className="mr-4 text-sm">Chart</P>
-            </TextLink>
-            <TextLink href="/search">
-              <P className="mr-4 text-sm">Search</P>
-            </TextLink>
-          </View>
-        )}
       </View>
       {user || userLoading ? null : (
         <View className="flex-row items-center justify-end sm:flex">
