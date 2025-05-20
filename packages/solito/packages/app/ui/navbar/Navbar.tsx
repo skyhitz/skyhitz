@@ -25,11 +25,13 @@ export const Navbar = ({ className }: { className?: string }) => {
       </View>
       {user || userLoading ? null : (
         <View className="flex-row items-center justify-end sm:flex">
-          <TextLink href="/sign-in">
-            <P className="font-raleway tracking-0.5 mr-4 text-sm font-bold">
-              Log in
-            </P>
-          </TextLink>
+          <View className="mr-4">
+            <TextLink href="/sign-in">
+              <P className="font-raleway tracking-0.5 text-sm font-bold">
+                Log in
+              </P>
+            </TextLink>
+          </View>
 
           <View className="bg-blue rounded-lg px-3 py-2">
             <TextLink href="/sign-up">

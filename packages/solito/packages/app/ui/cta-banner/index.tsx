@@ -20,7 +20,7 @@ export default function CtaBanner({
       <View className="bg-brand-blue relative h-80 overflow-hidden md:absolute md:left-0 md:h-full md:w-1/3 lg:w-1/2">
         <View className="h-full w-full rounded-full p-0">
           <SolitoImage
-            src="/img/landing-3.webp"
+            src="https://skyhitz.io/img/landing-3.webp"
             fill
             alt="Skyhitz Mission"
             contentFit="cover"
@@ -42,7 +42,7 @@ export default function CtaBanner({
           </H2>
           <P className="mt-6 leading-8 text-[--text-secondary-color]">{desc}</P>
           <View className="mt-8">
-            <View className="bg-blue w-fit rounded-lg px-3 py-2">
+            <View className="bg-blue rounded-lg px-3 py-2 max-w-40 flex items-center justify-center">
               <TextLink href={'/chart'}>
                 <P className="tracking-0.5 p-2 text-sm font-bold text-white">
                   {cta}

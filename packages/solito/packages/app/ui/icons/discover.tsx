@@ -1,12 +1,20 @@
 'use client'
 import Svg, { Path, G } from 'react-native-svg'
+import { cssInterop } from 'nativewind'
 
-function Icon({ size = 24, color = 'currentColor' }) {
+cssInterop(Svg, { className: 'style' })
+
+function Icon({ size = 24 }) {
   return (
-    <Svg viewBox="0 0 24 24" width={size} height={size}>
+    <Svg
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      className="text-[--text-color]"
+    >
       <G
         fill="none"
-        stroke={color}
+        stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
       >
