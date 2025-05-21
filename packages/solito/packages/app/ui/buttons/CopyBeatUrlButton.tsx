@@ -3,7 +3,7 @@ import * as React from 'react'
 // Import from our typed components file instead of directly from react-native
 import { Pressable, Text } from 'app/ui/components'
 import Copy from 'app/ui/icons/copy'
-import { Clipboard } from 'app/utils/clipboard'
+import * as Clipboard from 'expo-clipboard'
 
 type CopyBeatUrlButtonProps = {
   beatUrl: string

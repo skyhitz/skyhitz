@@ -3,7 +3,7 @@ import * as React from 'react'
 // Import from our typed components file instead of directly from react-native
 import { Pressable, Text } from 'app/ui/components'
 import Copy from 'app/ui/icons/copy'
-import { Clipboard } from 'app/utils/clipboard'
+import * as Clipboard from 'expo-clipboard'
 
 type CopyWalletPublicKeyButtonProps = {
   address: string
@@ -17,7 +17,9 @@ export function CopyWalletPublicKeyButton({
   // Format address to show shortened version (first 6 and last 4 characters)
   const formattedAddress = React.useMemo(() => {
     if (!address || address.length < 12) return address
-    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`
+    return `${address.substring(0, 6)}...${address.substring(
+      address.length - 4
+    )}`
   }, [address])
 
   const handleCopy = React.useCallback(async () => {
