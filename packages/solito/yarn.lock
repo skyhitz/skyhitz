@@ -5383,6 +5383,7 @@ __metadata:
     expo: "npm:^53.0.0"
     expo-audio: "npm:~0.4.5"
     expo-clipboard: "npm:^7.1.4"
+    expo-file-system: "npm:^18.1.10"
     expo-font: "npm:~13.3.1"
     expo-image: "npm:~2.1.7"
     expo-linear-gradient: "npm:~14.1.4"
@@ -5454,7 +5455,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"expo-file-system@npm:~18.1.10":
+"expo-file-system@npm:^18.1.10, expo-file-system@npm:~18.1.10":
   version: 18.1.10
   resolution: "expo-file-system@npm:18.1.10"
   peerDependencies:

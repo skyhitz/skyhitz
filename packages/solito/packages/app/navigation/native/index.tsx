@@ -5,6 +5,7 @@ import { SignUp } from 'app/features/accounts/sign-up'
 import { BlogScreenNative } from 'app/features/blog/index.native'
 import { PostScreenNative } from 'app/features/post/index.native'
 import { HomeScreenNative } from 'app/features/home/index.native'
+import ChartScreenNative from 'app/features/chart/index.native'
 
 const Stack = createNativeStackNavigator<{
   home: undefined
@@ -49,6 +50,14 @@ export function NativeNavigation() {
         component={SignUp}
         options={{
           title: 'Sign Up',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="chart"
+        component={ChartScreenNative}
+        options={{
+          title: 'Trending',
           headerShown: false,
         }}
       />

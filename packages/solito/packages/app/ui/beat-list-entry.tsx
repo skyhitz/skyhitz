@@ -1,5 +1,5 @@
 'use client'
-import { View, Pressable, Platform } from 'react-native'
+import { View, Pressable } from 'react-native'
 import { Entry } from 'app/api/graphql/types'
 import { P } from 'app/design/typography'
 import { imageUrlSmall } from 'app/utils/entry'
@@ -7,7 +7,7 @@ import { useRouter } from 'solito/navigation'
 import { SolitoImage } from 'app/design/solito-image'
 import VerticalDots from 'app/ui/icons/verticalDots'
 import LikeButton from 'app/ui/buttons/likeButton'
-import DownloadBtn from 'app/ui/buttons/DownloadBtn'
+// import DownloadBtn from 'app/ui/buttons/download'
 import Stellar from 'app/ui/icons/stellar'
 import { stroopsToLumens } from 'app/utils/stroopsToLumens'
 
@@ -104,10 +104,7 @@ export function BeatListEntry({
               </Pressable>
             ) : null}
 
-            {/* Only show download button on web */}
-            {Platform.OS === 'web' && (
-              <DownloadBtn size={14} className="mr-3" entry={entry} />
-            )}
+            {/* <DownloadBtn size={14} className="mr-3" entry={entry} /> */}
 
             {/* Like button */}
             <LikeButton size={20} entry={entry} />

@@ -3,7 +3,7 @@ import { Entry } from 'app/api/graphql/types'
 import { ShareButton } from 'app/ui/buttons/ShareButton'
 import { PlayButton } from './PlayButton'
 import LikeButton from 'app/ui/buttons/likeButton'
-import DownloadBtn from 'app/ui/buttons/DownloadBtn'
+// import DownloadBtn from 'app/ui/buttons/download/index'
 
 interface ActionButtonsProps {
   entry: Entry
@@ -25,7 +25,7 @@ export function ActionButtons({ entry }: ActionButtonsProps) {
       />
 
       {/* Download button */}
-      <DownloadBtn entry={entry} size={20} className="mb-1" />
+      {/* <DownloadBtn entry={entry} size={20} className="mb-1" /> */}
     </>
   )
 }

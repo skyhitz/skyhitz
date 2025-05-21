@@ -3,7 +3,6 @@
 import { Pressable } from 'app/ui/components'
 import { Entry } from 'app/api/graphql/types'
 import { videoSrc } from 'app/utils/entry'
-import { Platform } from 'react-native'
 import { useToast } from 'app/provider/toast'
 import DownloadIcon from 'app/ui/icons/download'
 
@@ -17,11 +16,6 @@ const DownloadBtn = ({ size = 24, className = '', entry }: Props) => {
   const toast = useToast()
 
   const handleDownload = () => {
-    if (Platform.OS !== 'web') {
-      toast.show('Download only available on web', { type: 'info' })
-      return
-    }
-
     // Create a download link for the video
     const a = document.createElement('a')
     a.href = videoSrc(entry.videoUrl)
@@ -33,7 +27,7 @@ const DownloadBtn = ({ size = 24, className = '', entry }: Props) => {
 
   return (
     <Pressable onPress={handleDownload} className={className}>
-      <DownloadIcon size={size} color="var(--text-secondary-color)" />
+      <DownloadIcon size={size} />
     </Pressable>
   )
 }
