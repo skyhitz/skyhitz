@@ -6,6 +6,7 @@ import { BlogScreenNative } from 'app/features/blog/index.native'
 import { PostScreenNative } from 'app/features/post/index.native'
 import { HomeScreenNative } from 'app/features/home/index.native'
 import ChartScreenNative from 'app/features/chart/index.native'
+import SearchScreenNative from 'app/features/search/index.native'
 
 const Stack = createNativeStackNavigator<{
   home: undefined
@@ -129,7 +130,7 @@ export function NativeNavigation() {
       />
       <Stack.Screen
         name="search"
-        component={HomeScreenNative}
+        component={SearchScreenNative}
         options={{
           title: 'Search',
           headerShown: false,
