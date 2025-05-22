@@ -7,7 +7,6 @@ import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
 import User from 'app/ui/icons/user'
 import { SkyhitzLogo } from 'app/ui/logo'
 import {
-  useAppNavigation,
   useContentNavigation,
   useProfileNavigation,
 } from 'app/hooks/navigation'
@@ -42,7 +41,6 @@ export default function MainTabBar({
   const rootViewStyle = column ? 'flex-col' : 'flex-row border-t-2 border-white'
 
   // Get our navigation hooks
-  const { isCurrentRoute } = useAppNavigation()
   const { goToSearch, goToChart } = useContentNavigation()
   const { goToMyProfile } = useProfileNavigation()
 
