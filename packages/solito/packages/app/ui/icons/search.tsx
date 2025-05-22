@@ -1,15 +1,8 @@
 import Svg, { Path } from 'react-native-svg'
 
-function Icon({ color = 'currentColor', size = 20, ...rest }) {
+function Icon({ size = 20, ...rest }) {
   return (
-    <Svg
-      fill="none"
-      stroke={color}
-      viewBox="0 0 24 24"
-      width={size}
-      height={size}
-      {...rest}
-    >
+    <Svg fill="none" viewBox="0 0 24 24" width={size} height={size} {...rest}>
       <Path
         strokeLinecap="round"
         strokeLinejoin="round"

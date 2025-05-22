@@ -1,11 +1,11 @@
 import { IconProps } from 'app/design/button'
 import Svg, { Path } from 'react-native-svg'
 
-function Icon({ color = 'currentColor', size = 22, ...rest }: IconProps) {
+function Icon({ size = 22, ...rest }: IconProps) {
   return (
     <Svg
       fill="none"
-      stroke={color}
+      stroke="currentColor"
       viewBox="0 0 24 24"
       width={size}
       height={size}

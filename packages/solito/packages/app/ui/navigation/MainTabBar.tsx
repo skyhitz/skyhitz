@@ -6,8 +6,11 @@ import { useUserStore } from 'app/state/user'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
 import User from 'app/ui/icons/user'
 import { SkyhitzLogo } from 'app/ui/logo'
-import { ROUTES } from 'app/constants/routes'
-import { useAppNavigation, useContentNavigation, useProfileNavigation } from 'app/hooks/navigation'
+import {
+  useAppNavigation,
+  useContentNavigation,
+  useProfileNavigation,
+} from 'app/hooks/navigation'
 
 const LinkStyle: StyleProp<ViewStyle> = {
   flex: 1,
@@ -54,20 +57,17 @@ export default function MainTabBar({
       <Pressable style={LinkStyle} onPress={goToSearch}>
         <Search
           size={28}
-          color={
+          className={`${
             isActive('search')
-              ? 'var(--primary-color)'
-              : 'var(--text-secondary-color)'
-          }
+              ? 'stroke-[--primary-color]'
+              : 'stroke-[--text-secondary-color]'
+          }`}
         />
       </Pressable>
 
       <Pressable style={LinkStyle} onPress={goToChart}>
         <View
           style={{
-            borderColor: isActive('chart')
-              ? 'var(--primary-color)'
-              : 'var(--text-secondary-color)',
             borderWidth: 2,
             borderRadius: 9999,
             width: 32,
@@ -76,6 +76,11 @@ export default function MainTabBar({
             justifyContent: 'center',
             paddingBottom: 0,
           }}
+          className={`${
+            isActive('chart')
+              ? 'border-[--primary-color]'
+              : 'border-[--text-secondary-color]'
+          }`}
         >
           <SkyhitzLogo size={20} id={`main-nav-${column ? 'column' : 'row'}`} />
         </View>
@@ -85,11 +90,11 @@ export default function MainTabBar({
         <Pressable style={LinkStyle} onPress={goToMyProfile}>
           <User
             size={28}
-            color={
+            className={`${
               isActive('profile')
-                ? 'var(--primary-color)'
-                : 'var(--text-secondary-color)'
-            }
+                ? 'stroke-[--primary-color]'
+                : 'stroke-[--text-secondary-color]'
+            }`}
           />
         </Pressable>
       )}

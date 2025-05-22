@@ -1,6 +1,5 @@
 'use client'
 import { SafeArea } from 'app/provider/safe-area'
-import { NavigationProvider } from './navigation'
 import { SolitoImageProvider } from 'solito/image'
 import { ToastProvider } from './toast'
 import { AuthProvider } from './auth'
@@ -15,17 +14,15 @@ export function Provider({ children }: Props) {
   return (
     <GraphQLProvider>
       <SafeArea>
-        <NavigationProvider>
-          <AuthProvider>
-            <ToastProvider>
-              <PlaybackProvider>
-                <SolitoImageProvider nextJsURL="https://skyhitz.io">
-                  {children}
-                </SolitoImageProvider>
-              </PlaybackProvider>
-            </ToastProvider>
-          </AuthProvider>
-        </NavigationProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <PlaybackProvider>
+              <SolitoImageProvider nextJsURL="https://skyhitz.io">
+                {children}
+              </SolitoImageProvider>
+            </PlaybackProvider>
+          </ToastProvider>
+        </AuthProvider>
       </SafeArea>
     </GraphQLProvider>
   )

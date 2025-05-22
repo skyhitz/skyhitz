@@ -2,7 +2,7 @@
 import { View } from 'react-native'
 import { ProfileHeader } from './ProfileHeader'
 import Cog from 'app/ui/icons/cog'
-import { CopyWalletPublicKeyButton } from 'app/ui/buttons/CopyWalletPublicKeyButton'
+// import { CopyWalletPublicKeyButton } from 'app/ui/buttons/CopyWalletPublicKeyButton'
 import { SafeAreaView } from 'app/design/safe-area-view'
 import Like from 'app/ui/icons/like'
 import StarBorder from 'app/ui/icons/star-border'
@@ -10,7 +10,6 @@ import { ProfileRow } from './profileRow'
 import { Link, TextLink } from 'solito/link'
 import TopUp from 'app/ui/icons/top-up'
 import Send from 'app/ui/icons/send'
-import { useRouter } from 'solito/navigation'
 import { useState, useEffect, useRef } from 'react'
 import { LowBalanceModal } from './LowBalanceModal'
 import { SendXLMModal } from './SendXLMModal'
@@ -23,20 +22,18 @@ import {
 } from 'app/api/graphql/mutations'
 import { P, ActivityIndicator } from 'app/design/typography'
 import { useToast } from 'app/provider/toast'
-import { useTheme } from 'app/state/theme/useTheme'
 import Stellar from 'app/ui/icons/stellar'
 
 export function ProfileScreen({ user }: { user: User }) {
-  const [lowBalanceModalVisible, setLowBalanceModalVisible] = useState<boolean>(false)
+  const [lowBalanceModalVisible, setLowBalanceModalVisible] =
+    useState<boolean>(false)
   const [sendModalVisible, setSendModalVisible] = useState<boolean>(false)
   const [isClaimingEarnings, setIsClaimingEarnings] = useState(false)
   const { data: credits, refetch: refetchUserCredits } = useUserCreditsQuery()
-  const { push } = useRouter()
   const { data: userLikesData } = useUserLikesQuery()
   const { data: userCollectionData } = useUserCollectionQuery(user.id)
   const [claimEarnings] = useClaimEarningsMutation()
   const toast = useToast()
-  const { theme, isDark } = useTheme()
 
   // Use a ref to track if we've already attempted to claim earnings
   const hasAttemptedClaim = useRef(false)
@@ -125,11 +122,11 @@ export function ProfileScreen({ user }: { user: User }) {
           }
         />
 
-        <View className="mt-1 w-full items-center justify-center">
+        {/* <View className="mt-1 w-full items-center justify-center">
           {user.publicKey && (
             <CopyWalletPublicKeyButton address={user.publicKey} />
           )}
-        </View>
+        </View> */}
 
         <View className="mt-8 w-full items-center justify-center px-4">
           <View className="mb-0.5 flex w-full flex-row items-center justify-between">
@@ -192,12 +189,12 @@ export function ProfileScreen({ user }: { user: User }) {
         onClose={() => setLowBalanceModalVisible(false)}
         minWithdrawalAmount={5}
       />
-      
+
       <SendXLMModal
         visible={sendModalVisible}
         onClose={() => {
-          setSendModalVisible(false);
-          refetchUserCredits();
+          setSendModalVisible(false)
+          refetchUserCredits()
         }}
         currentBalance={credits?.userCredits || 0}
       />

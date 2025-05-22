@@ -6,6 +6,12 @@
  * @type {import('tailwindcss').Config}
  */
 module.exports = {
-  content: ['./App.tsx', '../../packages/**/*.{js,jsx,ts,tsx}'],
+  content: [
+    './App.tsx',
+    './app/**/*.{js,jsx,ts,tsx}',
+    '../../packages/app/**/*.{js,jsx,ts,tsx}',
+    // Exclude node_modules
+    '!../../packages/app/**/node_modules/**',
+  ],
   ...require('app/design/tailwind/tailwind-shared-config').default,
 }

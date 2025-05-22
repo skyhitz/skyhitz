@@ -7,7 +7,11 @@ import { useToast } from 'app/provider/toast'
 import { useMutation, useQuery } from '@apollo/client'
 import useLikeCache from 'app/hooks/useLikeCache'
 import { lumensToStroops } from 'app/utils'
-import { LIKE_ENTRY, INVEST_ENTRY, USER_LIKES } from 'app/api/graphql/operations'
+import {
+  LIKE_ENTRY,
+  INVEST_ENTRY,
+  USER_LIKES,
+} from 'app/api/graphql/operations'
 
 // Using imported GraphQL operations from operations.ts
 
@@ -79,12 +83,9 @@ function LikeButton({ size = 24, className, entry }: Props) {
       <Like
         width={size}
         height={size}
-        fill={isLiked ? 'var(--text-secondary-color)' : 'none'}
-        stroke={
-          isLiked
-            ? 'var(--text-secondary-color)'
-            : 'var(--text-secondary-color)'
-        }
+        className={`${
+          isLiked ? 'fill-[--text-secondary-color]' : ''
+        } stroke-[--text-secondary-color]`}
       />
     </Pressable>
   )

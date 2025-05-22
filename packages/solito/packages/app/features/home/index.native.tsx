@@ -2,8 +2,8 @@ import * as React from 'react'
 import { HomeScreen } from './screen'
 import { fetchHomePagePosts } from 'app/api/algolia'
 import { Post } from 'app/types/index'
-import { View, ActivityIndicator } from 'react-native'
-import { P } from 'app/design/typography'
+import { View } from 'react-native'
+import { P, ActivityIndicator } from 'app/design/typography'
 import { homeContent } from 'app/constants/content'
 
 // Native-specific home screen wrapper that handles data loading
@@ -34,7 +34,7 @@ export function HomeScreenNative() {
   if (loading && posts.length === 0) {
     return (
       <View className="flex-1 items-center justify-center">
-        <ActivityIndicator size="large" color="#0000ff" />
+        <ActivityIndicator size="large" />
       </View>
     )
   }

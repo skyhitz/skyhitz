@@ -4,7 +4,7 @@ import { UserAvatar } from 'app/ui/user-avatar'
 import XLogo from 'app/ui/icons/x-logo'
 import Instagram from 'app/ui/icons/instagram'
 import { Linking, Pressable, View } from 'react-native'
-import { ShareButton } from 'app/ui/buttons/ShareButton'
+// import { ShareButton } from 'app/ui/buttons/ShareButton'
 import { SolitoImage } from 'app/design/solito-image'
 import { User } from 'app/api/graphql/types'
 import { H3, P } from 'app/design/typography'
@@ -25,7 +25,7 @@ export function SocialLinks({
   const socialItems = [
     // Share button
     <View key="share">
-      <ShareButton url={profileUrl} title="Share profile" />
+      {/* <ShareButton url={profileUrl} title="Share profile" /> */}
     </View>,
   ]
 

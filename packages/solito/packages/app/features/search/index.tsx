@@ -1,5 +1,6 @@
 'use client'
 import { SearchScreen } from './screen'
 
-// Simple re-export for web - no special handling needed
+// Re-export as both named and default export for compatibility
+export { SearchScreen }
 export default SearchScreen

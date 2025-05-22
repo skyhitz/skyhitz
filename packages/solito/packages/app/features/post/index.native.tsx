@@ -1,68 +1,18 @@
 import * as React from 'react'
 import { PostScreen } from './screen'
-import { algoliaClient, indexNames } from 'app/api/algolia'
 import { View, ActivityIndicator } from 'react-native'
 import { P } from 'app/design/typography'
 import { Navbar } from 'app/ui/navbar/Navbar'
 import Footer from 'app/ui/footer'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
-
-// Define Post type locally
-type Post = {
-  id: string
-  title: string
-  content: string
-  excerpt: string
-  slug: string
-  publishedAt: number
-  imageUrl: string
-  author: string
-  tag: string
-  publishedAtTimestamp: number
-}
-
-// Function to fetch a specific blog post by slug
-async function fetchBlogPostBySlug(slug: string): Promise<Post | null> {
-  try {
-    const response = await algoliaClient.searchSingleIndex({
-      indexName: indexNames.blog,
-      searchParams: {
-        query: '',
-        filters: `objectID:${slug}`, // Use objectID instead of slug to match web implementation
-        hitsPerPage: 1,
-      },
-    })
-
-    if (response.hits && response.hits.length > 0) {
-      return response.hits[0] as unknown as Post
-    }
-
-    // Fallback to searching by slug if objectID doesn't work
-    const slugResponse = await algoliaClient.searchSingleIndex({
-      indexName: indexNames.blog,
-      searchParams: {
-        query: '',
-        filters: `slug:${slug}`,
-        hitsPerPage: 1,
-      },
-    })
-
-    if (slugResponse.hits && slugResponse.hits.length > 0) {
-      return slugResponse.hits[0] as unknown as Post
-    }
-
-    return null
-  } catch (error) {
-    console.error(`Error fetching blog post with slug ${slug}:`, error)
-    return null
-  }
-}
+import { Post } from 'app/types/index'
+import { fetchPost } from 'app/api/algolia'
+import { useLocalSearchParams } from 'expo-router'
 
 // Native-specific post screen wrapper that handles data loading
-export function PostScreenNative({ route }: any) {
-  // Get the slug from route params if available
-  // This handles how React Navigation passes params
-  const slug = route?.params?.slug
+export function PostScreenNative() {
+  const { slug } = useLocalSearchParams<{ slug: string }>()
+
   const insets = useSafeArea()
   const [loading, setLoading] = React.useState(true)
   const [post, setPost] = React.useState<Post | null>(null)
@@ -79,7 +29,7 @@ export function PostScreenNative({ route }: any) {
 
       try {
         setLoading(true)
-        const blogPost = await fetchBlogPostBySlug(slug)
+        const blogPost = await fetchPost(slug)
         if (blogPost) {
           setPost(blogPost)
           setError(null)

@@ -25,14 +25,12 @@ export function SearchInputField({
       <Search
         width={20}
         height={20}
-        color="var(--text-secondary-color)"
-        className="mr-2"
+        className="mr-2 stroke-[--text-secondary-color]"
       />
       <TextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="var(--text-secondary-color)"
         className="remove-font-padding flex-1 text-sm text-[--text-color] py-1"
         autoCapitalize={autoCapitalize}
         // @ts-ignore - outlineStyle works on web but isn't in the type definitions
@@ -43,8 +41,7 @@ export function SearchInputField({
           <X
             width={20}
             height={20}
-            color="var(--text-secondary-color)"
-            className="ml-2"
+            className="ml-2 stroke-[--text-secondary-color]"
           />
         </Pressable>
       )}

@@ -17,9 +17,9 @@ export default function ThemeSwitcher() {
       accessibilityRole="button"
     >
       {isDark ? (
-        <Moon stroke={theme['--text-color']} width={20} height={20} />
+        <Moon className="text-[--text-color]" width={20} height={20} />
       ) : (
-        <Sun stroke={theme['--text-color']} width={20} height={20} />
+        <Sun className="text-[--text-color]" width={20} height={20} />
       )}
     </Pressable>
   )
