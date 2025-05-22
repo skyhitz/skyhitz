@@ -43,7 +43,7 @@ type SolitoImageProps = {
 export const SolitoImage = (props: SolitoImageProps) => {
   // Default sizes if not provided
   const sizes = props.sizes || '100vw'
-  
+
   // Handle any platform-specific props here
   const platformProps = Platform.select({
     web: {
