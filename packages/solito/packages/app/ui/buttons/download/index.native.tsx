@@ -1,20 +1,18 @@
 'use client'
-// Import from our typed components file instead of directly from react-native
-import { Pressable } from 'react-native'
-import { Entry } from 'app/api/graphql/types'
 import { useToast } from 'app/provider/toast'
-import DownloadIcon from 'app/ui/icons/download'
+import { DownloadButtonProps } from './types'
+import { BaseDownloadButton } from './base'
 import { useState } from 'react'
-import { View, ActivityIndicator } from 'react-native'
-import * as FileSystem from 'expo-file-system'
+import { View, ActivityIndicator, Platform } from 'react-native'
 
-interface Props {
-  size?: number
-  className?: string
-  entry: Entry
-}
+// Safely check for FileSystem support without importing it directly
+// This prevents crashes in Expo Go during component initialization
 
-const DownloadBtn = ({ size = 24, className = '', entry }: Props) => {
+const DownloadBtn = ({
+  size = 24,
+  className = '',
+  entry,
+}: DownloadButtonProps) => {
   const toast = useToast()
   const [downloading, setDownloading] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -25,6 +23,41 @@ const DownloadBtn = ({ size = 24, className = '', entry }: Props) => {
       return
     }
 
+    // Expo Go compatibility check - don't use direct imports at the module level
+    let isExpoGo = true
+
+    try {
+      // First check if we can dynamically load FileSystem
+      const FileSystemModule = await Promise.resolve().then(() => {
+        // Use require in a way that won't be statically analyzed
+        // This prevents the module from being evaluated during initialization
+        return global.require && global.require('expo-file-system')
+      })
+      if (FileSystemModule) {
+        isExpoGo = false
+        setDownloading(true)
+        setProgress(0)
+
+        // Execute the actual download logic
+        await downloadWithFileSystem(FileSystemModule, entry.videoUrl)
+      }
+    } catch (error) {
+      // This will happen in Expo Go
+      console.log('FileSystem module not available:', error)
+    }
+
+    if (isExpoGo) {
+      // Show message for Expo Go users
+      toast.show(
+        'Download requires a development build. Not available in Expo Go.',
+        { type: 'warning' }
+      )
+    }
+  }
+
+  // Separate the actual download logic into its own function
+  // This prevents any FileSystem code from executing during initialization
+  const downloadWithFileSystem = async (FileSystem: any, videoUrl: string) => {
     try {
       // Format filename: artist_title.mp4 format
       let fileName = ''
@@ -55,14 +88,13 @@ const DownloadBtn = ({ size = 24, className = '', entry }: Props) => {
       // Create downloads directory if it doesn't exist
       const dirInfo = await FileSystem.getInfoAsync(fileUri)
       if (!dirInfo.exists) {
-        await FileSystem.makeDirectoryAsync(fileUri, { intermediates: true })
+        await FileSystem.makeDirectoryAsync(fileUri, {
+          intermediates: true,
+        })
       }
 
-      // Start download with progress tracking
-      setDownloading(true)
-      setProgress(0)
-
-      const callback = (downloadProgress) => {
+      // Configure download progress tracking
+      const callback = (downloadProgress: any) => {
         const progress =
           downloadProgress.totalBytesWritten /
           downloadProgress.totalBytesExpectedToWrite
@@ -70,7 +102,7 @@ const DownloadBtn = ({ size = 24, className = '', entry }: Props) => {
       }
 
       const downloadResumable = FileSystem.createDownloadResumable(
-        entry.videoUrl,
+        videoUrl,
         filePath,
         {},
         callback
@@ -90,9 +122,11 @@ const DownloadBtn = ({ size = 24, className = '', entry }: Props) => {
   }
 
   return (
-    <Pressable
-      onPress={handleDownload}
+    <BaseDownloadButton
+      size={size}
       className={className}
+      entry={entry}
+      onPress={handleDownload}
       disabled={downloading}
     >
       {downloading ? (
@@ -106,10 +140,8 @@ const DownloadBtn = ({ size = 24, className = '', entry }: Props) => {
         >
           <ActivityIndicator size="small" color="white" />
         </View>
-      ) : (
-        <DownloadIcon size={size} />
-      )}
-    </Pressable>
+      ) : null}
+    </BaseDownloadButton>
   )
 }
 

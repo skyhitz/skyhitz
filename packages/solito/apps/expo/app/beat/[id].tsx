@@ -1,5 +1,7 @@
 import { BeatScreen } from 'app/features/beat/screen'
 
-export default function BeatScreenWrapper() {
+function BeatScreenNative() {
   return <BeatScreen />
 }
+
+export default BeatScreenNative

@@ -1,7 +1,7 @@
 'use client'
 import * as React from 'react'
 // Import from our typed components file instead of directly from react-native
-import { Pressable, Text } from 'app/ui/components'
+import { Pressable, Text } from 'react-native'
 import Copy from 'app/ui/icons/copy'
 import * as Clipboard from 'expo-clipboard'
 

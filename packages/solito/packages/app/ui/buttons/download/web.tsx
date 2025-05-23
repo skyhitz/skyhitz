@@ -1,6 +1,6 @@
 'use client'
 // Import from our typed components file instead of directly from react-native
-import { Pressable } from 'app/ui/components'
+import { Pressable } from 'react-native'
 import { Entry } from 'app/api/graphql/types'
 import { videoSrc } from 'app/utils/entry'
 import { useToast } from 'app/provider/toast'
