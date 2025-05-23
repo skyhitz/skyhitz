@@ -1,13 +1,13 @@
 'use client'
-import { usePathname } from 'next/navigation'
 import { MainNavigation } from 'app/ui/navigation/MainNavigation'
 import { shouldUseNavigationUI } from 'app/constants/routes'
+import { usePathname } from 'app/hooks/navigation/usePathname'
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
   // Check if the current path should use the main navigation
-  const shouldShowNavigation = shouldUseNavigationUI(pathname)
+  const shouldShowNavigation = shouldUseNavigationUI(pathname || '')
 
   // If the path should use navigation, wrap the children with it
   if (shouldShowNavigation) {

@@ -3,7 +3,7 @@ import 'app/design/global.css'
 import { inter, raleway, unbounded } from './fonts'
 import { Provider } from 'app/provider/index'
 import { ThemeProvider } from 'app/provider/theme'
-import { MainLayout } from './shared-layouts/MainLayout'
+import { MainLayout } from 'app/ui/shared-layouts/MainLayout'
 
 export const metadata = {
   title: 'Skyhitz',
