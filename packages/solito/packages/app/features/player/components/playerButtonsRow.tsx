@@ -20,27 +20,20 @@ type Props = {
 }
 
 export function PlayerButtonsRow({ size = 'small', className = '' }: Props) {
-  const { 
-    skipBackward, 
-    skipForward, 
-    playPause, 
-    toggleLoop, 
-    toggleShuffle
-  } = usePlayback()
-  
+  const { skipBackward, skipForward, playPause, toggleLoop, toggleShuffle } =
+    usePlayback()
+
   const { playbackState, looping, shuffle } = usePlayerStore()
-  
-  const iconSize = size === 'large' ? 36 : 16
-  const shuffleSize = size === 'large' ? 20 : 12
+
+  const iconSize = size === 'large' ? 36 : 22
+  const shuffleSize = size === 'large' ? 20 : 18
 
   return (
     <View
       className={`flex flex-row items-center md:justify-center ${className}`}
     >
       <Pressable
-        className={`mr-4 ${
-          shuffle ? 'text-primary' : 'text-gray-500'
-        }`}
+        className={`mr-4 ${shuffle ? 'text-primary' : 'text-[--text-color]'}`}
         onPress={toggleShuffle}
       >
         <Shuffle size={shuffleSize} />
@@ -48,7 +41,7 @@ export function PlayerButtonsRow({ size = 'small', className = '' }: Props) {
       <Pressable onPress={skipBackward}>
         <SkipBack
           size={iconSize}
-          className="mr-8 text-gray-600 md:mr-4"
+          className="mr-8 text-[--text-color] md:mr-4"
         />
       </Pressable>
 
@@ -57,9 +50,9 @@ export function PlayerButtonsRow({ size = 'small', className = '' }: Props) {
       ) : (
         <Pressable onPress={playPause} className="md:mx-2">
           {playbackState === 'PLAYING' ? (
-            <PauseIcon size={iconSize} className="text-gray-600" />
+            <PauseIcon size={iconSize} className="text-[--text-color]" />
           ) : (
-            <PlayIcon size={iconSize} className="text-gray-600" />
+            <PlayIcon size={iconSize} className="text-[--text-color]" />
           )}
         </Pressable>
       )}
@@ -67,13 +60,11 @@ export function PlayerButtonsRow({ size = 'small', className = '' }: Props) {
       <Pressable onPress={skipForward}>
         <SkipForward
           size={iconSize}
-          className="ml-8 text-gray-600 md:ml-4"
+          className="ml-8 text-[--text-color] md:ml-4"
         />
       </Pressable>
       <Pressable
-        className={`ml-4 ${
-          looping ? 'text-primary' : 'text-gray-500'
-        }`}
+        className={`ml-4 ${looping ? 'text-primary' : 'text-[--text-color]'}`}
         onPress={toggleLoop}
       >
         <Repeat size={shuffleSize} />

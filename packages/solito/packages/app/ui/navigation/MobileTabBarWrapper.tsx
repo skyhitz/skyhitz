@@ -106,9 +106,9 @@ export function MobileTabBarWrapper() {
         { justifyContent: 'space-between', display: 'flex' },
         draggableStyle,
       ]}
-      className="absolute bottom-0 left-0 right-0 z-10 flex md:!hidden border-t-2 border-[--border-color] bg-[--bg-color]"
+      className="absolute bottom-0 left-0 right-0 z-10 flex border-t-2 border-[--border-color] bg-[--bg-color]"
     >
-      <View>
+      <View className="flex-1">
         <MiniPlayerBar
           onTogglePress={onExpand}
           animatedStyle={playerBarStyle}
@@ -119,7 +119,7 @@ export function MobileTabBarWrapper() {
         />
       </View>
 
-      <MotiView style={[{ zIndex: 10 }, tabBarStyle]}>
+      <MotiView className="md:hidden" style={[{ zIndex: 10 }, tabBarStyle]}>
         <MainTabBar currentTabName={currentTabName} />
       </MotiView>
     </MotiView>

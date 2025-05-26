@@ -15,7 +15,7 @@ type Props = {
 
 const formatSeconds = (seconds: number) => {
   if (seconds === 0) return '0:00'
-  
+
   const minutes = Math.floor(seconds / 60)
   const remainingSeconds = Math.floor(seconds % 60)
   return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`
@@ -29,26 +29,18 @@ export function PlayerSlider({ className = '' }: Props) {
   const durationSeconds = duration / 1000
 
   return (
-    <View className={`flex w-full items-center px-3 py-3 ${className}`}>
-      <View className="flex w-full flex-row items-center justify-between">
-        <P className="text-xs text-gray-600">
-          {formatSeconds(positionSeconds)}
-        </P>
-        <P className="text-xs text-gray-600">
-          {formatSeconds(durationSeconds)}
-        </P>
-      </View>
+    <View
+      className={`flex flex-row items-center justify-between px-3 ${className}`}
+    >
+      <P className="text-xs mx-2">{formatSeconds(positionSeconds)}</P>
       <Slider
         minimumValue={0}
         maximumValue={duration || 1}
         value={position}
         onSlidingStart={startSeeking}
         onSlidingComplete={onSeekCompleted}
-        minimumTrackTintColor="#2060F6"
-        maximumTrackTintColor="#d3d3d3"
-        thumbTintColor="#2060F6"
-        style={{ width: '100%', height: 40 }}
       />
+      <P className="text-xs mx-2">{formatSeconds(durationSeconds)}</P>
     </View>
   )
 }

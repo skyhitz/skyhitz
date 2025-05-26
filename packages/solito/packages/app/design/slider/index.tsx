@@ -16,9 +16,9 @@ export const Slider = ({
   minimumValue = 0,
   maximumValue = 1,
   value = 0,
-  minimumTrackTintColor = '#2060F6',
+  minimumTrackTintColor = '#19aafe',
   maximumTrackTintColor = '#d3d3d3',
-  thumbTintColor = '#2060F6',
+  thumbTintColor = '#19aafe',
   style,
 }: {
   onValueChange?: (val: number) => void
@@ -47,7 +47,8 @@ export const Slider = ({
         setSliderPosition(newPosition)
       } else if (value !== undefined && maximumValue !== minimumValue) {
         // If using value API (min-max)
-        const normalizedValue = (value - minimumValue) / (maximumValue - minimumValue)
+        const normalizedValue =
+          (value - minimumValue) / (maximumValue - minimumValue)
         const newPosition = normalizedValue * sliderWidth
         setSliderPosition(newPosition)
       }
@@ -121,15 +122,10 @@ export const Slider = ({
         setSliderWidth(width)
       }}
       onPress={handleBarPress}
-      style={[{
-        width: '100%',
-        height: 40,
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-      }, style]}
+      style={style}
+      className={'flex justify-center items-center flex-grow h-10'}
     >
-      <View className="relative w-full rounded-full">
+      <View className="relative w-full rounded-full -top-[0.175rem]">
         <View
           style={{
             position: 'absolute',
