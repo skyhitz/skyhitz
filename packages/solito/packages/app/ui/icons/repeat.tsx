@@ -1,17 +1,15 @@
 'use client'
-import * as React from 'react'
 import Svg, { Path } from 'react-native-svg'
 
 type Props = {
   size?: number
-  className?: string
   color?: string
 }
 
 export default function Repeat({
   size = 24,
-  className = '',
   color = 'currentColor',
+  ...rest
 }: Props) {
   return (
     <Svg
@@ -23,7 +21,7 @@ export default function Repeat({
       strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={className}
+      {...rest}
     >
       <Path d="M17 1l4 4-4 4" />
       <Path d="M3 11V9a4 4 0 014-4h14" />

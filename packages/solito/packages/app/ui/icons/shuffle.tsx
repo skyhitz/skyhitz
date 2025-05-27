@@ -1,17 +1,15 @@
 'use client'
-import * as React from 'react'
 import Svg, { Path } from 'react-native-svg'
 
 type Props = {
   size?: number
-  className?: string
   color?: string
 }
 
 export default function Shuffle({
   size = 24,
-  className = '',
   color = 'currentColor',
+  ...rest
 }: Props) {
   return (
     <Svg
@@ -23,7 +21,7 @@ export default function Shuffle({
       strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={className}
+      {...rest}
     >
       <Path d="M16 3h5v5" />
       <Path d="M4 20L21 3" />
