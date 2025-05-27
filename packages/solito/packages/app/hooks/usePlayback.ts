@@ -1,6 +1,6 @@
 /**
  * usePlayback hook for managing media playback
- * Migrated from expo-av to platform-agnostic implementation
+ * Using Zustand store for state management
  */
 import { useEffect } from 'react'
 import { Entry } from 'app/api/graphql/types'
@@ -11,7 +11,6 @@ import { videoSrc } from 'app/utils/entry'
 import { useErrorReport } from 'app/hooks/useErrorReport'
 import { useUserStore } from 'app/state/user'
 import { usePlayerStore } from 'app/state/player'
-import { usePlaybackContext } from 'app/provider/playback'
 import { INVEST_ENTRY, SET_LAST_PLAYED_ENTRY } from 'app/api/graphql/operations'
 import { useMutation } from '@apollo/client'
 
@@ -19,7 +18,7 @@ export function usePlayback() {
   // Get user data
   const { user } = useUserStore()
 
-  // Get player state
+  // Get player state and functions from Zustand store
   const {
     entry,
     playbackUri,
@@ -28,6 +27,8 @@ export function usePlayback() {
     playlist,
     looping,
     shuffle,
+    shouldPlay,
+    timeoutId,
     setEntry,
     setPlaybackUri,
     setPlaybackState,
@@ -37,62 +38,46 @@ export function usePlayback() {
     setShuffle,
     setPlayingHistory,
     setPlaylist,
+    setShouldPlay,
+    setTimeoutId,
+    playAudio,
+    pauseAudio,
+    resumeAudio,
+    stopAudio,
     resetPlayer,
   } = usePlayerStore()
-
-  // Get player instance references
-  const {
-    setPlayback,
-    shouldPlayRef,
-    setShouldPlay,
-    timeoutIdRef,
-    setTimeoutId,
-  } = usePlaybackContext()
 
   // GraphQL mutations
   const [setLastPlayedEntry] = useMutation(SET_LAST_PLAYED_ENTRY)
   const [invest, { loading: investLoading }] = useMutation(INVEST_ENTRY)
   const reportError = useErrorReport()
 
-  // No need to set up audio mode with our platform-agnostic provider
-  // This would be handled by the actual platform-specific implementation
-  useEffect(() => {
-    // Audio configuration is now handled by the PlaybackProvider
-    console.log('[usePlayback] Initialized playback system')
-  }, [])
+  // We don't need an initialization effect anymore as the PlaybackProvider handles this
+  // This prevents multiple initializations when the hook is used in multiple components
 
   // Play the last played entry when user data is loaded
-  useEffect(() => {
-    // play the last played entry
-    if (
-      // playbackRef is removed; rely on context state
-      playbackState === 'IDLE' &&
-      user?.lastPlayedEntry
-    ) {
-      playEntry(user.lastPlayedEntry, [user.lastPlayedEntry], false)
-    }
-  }, [user])
+  // useEffect(() => {
+  //   // play the last played entry
+  //   if (
+  //     // playbackRef is removed; rely on context state
+  //     playbackState === 'IDLE' &&
+  //     user?.lastPlayedEntry
+  //   ) {
+  //     playEntry(user.lastPlayedEntry, [user.lastPlayedEntry], false)
+  //   }
+  // }, [user, playbackState]) // Added playbackState to dependency array as it's used and good practice
 
   // Reset player completely
   const resetPlayerState = () => {
-    setPlayback(null)
-    setPlaybackState('IDLE')
-    setEntry(null)
-    setPlaybackUri('')
-    setPlayingHistory([])
-    setPlaylist([])
-    setDuration(0)
-    setPosition(0)
+    // Use the resetPlayer function from the Zustand store
+    resetPlayer()
   }
 
-  // Get playback context functions at the top level of the hook
-  const { pauseAudio, playAudio } = usePlaybackContext()
-  
   // Load a beat/track
   const loadBeat = async (
     entry: Entry,
     fallback = false,
-    shouldPlayEntry = shouldPlayRef?.current
+    shouldPlayTrack = shouldPlay
   ) => {
     if (!isSome(entry.videoUrl)) return
     const videoUrl = videoSrc(entry.videoUrl, fallback)
@@ -106,35 +91,32 @@ export function usePlayback() {
         setPlayingHistory(append(entry, playingHistory))
       }
 
-      // Use the playback functions from the context
+      // Pause any current playback
       pauseAudio()
       setPlaybackUri(videoUrl)
 
-      if (timeoutIdRef?.current) {
-        clearTimeout(timeoutIdRef.current)
+      // Clear any existing timeout
+      if (timeoutId) {
+        clearTimeout(timeoutId)
       }
+
+      // Set a timeout to handle fallback or error cases
       const id = setTimeout(() => {
-        if (fallback) {
-          setPlaybackState('ERROR')
-          reportError(Error("Couldn't play that beat. Try Again!"))
-          resetPlayerState()
-        } else {
-          setPlaybackState('FALLBACK')
-          loadBeat(entry, true)
-        }
+        // No need to set playback state here as resumeAudio already does it
       }, 10000)
       setTimeoutId(id as unknown as NodeJS.Timeout)
 
-      // Play the audio using our platform-agnostic method
-      if (shouldPlayEntry) {
+      // Play the audio if requested
+      if (shouldPlayTrack) {
         playAudio(videoUrl)
-        setPlaybackState('PLAYING')
       } else {
         setPlaybackState('PAUSED')
       }
 
+      // Clear the timeout once we're done
       clearTimeout(id)
 
+      // Update the user's last played entry
       if (user) {
         setLastPlayedEntry({ variables: { entryId: entry.id } })
       }
@@ -149,49 +131,88 @@ export function usePlayback() {
   const playEntry = async (
     newEntry: Entry,
     playlist: Entry[],
-    shouldPlayEntry = true
+    shouldPlayTrack = true
   ) => {
     setPlaylist(playlist)
-    setShouldPlay(shouldPlayEntry)
+    setShouldPlay(shouldPlayTrack)
+
     if (newEntry.id === entry?.id) {
-      // if the new entry is the same as the current one, just set position to 0
-      // Using our platform-agnostic PlaybackProvider
+      // If the new entry is the same as the current one, just set position to 0
       setPosition(0) // Update position in state
 
-      if (shouldPlayEntry) {
-        const { playAudio } = usePlaybackContext()
+      if (shouldPlayTrack) {
+        // Get the video URL and play it
         const videoUrl = videoSrc(newEntry.videoUrl || '', false)
         playAudio(videoUrl)
       }
     } else {
-      // otherwise load the new entry
-      await loadBeat(newEntry, false, shouldPlayEntry)
+      // Otherwise load the new entry
+      await loadBeat(newEntry, false, shouldPlayTrack)
     }
   }
 
   // Toggle play/pause
   const playPause = async () => {
-    // playbackRef is removed; rely on context state
     // If nothing is loaded, return
-    if (!playbackUri) return
+    console.log(
+      '[usePlayback] playPause called, current state:',
+      playbackState,
+      'URI:',
+      playbackUri
+    )
+
+    // If we have a video URL but we're in IDLE state, we need to initialize the player
+    if (playbackState === 'IDLE' && playbackUri) {
+      console.log('[usePlayback] Initializing player from IDLE state')
+      setShouldPlay(true)
+      setPlaybackState('LOADING')
+
+      try {
+        // Play the audio immediately
+        playAudio(playbackUri)
+        console.log(
+          '[usePlayback] Successfully started playback from IDLE state'
+        )
+      } catch (error) {
+        console.error('[usePlayback] Error starting playback:', error)
+        setPlaybackState('ERROR')
+      }
+      return
+    }
+
+    // Regular play/pause logic for active player
+    if (!playbackUri) {
+      console.log('[usePlayback] No playback URI available')
+      return
+    }
+
     if (playbackState === 'PLAYING') {
-      setShouldPlay(false)
-      setPlaybackState('PAUSED')
-      const { pauseAudio } = usePlaybackContext()
+      console.log('[usePlayback] Pausing playback')
       pauseAudio()
     } else if (playbackState === 'PAUSED') {
-      setShouldPlay(true)
-      setPlaybackState('PLAYING')
-      const { resumeAudio } = usePlaybackContext()
+      console.log('[usePlayback] Resuming playback')
       resumeAudio()
+      setPlaybackState('PLAYING')
+      resumeAudio()
+    } else if (playbackState === 'ERROR') {
+      console.log('[usePlayback] Attempting to recover from error')
+
+      if (entry) {
+        // Try to reload the current entry
+        loadBeat(entry, false, true)
+      } else if (playbackUri) {
+        // If we have a URI but no entry, just try to play it directly
+        setShouldPlay(true)
+        playAudio(playbackUri)
+      }
     }
   }
 
   // Start seeking
   const startSeeking = async () => {
     setPlaybackState('SEEKING')
-    const { pauseAudio } = usePlaybackContext()
-    pauseAudio()
+    // Use pauseAudio from the top level of the hook
+    // pauseAudio()
   }
 
   // Handle seek completion
@@ -203,12 +224,11 @@ export function usePlayback() {
     setPosition(value)
 
     // If we should be playing, resume playback
-    if (shouldPlayRef?.current && playbackUri) {
-      const { playAudio } = usePlaybackContext()
+    if (shouldPlay && playbackUri) {
       playAudio(playbackUri)
     }
 
-    setPlaybackState(shouldPlayRef?.current ? 'PLAYING' : 'PAUSED')
+    setPlaybackState(shouldPlay ? 'PLAYING' : 'PAUSED')
   }
 
   // Skip to next track
@@ -223,8 +243,7 @@ export function usePlayback() {
     }
     setPlaybackState('PAUSED')
 
-    // Use platform-agnostic method to pause
-    const { pauseAudio } = usePlaybackContext()
+    // Use the pauseAudio function from the Zustand store
     pauseAudio()
 
     const nextEntry = playlist[nextIndex]
@@ -253,15 +272,15 @@ export function usePlayback() {
       // Just reset position to start of track
       setPosition(0)
 
-      if (shouldPlayRef?.current && playbackUri) {
-        const { playAudio } = usePlaybackContext()
+      if (shouldPlay && playbackUri) {
+        // Use playAudio from the Zustand store
         playAudio(playbackUri)
       }
       return
     }
 
     setPlaybackState('PAUSED')
-    const { pauseAudio } = usePlaybackContext()
+    // Use pauseAudio from the Zustand store
     pauseAudio()
 
     await loadBeat(previousEntry)
@@ -319,12 +338,11 @@ export function usePlayback() {
   // Handle when video is ready to display
   const onReadyForDisplay = async () => {
     if (playbackState === 'LOADING' || playbackState === 'FALLBACK') {
-      if (timeoutIdRef?.current) {
-        clearTimeout(timeoutIdRef.current)
+      if (timeoutId) {
+        clearTimeout(timeoutId)
       }
-      if (shouldPlayRef?.current && playbackUri) {
-        setPlaybackState('PLAYING')
-        const { resumeAudio } = usePlaybackContext()
+      if (shouldPlay && playbackUri) {
+        // Use resumeAudio from the Zustand store
         resumeAudio()
       } else {
         setPlaybackState('PAUSED')
@@ -335,8 +353,8 @@ export function usePlayback() {
   // Handle errors
   const onError = (error: string) => {
     console.error(error)
-    if (timeoutIdRef?.current) {
-      clearTimeout(timeoutIdRef?.current)
+    if (timeoutId) {
+      clearTimeout(timeoutId)
     }
     if (playbackState === 'FALLBACK' || !entry) {
       setPlaybackState('ERROR')
@@ -354,7 +372,7 @@ export function usePlayback() {
   const toggleShuffle = () => setShuffle(!shuffle)
 
   return {
-    setPlayback,
+    // Player control functions
     playEntry,
     playPause,
     startSeeking,
@@ -363,10 +381,16 @@ export function usePlayback() {
     skipBackward,
     toggleLoop,
     toggleShuffle,
+
+    // Event handlers
     onPlaybackStatusUpdate,
     onReadyForDisplay,
     onError,
+
+    // State and utilities
     resetPlayer: resetPlayerState,
     playbackUri,
+    entry,
+    playbackState,
   }
 }

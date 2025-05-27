@@ -4,7 +4,6 @@ import { SolitoImageProvider } from 'solito/image'
 import { ToastProvider } from './toast'
 import { AuthProvider } from './auth'
 import { GraphQLProvider } from './apollo'
-import { PlaybackProvider } from './playback'
 
 interface Props {
   children: React.ReactNode
@@ -16,11 +15,9 @@ export function Provider({ children }: Props) {
       <SafeArea>
         <AuthProvider>
           <ToastProvider>
-            <PlaybackProvider>
-              <SolitoImageProvider nextJsURL="https://skyhitz.io">
-                {children}
-              </SolitoImageProvider>
-            </PlaybackProvider>
+            <SolitoImageProvider nextJsURL="https://skyhitz.io">
+              {children}
+            </SolitoImageProvider>
           </ToastProvider>
         </AuthProvider>
       </SafeArea>

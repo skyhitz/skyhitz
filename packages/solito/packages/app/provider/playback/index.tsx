@@ -47,8 +47,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const shouldPlayRef = useRef<boolean>(false)
   const timeoutIdRef = useRef<NodeJS.Timeout | null>(null)
   
-  // Audio control functions - these would be connected to actual implementations
-  // in platform-specific code
+  // Audio control functions that actually control the video player through the ref
   const playAudio = (uri: string) => {
     console.log(`[PlaybackProvider] Playing audio: ${uri}`)
     // Update state
@@ -56,8 +55,35 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     setIsPlaying(true)
     shouldPlayRef.current = true
     
-    // This is where you would connect to platform-specific audio player
-    // For now, we just update the state
+    // Try to control the player directly if it exists
+    if (playbackRef.current) {
+      try {
+        // Check if we have a ReactPlayer instance (web)
+        const isReactPlayer = Platform.OS === 'web' && 
+          playbackRef.current && 
+          typeof playbackRef.current === 'object' && 
+          'getInternalPlayer' in playbackRef.current;
+        
+        if (isReactPlayer) {
+          // ReactPlayer is controlled through props, so we don't need to call methods
+          // The VideoPlayer component will respond to the isPlaying state change
+          console.log('[PlaybackProvider] ReactPlayer will auto-play based on props');
+        } else {
+          // Native Video component control
+          console.log('[PlaybackProvider] Controlling native Video component');
+          // If the player has a setStatusAsync method (our Video component)
+          if (typeof playbackRef.current.setStatusAsync === 'function') {
+            playbackRef.current.setStatusAsync({ shouldPlay: true });
+          }
+          // If the player has a playAsync method (our Video component)
+          else if (typeof playbackRef.current.playAsync === 'function') {
+            playbackRef.current.playAsync();
+          }
+        }
+      } catch (e) {
+        console.error('[PlaybackProvider] Error playing audio:', e);
+      }
+    }
   }
   
   const pauseAudio = () => {
@@ -65,7 +91,35 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     setIsPlaying(false)
     shouldPlayRef.current = false
     
-    // This is where you would pause the platform-specific audio player
+    // Try to control the player directly if it exists
+    if (playbackRef.current) {
+      try {
+        // Check if we have a ReactPlayer instance (web)
+        const isReactPlayer = Platform.OS === 'web' && 
+          playbackRef.current && 
+          typeof playbackRef.current === 'object' && 
+          'getInternalPlayer' in playbackRef.current;
+        
+        if (isReactPlayer) {
+          // ReactPlayer is controlled through props, so we don't need to call methods
+          // The VideoPlayer component will respond to the isPlaying state change
+          console.log('[PlaybackProvider] ReactPlayer will pause based on props');
+        } else {
+          // Native Video component control
+          console.log('[PlaybackProvider] Controlling native Video component');
+          // If the player has a setStatusAsync method (our Video component)
+          if (typeof playbackRef.current.setStatusAsync === 'function') {
+            playbackRef.current.setStatusAsync({ shouldPlay: false });
+          }
+          // If the player has a pauseAsync method (our Video component)
+          else if (typeof playbackRef.current.pauseAsync === 'function') {
+            playbackRef.current.pauseAsync();
+          }
+        }
+      } catch (e) {
+        console.error('[PlaybackProvider] Error pausing audio:', e);
+      }
+    }
   }
   
   const resumeAudio = () => {
@@ -73,7 +127,21 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     setIsPlaying(true)
     shouldPlayRef.current = true
     
-    // This is where you would resume the platform-specific audio player
+    // Try to control the player directly if it exists
+    if (playbackRef.current) {
+      try {
+        // If the player has a setStatusAsync method (our Video component)
+        if (typeof playbackRef.current.setStatusAsync === 'function') {
+          playbackRef.current.setStatusAsync({ shouldPlay: true });
+        }
+        // If the player has a playAsync method (our Video component)
+        else if (typeof playbackRef.current.playAsync === 'function') {
+          playbackRef.current.playAsync();
+        }
+      } catch (e) {
+        console.error('[PlaybackProvider] Error resuming audio:', e);
+      }
+    }
   }
   
   const stopAudio = () => {
@@ -81,7 +149,25 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     setIsPlaying(false)
     shouldPlayRef.current = false
     
-    // This is where you would stop the platform-specific audio player
+    // Try to control the player directly if it exists
+    if (playbackRef.current) {
+      try {
+        // If the player has a setStatusAsync method (our Video component)
+        if (typeof playbackRef.current.setStatusAsync === 'function') {
+          playbackRef.current.setStatusAsync({ shouldPlay: false, positionMillis: 0 });
+        }
+        // If the player has a pauseAsync method (our Video component)
+        else if (typeof playbackRef.current.pauseAsync === 'function') {
+          playbackRef.current.pauseAsync();
+          // Try to seek to beginning if possible
+          if (typeof playbackRef.current.setStatusAsync === 'function') {
+            playbackRef.current.setStatusAsync({ positionMillis: 0 });
+          }
+        }
+      } catch (e) {
+        console.error('[PlaybackProvider] Error stopping audio:', e);
+      }
+    }
   }
   
   const setVolume = (newVolume: number) => {
@@ -90,13 +176,76 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     console.log(`[PlaybackProvider] Setting volume: ${safeVolume}`)
     setVolumeState(safeVolume)
     
-    // This is where you would set volume on the platform-specific audio player
+    // Try to control the player's volume directly if it exists
+    if (playbackRef.current) {
+      try {
+        // If the player has a setStatusAsync method (our Video component)
+        if (typeof playbackRef.current.setStatusAsync === 'function') {
+          playbackRef.current.setStatusAsync({ volume: safeVolume });
+        }
+      } catch (e) {
+        console.error('[PlaybackProvider] Error setting volume:', e);
+      }
+    }
   }
   
-  // Legacy setter functions for backward compatibility
+  // Setter function for the player reference
   const setPlayback = (playback: GenericPlayer | null) => {
-    if (playback) {
-      playbackRef.current = playback
+    console.log('[PlaybackProvider] setPlayback called with player:', !!playback);
+    
+    // If we're setting to null (cleanup), update the ref and return
+    if (!playback) {
+      playbackRef.current = null;
+      return;
+    }
+    
+    // If the reference is the same, do nothing more
+    if (playbackRef.current === playback) {
+      console.log('[PlaybackProvider] Player reference unchanged');
+      return;
+    }
+    
+    // Store the player reference
+    playbackRef.current = playback;
+    console.log('[PlaybackProvider] Player reference updated');
+    
+    // Check if we have a ReactPlayer instance (web)
+    const isReactPlayer = Platform.OS === 'web' && 
+      playback && 
+      typeof playback === 'object' && 
+      'getInternalPlayer' in playback;
+    
+    // Only attempt to auto-play if we're explicitly in a playing state
+    // This prevents unwanted auto-play when the component is just mounting
+    if (isPlaying && currentUri) {
+      console.log('[PlaybackProvider] Auto-playing newly set player');
+      
+      // Use setTimeout to ensure the player is fully initialized
+      setTimeout(() => {
+        // Make sure the ref is still valid when the timeout fires
+        if (!playbackRef.current) return;
+        
+        try {
+          if (isReactPlayer) {
+            // ReactPlayer specific control
+            console.log('[PlaybackProvider] Controlling ReactPlayer');
+            // No need to do anything as ReactPlayer will auto-play based on its props
+          } else {
+            // Native Video component control
+            console.log('[PlaybackProvider] Controlling native Video component');
+            // If the player has a setStatusAsync method (our Video component)
+            if (typeof playbackRef.current.setStatusAsync === 'function') {
+              playbackRef.current.setStatusAsync({ shouldPlay: true });
+            }
+            // If the player has a playAsync method (our Video component)
+            else if (typeof playbackRef.current.playAsync === 'function') {
+              playbackRef.current.playAsync();
+            }
+          }
+        } catch (e) {
+          console.error('[PlaybackProvider] Error auto-playing newly set player:', e);
+        }
+      }, 100);
     }
   }
   
