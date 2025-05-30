@@ -5,7 +5,6 @@
  */
 import { View } from 'react-native'
 import { Slider } from 'app/design/slider'
-import { usePlayback } from 'app/hooks/usePlayback'
 import { P } from 'app/design/typography'
 import { usePlayerStore } from 'app/state/player'
 
@@ -22,25 +21,42 @@ const formatSeconds = (seconds: number) => {
 }
 
 export function PlayerSlider({ className = '' }: Props) {
-  const { position, duration } = usePlayerStore()
-  const { startSeeking, onSeekCompleted } = usePlayback()
+  const {
+    position,
+    positionProgress,
+    duration,
+    setSeeking,
+    seekTo,
+    setPositionProgress,
+  } = usePlayerStore()
 
-  const positionSeconds = position / 1000
-  const durationSeconds = duration / 1000
+  const handleStartSeeking = () => {
+    setSeeking()
+  }
+
+  const handleSeekChange = (value: number) => {
+    setPositionProgress(value)
+  }
+
+  const handleSeekCompleted = (value: number) => {
+    console.log('Seek completed:', value)
+    seekTo(value)
+  }
 
   return (
     <View
       className={`flex flex-row items-center justify-between px-3 ${className}`}
     >
-      <P className="text-xs mx-2">{formatSeconds(positionSeconds)}</P>
+      <P className="text-xs mx-2">{formatSeconds(position)}</P>
       <Slider
         minimumValue={0}
-        maximumValue={duration || 1}
-        value={position}
-        onSlidingStart={startSeeking}
-        onSlidingComplete={onSeekCompleted}
+        maximumValue={1}
+        value={positionProgress}
+        onSlidingStart={handleStartSeeking}
+        onSlidingComplete={handleSeekCompleted}
+        onValueChange={handleSeekChange}
       />
-      <P className="text-xs mx-2">{formatSeconds(durationSeconds)}</P>
+      <P className="text-xs mx-2">{formatSeconds(duration)}</P>
     </View>
   )
 }

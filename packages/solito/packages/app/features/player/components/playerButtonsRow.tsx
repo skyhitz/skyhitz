@@ -12,7 +12,7 @@ import Shuffle from 'app/ui/icons/shuffle'
 import Repeat from 'app/ui/icons/repeat'
 import { usePlayback } from 'app/hooks/usePlayback'
 import { ActivityIndicator } from 'app/design/typography'
-import { usePlayerStore } from 'app/state/player'
+import { usePlayerStore, PlaybackState } from 'app/state/player'
 
 type Props = {
   size?: 'small' | 'large'
@@ -23,7 +23,7 @@ export function PlayerButtonsRow({ size = 'small', className = '' }: Props) {
   const { skipBackward, skipForward, playPause, toggleLoop, toggleShuffle } =
     usePlayback()
 
-  const { playbackState, looping, shuffle } = usePlayerStore()
+  const { playbackState, loop, shuffle, shouldPlay } = usePlayerStore()
 
   const iconSize = size === 'large' ? 36 : 22
   const shuffleSize = size === 'large' ? 20 : 18
@@ -45,11 +45,12 @@ export function PlayerButtonsRow({ size = 'small', className = '' }: Props) {
         />
       </Pressable>
 
-      {playbackState === 'LOADING' || playbackState === 'FALLBACK' ? (
+      {playbackState === PlaybackState.LOADING ? (
         <ActivityIndicator className="md:mx-2" />
       ) : (
         <Pressable onPress={playPause} className="md:mx-2">
-          {playbackState === 'PLAYING' ? (
+          {playbackState === PlaybackState.PLAYING ||
+          (playbackState === PlaybackState.SEEKING && shouldPlay) ? (
             <PauseIcon size={iconSize} className="text-[--text-color]" />
           ) : (
             <PlayIcon size={iconSize} className="text-[--text-color]" />
@@ -64,7 +65,7 @@ export function PlayerButtonsRow({ size = 'small', className = '' }: Props) {
         />
       </Pressable>
       <Pressable
-        className={`ml-4 ${looping ? 'text-primary' : 'text-[--text-color]'}`}
+        className={`ml-4 ${loop ? 'text-primary' : 'text-[--text-color]'}`}
         onPress={toggleLoop}
       >
         <Repeat size={shuffleSize} />
