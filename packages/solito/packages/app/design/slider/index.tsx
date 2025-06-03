@@ -19,6 +19,7 @@ export const Slider = ({
   minimumTrackTintColor = '#19aafe',
   maximumTrackTintColor = '#d3d3d3',
   thumbTintColor = '#19aafe',
+  disabled = false,
   style,
 }: {
   onValueChange?: (val: number) => void
@@ -31,6 +32,7 @@ export const Slider = ({
   minimumTrackTintColor?: string
   maximumTrackTintColor?: string
   thumbTintColor?: string
+  disabled?: boolean
   style?: any
 }) => {
   const [sliderWidth, setSliderWidth] = useState(0)
@@ -78,16 +80,19 @@ export const Slider = ({
   }
 
   const panResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
+    onStartShouldSetPanResponder: () => !disabled,
     onPanResponderGrant: () => {
+      if (disabled) return
       setProgressSync(false)
       const value = calculateValue(sliderPosition)
       onSlidingStart && onSlidingStart(value)
     },
     onPanResponderMove: (event, gestureState) => {
+      if (disabled) return
       updatePosition(gestureState.moveX - (screenWidth - sliderWidth) / 2)
     },
     onPanResponderRelease: () => {
+      if (disabled) return
       const value = calculateValue(sliderPosition)
       onSlidingComplete && onSlidingComplete(value)
       setProgressSync(true)
@@ -96,6 +101,8 @@ export const Slider = ({
   })
 
   const handleBarPress = (event: any) => {
+    if (disabled) return
+
     let touchPosition
     if (event.nativeEvent.locationX !== undefined) {
       // For mobile
@@ -124,6 +131,7 @@ export const Slider = ({
       onPress={handleBarPress}
       style={style}
       className={'flex justify-center items-center flex-grow h-10'}
+      disabled={disabled}
     >
       <View className="relative w-full rounded-full -top-[0.175rem]">
         <View
@@ -134,6 +142,7 @@ export const Slider = ({
             backgroundColor: maximumTrackTintColor,
             width: sliderWidth,
             borderRadius: 9999,
+            opacity: disabled ? 0.5 : 1,
           }}
         />
         <View
@@ -144,6 +153,7 @@ export const Slider = ({
             backgroundColor: minimumTrackTintColor,
             width: sliderPosition,
             borderRadius: 9999,
+            opacity: disabled ? 0.5 : 1,
           }}
         />
         <MotiView

@@ -28,6 +28,7 @@ export function PlayerSlider({ className = '' }: Props) {
     setSeeking,
     seekTo,
     setPositionProgress,
+    isReady,
   } = usePlayerStore()
 
   const handleStartSeeking = () => {
@@ -55,6 +56,7 @@ export function PlayerSlider({ className = '' }: Props) {
         onSlidingStart={handleStartSeeking}
         onSlidingComplete={handleSeekCompleted}
         onValueChange={handleSeekChange}
+        disabled={!isReady}
       />
       <P className="text-xs mx-2">{formatSeconds(duration)}</P>
     </View>

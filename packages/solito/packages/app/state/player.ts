@@ -158,6 +158,7 @@ export interface PlayerState {
   shouldPlay: boolean
 
   shuffle: boolean
+  isReady: boolean
 
   // Actions
   setEntry: (entry: Entry | null) => void
@@ -184,6 +185,7 @@ export interface PlayerState {
   setError: (error: string | null) => void
   setDuration: () => void
   setSeeking: () => void
+  setIsReady: (isReady: boolean) => void
 
   // Reset
   reset: () => void
@@ -209,6 +211,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   playerRef: null,
   playerAdapter: null,
   shouldPlay: false,
+  isReady: false,
 
   // Basic setters
   setEntry: (entry) => set({ entry }),
@@ -372,6 +375,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     set({ playbackState })
   },
 
+  setIsReady: (isReady: boolean) => {
+    set({ isReady })
+  },
+
   setError: (error: string | null) => {
     if (error) {
       set({ playbackState: PlaybackState.ERROR })
@@ -432,6 +439,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       playlist: [],
       playerRef: null,
       playerAdapter: null,
+      isReady: false,
     })
   },
 }))

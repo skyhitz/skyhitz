@@ -21,20 +21,20 @@ const ReactPlayer = dynamic(() => import('react-player/lazy'), {
 function Poster() {
   const { entry } = usePlayerStore()
 
-  if (!entry?.imageUrl) return null
-
-  const posterUri = imageUrlMedium(entry.imageUrl)
+  const posterUri = imageUrlMedium(entry?.imageUrl || '')
 
   return (
-    <View className="absolute aspect-square max-h-[50vh] w-screen items-center justify-center md:max-w-[3.5rem] md:rounded-md">
-      <SolitoImage
-        fill
-        src={posterUri}
-        className="aspect-square md:rounded-md"
-        alt="player"
-        contentFit="cover"
-        sizes="(max-width: 768px) 100vw"
-      />
+    <View className="absolute aspect-square max-h-[50vh] w-screen items-center justify-center md:max-w-[3.5rem] md:rounded-md md:mx-4">
+      {!!entry?.imageUrl && (
+        <SolitoImage
+          fill
+          src={posterUri}
+          className="aspect-square md:rounded-md"
+          alt="player"
+          contentFit="cover"
+          sizes="(max-width: 768px) 100vw"
+        />
+      )}
     </View>
   )
 }
@@ -42,29 +42,27 @@ function Poster() {
 // Web Video Player Component
 function WebVideoPlayer() {
   const playerRef = useRef<any>(null)
-  const [isReady, setIsReady] = useState(false)
 
   const {
     playbackUri,
-    playbackState,
     volume,
     muted,
     loop,
     playbackRate,
+    isReady,
     setPlayerRef,
     setProgress,
     setPlaybackState,
     // setError,
     setPosition,
     setDuration,
+    setIsReady,
   } = usePlayerStore()
 
   // Register player ref with store
   const handleRef = useCallback(
     (player: any) => {
       playerRef.current = player
-
-      console.log('ReactPlayer ref set', player)
       setPlayerRef(player)
     },
     [setPlayerRef]
@@ -74,8 +72,7 @@ function WebVideoPlayer() {
   const handleReady = useCallback(() => {
     console.log('ReactPlayer ready')
     setIsReady(true)
-    setPlaybackState(PlaybackState.PAUSED) // Ready but not playing yet
-  }, [setPlaybackState])
+  }, [setIsReady])
 
   const handlePlay = useCallback(() => {
     console.log('ReactPlayer started playing')
@@ -113,42 +110,46 @@ function WebVideoPlayer() {
     setPosition()
   }, [setPosition])
 
-  if (!playbackUri) {
-    return <Poster />
-  }
-
   return (
-    <View className="aspect-square max-h-[50vh] w-screen items-center justify-center md:max-w-[3.5rem] md:rounded-md">
-      <ReactPlayer
-        ref={handleRef}
-        url={playbackUri}
-        width="100%"
-        height="100%"
-        volume={muted ? 0 : volume}
-        muted={muted}
-        loop={loop}
-        playbackRate={playbackRate}
-        onLoadStart={() => console.log('onLoadStart')}
-        onStart={() => console.log('onStart')}
-        onReady={() => console.log('onReady')}
-        onPlay={handlePlay}
-        onPause={handlePause}
-        onEnded={handleEnded}
-        onError={(e) => console.log(e)}
-        onDurationChange={handleDurationChange}
-        onProgress={handleProgress}
-        onTimeUpdate={handleTimeUpdate}
-        config={{
-          file: {
-            forceHLS: true,
-            attributes: {
-              preload: 'metadata',
-            },
-          },
-        }}
-      />
+    <>
+      <View
+        className={`aspect-square max-h-[50vh] w-screen items-center justify-center md:max-w-[3.5rem] md:rounded-md md:mx-4 ${
+          isReady ? 'opacity-100' : 'opacity-0'
+        }`}
+      >
+        {!!playbackUri && (
+          <ReactPlayer
+            ref={handleRef}
+            url={playbackUri}
+            width="100%"
+            height="100%"
+            volume={muted ? 0 : volume}
+            muted={muted}
+            loop={loop}
+            playbackRate={playbackRate}
+            onLoadStart={() => console.log('onLoadStart')}
+            onStart={() => console.log('onStart')}
+            onReady={handleReady}
+            onPlay={handlePlay}
+            onPause={handlePause}
+            onEnded={handleEnded}
+            onError={(e) => console.log(e)}
+            onDurationChange={handleDurationChange}
+            onProgress={handleProgress}
+            onTimeUpdate={handleTimeUpdate}
+            config={{
+              file: {
+                forceHLS: true,
+                attributes: {
+                  preload: 'metadata',
+                },
+              },
+            }}
+          />
+        )}
+      </View>
       {!isReady && <Poster />}
-    </View>
+    </>
   )
 }
 
