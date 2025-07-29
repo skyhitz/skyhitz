@@ -1,3 +1,4 @@
+
 import { AlgoliaClient } from '../algolia/algolia';
 import { Entry } from '../util/types';
 
@@ -10,6 +11,7 @@ import tmp from 'tmp-promise';
 import ffmpeg from 'fluent-ffmpeg';
 // @ts-ignore
 import { S3Client, PutObjectCommand, HeadObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import mime from 'mime-types';
 
 async function main() {
   // Set up environment variables
@@ -71,6 +73,8 @@ async function main() {
 
   let mp4Count = 0;
   let hlsCount = 0;
+  let metaCount = 0;
+  let imageCount = 0;
 
   for (const entry of entries) {
     console.log(`Processing entry: ${entry.id}`);
@@ -185,9 +189,62 @@ async function main() {
       }
       hlsCount++;
 
-      // Optionally update Algolia (commented out as per user change)
-      // const newVideoUrl = `${publicBaseUrl}/${hash}/hls/index.m3u8`;
-      // console.log(`Updated entry ${entry.id} with new videoUrl: ${newVideoUrl}`);
+      // Handle metadata
+      const metaKey = `${hash}/index.json`;
+      const metaExists = await objectExists(metaKey);
+      if (!metaExists) {
+        const metaUrl = `${pinataGateway}/${hash}`;
+        let metaData;
+        try {
+          metaData = await downloadWithRetry(metaUrl);
+        } catch (error) {
+          console.error(`Failed to download metadata for ${entry.id}:`, error);
+          continue;
+        }
+        await s3.send(new PutObjectCommand({
+          Bucket: 'skyhitz',
+          Key: metaKey,
+          Body: metaData,
+          ContentType: 'application/json',
+        }));
+        console.log(`Uploaded metadata to ${metaKey}`);
+      } else {
+        console.log(`Metadata already exists: ${metaKey}`);
+      }
+      metaCount++;
+
+      // Handle image
+      const imageHash = entry.imageUrl.replace('ipfs://', '');
+      const imageUrl = `${pinataGateway}/${imageHash}`;
+      const imageExt = mime.extension((await axios.head(imageUrl)).headers['content-type']) || 'png';
+      const imageKey = `${hash}/index.${imageExt}`;
+      const imageExists = await objectExists(imageKey);
+      if (!imageExists) {
+        let imageData;
+        try {
+          imageData = await downloadWithRetry(imageUrl);
+        } catch (error) {
+          console.error(`Failed to download image for ${entry.id}:`, error);
+          continue;
+        }
+        await s3.send(new PutObjectCommand({
+          Bucket: 'skyhitz',
+          Key: imageKey,
+          Body: imageData,
+          ContentType: mime.lookup(imageExt) || 'image/png',
+        }));
+        console.log(`Uploaded image to ${imageKey}`);
+      } else {
+        console.log(`Image already exists: ${imageKey}`);
+      }
+      imageCount++;
+
+      // Optionally update Algolia
+      // await algolia.indices.entriesIndex.partialUpdateObject({
+      //   objectID: entry.id,
+      //   imageUrl: `${publicBaseUrl}/${hash}/index.${imageExt}`,
+      // });
+      // Note: id is the hash, if needing to update metadata URL, add similarly
     } catch (error) {
       console.error(`Error processing entry ${entry.id}:`, error);
     } finally {
@@ -197,6 +254,8 @@ async function main() {
 
   console.log(`MP4 entries: ${mp4Count}`);
   console.log(`HLS entries: ${hlsCount}`);
+  console.log(`Meta entries: ${metaCount}`);
+  console.log(`Image entries: ${imageCount}`);
   console.log(`Total Algolia entries: ${entries.length}`);
   console.log('Migration completed');
 }
