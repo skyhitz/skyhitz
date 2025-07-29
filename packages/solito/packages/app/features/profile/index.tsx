@@ -134,8 +134,8 @@ export function ProfileScreen({ user }: { user: User }) {
               {isClaimingEarnings ? (
                 <ActivityIndicator size="small" />
               ) : (
-                <P className="flex flex-row items-center font-bold font-unbounded text-[--text-color]">
-                  <Stellar size={18} className="mr-2" />
+                <P className="flex flex-row items-center font-bold font-unbounded text-[--text-color] gap-2">
+                  <Stellar size={18} />
                   {`${credits?.userCredits || 0} XLM`}
                 </P>
               )}
