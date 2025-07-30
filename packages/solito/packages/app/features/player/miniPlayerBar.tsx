@@ -10,7 +10,7 @@ import PauseIcon from 'app/ui/icons/pause'
 import { usePlayback } from 'app/hooks/usePlayback'
 import { ActivityIndicator, P } from 'app/design/typography'
 import { MotiView } from 'moti'
-import { usePlayerStore } from 'app/state/player'
+import { PlaybackState, usePlayerStore } from 'app/state/player'
 
 type Props = {
   onTogglePress?: () => void
@@ -34,7 +34,7 @@ export function MiniPlayerBar({ onTogglePress, animatedStyle }: Props) {
           </P>
         </View>
       </Pressable>
-      {playbackState === 'LOADING' || playbackState === 'FALLBACK' ? (
+      {playbackState === PlaybackState.LOADING ? (
         <ActivityIndicator />
       ) : (
         <Pressable onPress={playPause}>

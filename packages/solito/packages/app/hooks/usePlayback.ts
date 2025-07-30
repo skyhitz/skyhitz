@@ -9,7 +9,7 @@ import { append, findIndex, init, last } from 'ramda'
 import { videoSrc } from 'app/utils/entry'
 import { useErrorReport } from 'app/hooks/useErrorReport'
 import { useUserStore } from 'app/state/user'
-import { usePlayerStore } from 'app/state/player'
+import { PlaybackState, usePlayerStore } from 'app/state/player'
 import { INVEST_ENTRY, SET_LAST_PLAYED_ENTRY } from 'app/api/graphql/operations'
 import { useMutation } from '@apollo/client'
 
@@ -235,7 +235,7 @@ export function usePlayback() {
 
   // Start seeking
   const startSeeking = async () => {
-    setPlaybackState('SEEKING')
+    setPlaybackState(PlaybackState.SEEKING)
     // Use pauseAudio from the top level of the hook
     // pauseAudio()
   }

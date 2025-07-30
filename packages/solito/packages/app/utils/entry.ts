@@ -12,38 +12,45 @@ export function isIpfs(url?: string): boolean {
   return !!url?.startsWith(ipfsProtocol);
 }
 
-/**
- * Transforms an IPFS URL to an HTTP URL for video content
- * @param videoUrl Original video URL
- * @param useFallback Whether to use the fallback gateway
- * @returns Transformed URL that can be used in video players
- */
+const r2BaseUrl = 'https://r2.skyhitz.io';
+const useR2 = true; // Feature flag: set to false to fallback to Pinata
+
+// Updated videoSrc to use R2 with HLS preference
 export function videoSrc(videoUrl?: string, useFallback = false): string {
-  if (!videoUrl) {
-    return '';
+  if (!videoUrl) return '';
+
+  if (useR2 && isIpfs(videoUrl)) {
+    const hash = videoUrl.replace('ipfs://', '');
+    if (useFallback) {
+      return `${r2BaseUrl}/${hash}/mp4/index.mp4`;
+    }
+    return `${r2BaseUrl}/${hash}/hls/index.m3u8`;
   }
-  
-  if (isIpfs(videoUrl)) {
-    const gateway = useFallback ? fallbackGateway : pinataGateway;
-    return `${gateway}/${videoUrl.replace(ipfsProtocol, '')}`;
-  }
-  return videoUrl;
+
+  // Existing Pinata logic as fallback
+  const gateway = useFallback ? fallbackGateway : pinataGateway;
+  return `${gateway}/${videoUrl.replace(ipfsProtocol, '')}`;
 }
 
-/**
- * Transforms an IPFS URL to an HTTP URL for image content
- * @param imageUrl Original image URL
- * @returns Transformed URL that can be used in image components
- */
-export function imageSrc(imageUrl?: string): string {
-  if (!imageUrl) {
-    return 'https://skyhitz.io/icon.png';
+// New imageSrc for R2
+export function imageSrc(imageUrl?: string, ext = 'png'): string {
+  if (!imageUrl) return '';
+
+  if (useR2 && isIpfs(imageUrl)) {
+    const hash = imageUrl.replace('ipfs://', '');
+    return `${r2BaseUrl}/${hash}/index.${ext}`;
   }
-  
-  if (isIpfs(imageUrl)) {
-    return `${pinataGateway}/${imageUrl.replace(ipfsProtocol, '')}`;
+
+  // Existing Pinata logic
+  return `${pinataGateway}/${imageUrl.replace(ipfsProtocol, '')}`;
+}
+
+// New metaSrc for R2
+export function metaSrc(metaHash: string): string {
+  if (useR2) {
+    return `${r2BaseUrl}/${metaHash}/index.json`;
   }
-  return imageUrl;
+  return `${pinataGateway}/${metaHash}`;
 }
 
 /**
