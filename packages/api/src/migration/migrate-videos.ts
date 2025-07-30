@@ -10,7 +10,7 @@ import tmp from 'tmp-promise';
 // @ts-ignore
 import ffmpeg from 'fluent-ffmpeg';
 // @ts-ignore
-import { S3Client, PutObjectCommand, HeadObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, HeadObjectCommand, GetObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
 import mime from 'mime-types';
 
 async function main() {
@@ -79,10 +79,70 @@ async function main() {
   for (const entry of entries) {
     console.log(`Processing entry: ${entry.id}`);
     
-    const hash = entry.videoUrl.replace('ipfs://', '');
-    const videoUrl = `${pinataGateway}/${hash}`;
-    const mp4Key = `${hash}/mp4/index.mp4`;
-    const hlsKey = `${hash}/hls/index.m3u8`;
+    // Handle metadata (using entry.id as hash)
+    const metaHash = entry.id;
+    const metaKey = `${metaHash}/index.json`;
+    const metaExists = await objectExists(metaKey);
+    if (!metaExists) {
+      const metaUrl = `${pinataGateway}/${metaHash}`;
+      let metaData;
+      try {
+        metaData = await downloadWithRetry(metaUrl);
+      } catch (error) {
+        console.error(`Failed to download metadata for ${entry.id}:`, error);
+      }
+      if (metaData) {
+        await s3.send(new PutObjectCommand({
+          Bucket: 'skyhitz',
+          Key: metaKey,
+          Body: metaData,
+          ContentType: 'application/json',
+        }));
+        console.log(`Uploaded metadata to ${metaKey}`);
+      }
+    } else {
+      console.log(`Metadata already exists: ${metaKey}`);
+    }
+    metaCount++;
+
+    // Handle image (using entry.imageUrl hash)
+    const imageHash = entry.imageUrl.replace('ipfs://', '');
+    const imageUrl = `${pinataGateway}/${imageHash}`;
+    let imageExt = 'png';
+    try {
+      const headRes = await axios.head(imageUrl);
+      imageExt = mime.extension(headRes.headers['content-type']) || 'png';
+    } catch (error) {
+      console.error(`Failed to get image type for ${entry.id}:`, error);
+    }
+    const imageKey = `${imageHash}/index.${imageExt}`;
+    const imageExists = await objectExists(imageKey);
+    if (!imageExists) {
+      let imageData;
+      try {
+        imageData = await downloadWithRetry(imageUrl);
+      } catch (error) {
+        console.error(`Failed to download image for ${entry.id}:`, error);
+      }
+      if (imageData) {
+        await s3.send(new PutObjectCommand({
+          Bucket: 'skyhitz',
+          Key: imageKey,
+          Body: imageData,
+          ContentType: mime.lookup(imageExt) || 'image/png',
+        }));
+        console.log(`Uploaded image to ${imageKey}`);
+      }
+    } else {
+      console.log(`Image already exists: ${imageKey}`);
+    }
+    imageCount++;
+
+    // Handle video (using entry.videoUrl hash)
+    const videoHash = entry.videoUrl.replace('ipfs://', '');
+    const videoUrl = `${pinataGateway}/${videoHash}`;
+    const mp4Key = `${videoHash}/mp4/index.mp4`;
+    const hlsKey = `${videoHash}/hls/index.m3u8`;
 
     // Create temporary directory
     const { path: tempDir, cleanup } = await tmp.dir({ unsafeCleanup: true });
@@ -175,7 +235,7 @@ async function main() {
           const filePath = path.join(hlsDir, file);
           const fileBody = await fs.readFile(filePath);
           const contentType = file.endsWith('.m3u8') ? 'application/x-mpegURL' : 'video/MP2T';
-          const key = `${hash}/hls/${file}`;
+          const key = `${videoHash}/hls/${file}`;
           await s3.send(new PutObjectCommand({
             Bucket: 'skyhitz',
             Key: key,
@@ -188,63 +248,6 @@ async function main() {
         console.log(`HLS already exists: ${hlsKey}`);
       }
       hlsCount++;
-
-      // Handle metadata
-      const metaKey = `${hash}/index.json`;
-      const metaExists = await objectExists(metaKey);
-      if (!metaExists) {
-        const metaUrl = `${pinataGateway}/${hash}`;
-        let metaData;
-        try {
-          metaData = await downloadWithRetry(metaUrl);
-        } catch (error) {
-          console.error(`Failed to download metadata for ${entry.id}:`, error);
-          continue;
-        }
-        await s3.send(new PutObjectCommand({
-          Bucket: 'skyhitz',
-          Key: metaKey,
-          Body: metaData,
-          ContentType: 'application/json',
-        }));
-        console.log(`Uploaded metadata to ${metaKey}`);
-      } else {
-        console.log(`Metadata already exists: ${metaKey}`);
-      }
-      metaCount++;
-
-      // Handle image
-      const imageHash = entry.imageUrl.replace('ipfs://', '');
-      const imageUrl = `${pinataGateway}/${imageHash}`;
-      const imageExt = mime.extension((await axios.head(imageUrl)).headers['content-type']) || 'png';
-      const imageKey = `${hash}/index.${imageExt}`;
-      const imageExists = await objectExists(imageKey);
-      if (!imageExists) {
-        let imageData;
-        try {
-          imageData = await downloadWithRetry(imageUrl);
-        } catch (error) {
-          console.error(`Failed to download image for ${entry.id}:`, error);
-          continue;
-        }
-        await s3.send(new PutObjectCommand({
-          Bucket: 'skyhitz',
-          Key: imageKey,
-          Body: imageData,
-          ContentType: mime.lookup(imageExt) || 'image/png',
-        }));
-        console.log(`Uploaded image to ${imageKey}`);
-      } else {
-        console.log(`Image already exists: ${imageKey}`);
-      }
-      imageCount++;
-
-      // Optionally update Algolia
-      // await algolia.indices.entriesIndex.partialUpdateObject({
-      //   objectID: entry.id,
-      //   imageUrl: `${publicBaseUrl}/${hash}/index.${imageExt}`,
-      // });
-      // Note: id is the hash, if needing to update metadata URL, add similarly
     } catch (error) {
       console.error(`Error processing entry ${entry.id}:`, error);
     } finally {
@@ -258,6 +261,39 @@ async function main() {
   console.log(`Image entries: ${imageCount}`);
   console.log(`Total Algolia entries: ${entries.length}`);
   console.log('Migration completed');
+
+  // Cleanup phase: Remove misplaced index.json and index.* from video directories
+  console.log('Starting cleanup of misplaced files...');
+  let cleanedCount = 0;
+  for (const entry of entries) {
+    const videoHash = entry.videoUrl.replace('ipfs://', '');
+    const prefix = `${videoHash}/`;
+
+    // List objects in video directory
+    const listRes = await s3.send(new ListObjectsV2Command({
+      Bucket: 'skyhitz',
+      Prefix: prefix,
+      Delimiter: '/',
+    }));
+
+    const toDelete: { Key: string }[] = [];
+    listRes.Contents?.forEach(obj => {
+      const key = obj.Key;
+      if (key && (key.endsWith('index.json') || key.match(/index\.(png|jpg|jpeg|webp|gif)$/i)) && !key.includes('/mp4/') && !key.includes('/hls/')) {
+        toDelete.push({ Key: key });
+      }
+    });
+
+    if (toDelete.length > 0) {
+      await s3.send(new DeleteObjectsCommand({
+        Bucket: 'skyhitz',
+        Delete: { Objects: toDelete },
+      }));
+      cleanedCount += toDelete.length;
+      console.log(`Cleaned ${toDelete.length} misplaced files from ${videoHash}`);
+    }
+  }
+  console.log(`Cleanup completed: Removed ${cleanedCount} misplaced files.`);
 }
 
 main().catch(console.error); 
