@@ -36,6 +36,7 @@ export function BeatListEntry({
   const { playEntry } = usePlayback()
 
   const handlePress = () => {
+    console.log('[BeatListEntry] Pressed entry', entry.id)
     playEntry(entry, playlist)
   }
 

@@ -1,6 +1,75 @@
 /**
  * Unified Player State Management using Zustand
  * Handles both ReactPlayer (web) and expo-av (native) with a single interface
+ * 
+ * ## Architecture Overview
+ * 
+ * This player system uses a hybrid approach combining:
+ * 1. **Declarative state management** (Zustand store)
+ * 2. **Imperative player control** (direct calls to media APIs)
+ * 3. **Event-driven state synchronization** (media events update store)
+ * 
+ * ## Why Imperative Control?
+ * 
+ * We use imperative calls (like `playerAdapter.play()`) instead of purely declarative 
+ * props (like `playing={shouldPlay}`) for several critical reasons:
+ * 
+ * ### 1. Smooth Seeking Experience
+ * - When seeking, we need immediate response without React re-render delays
+ * - Direct `seekTo()` calls provide instant scrubbing feedback
+ * - Declarative seeking would cause stuttering during drag operations
+ * 
+ * ### 2. Reliable State Transitions
+ * - Media loading/buffering states are complex and async
+ * - Imperative calls let us control exact timing of play/pause
+ * - Avoids race conditions between React state and media API state
+ * 
+ * ### 3. Platform Consistency
+ * - Native media APIs (expo-av) are inherently imperative
+ * - Hybrid approach works consistently across web and native
+ * - Single interface abstracts platform differences
+ * 
+ * ## State Synchronization Strategy
+ * 
+ * ### The `setPosition` Function
+ * 
+ * We use `setPosition` (called from `handleTimeUpdate`) to keep our Zustand state
+ * synchronized with the actual media playback state:
+ * 
+ * **Why this approach?**
+ * - **Eliminates lag**: State updates immediately reflect actual playback
+ * - **Handles buffering**: Detects when media pauses due to buffering
+ * - **Catches edge cases**: Natural playback end, network issues, etc.
+ * - **User feedback**: UI shows real-time status, not stale state
+ * 
+ * **Conservative update logic:**
+ * - Only auto-transitions from LOADING → PLAYING (when media starts)
+ * - Only auto-pauses when media naturally stops during playback
+ * - Never overrides explicit user actions (manual pause/resume)
+ * 
+ * ### Event Flow Example
+ * 
+ * ```
+ * User clicks entry → playEntry() → loadEntry() → 
+ * 
+ * 1. Set state: LOADING, new URI
+ * 2. ReactPlayer starts loading
+ * 3. onReady → imperative play()
+ * 4. onTimeUpdate → setPosition() → LOADING → PLAYING (when time > 0)
+ * 5. UI shows playing state with accurate timing
+ * 
+ * User clicks pause → pause() →
+ * 
+ * 1. Set state: PAUSED
+ * 2. Imperative pause()
+ * 3. onPause confirms → state remains PAUSED
+ * 4. setPosition() respects manual state, doesn't override
+ * ```
+ * 
+ * This hybrid approach gives us the best of both worlds:
+ * - Reactive UI updates through Zustand
+ * - Smooth, responsive media control through imperative APIs
+ * - Accurate state that reflects actual playback reality
  */
 import { create } from 'zustand'
 import { Entry } from 'app/api/graphql/types'
@@ -254,17 +323,21 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (uri) {
       set({
         playbackUri: uri,
-        playbackState: PlaybackState.PLAYING,
+        playbackState: PlaybackState.LOADING,  // Correct initial state
         position: 0,
+        positionProgress: 0,
         shouldPlay: true,
       })
+      
+      // Don't call playerAdapter.play() here - wait for onReady
+      return
     }
 
-    set({ playbackState: PlaybackState.PLAYING, shouldPlay: true })
-
+    // Only call play if we're resuming existing content
     if (playerAdapter) {
       try {
         await playerAdapter.play()
+        console.log('started playing imperative')
       } catch (error) {
         console.error('Error playing:', error)
         set({ playbackState: PlaybackState.ERROR })
@@ -394,12 +467,40 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   setPosition: () => {
     const { playerAdapter, playbackState } = get()
 
-    if (!playerAdapter || playbackState === PlaybackState.SEEKING) return
+    // console.log('[setPosition] Called - playbackState:', playbackState)
+    
+    if (!playerAdapter || playbackState === PlaybackState.SEEKING) {
+      // console.log('[setPosition] Early return - no adapter or seeking')
+      return
+    }
+
+    const currentTime = playerAdapter.getCurrentTime()
+    const isPlaying = playerAdapter.isPlaying()
+    
+    // Only update playback state automatically in certain conditions:
+    // 1. When transitioning out of LOADING state (media starts playing)
+    // 2. When we're already in PLAYING state (to catch natural pauses/resumes)
+    // Don't override explicit state changes like manual pause/resume
+    let newPlaybackState = playbackState
+    
+    if (playbackState === PlaybackState.LOADING && currentTime > 0) {
+      // Transition from LOADING to PLAYING when media actually starts
+      newPlaybackState = PlaybackState.PLAYING
+    } else if (playbackState === PlaybackState.PLAYING && !isPlaying) {
+      // Only auto-pause if we were playing and media naturally stopped
+      newPlaybackState = PlaybackState.PAUSED
+    }
+    // Don't auto-change state in other cases (let explicit controls handle it)
+
+    // Debug logging
+    // if (newPlaybackState !== playbackState) {
+    //   console.log('[setPosition] State change:', playbackState, '->', newPlaybackState, 'currentTime:', currentTime, 'isPlaying:', isPlaying)
+    // }
 
     set({
-      position: playerAdapter.getCurrentTime(),
-      positionProgress:
-        playerAdapter.getCurrentTime() / playerAdapter.getDuration(),
+      position: currentTime,
+      positionProgress: currentTime / playerAdapter.getDuration(),
+      playbackState: newPlaybackState,
     })
   },
 

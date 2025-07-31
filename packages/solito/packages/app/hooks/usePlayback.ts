@@ -21,12 +21,10 @@ export function usePlayback() {
   // Get player state and functions from Zustand store
   const {
     entry,
-    playbackUri,
     playbackState,
     playingHistory,
     playlist,
     setEntry,
-    setPlaybackUri,
     setPlaybackState,
     play,
     pause,
@@ -38,25 +36,14 @@ export function usePlayback() {
   const [invest, { loading: investLoading }] = useMutation(INVEST_ENTRY)
   const reportError = useErrorReport()
 
-  // We don't need an initialization effect anymore as the PlaybackProvider handles this
-  // This prevents multiple initializations when the hook is used in multiple components
-
-  // Play the last played entry when user data is loaded
-  useEffect(() => {
-    if (playbackState === PlaybackState.IDLE && user?.lastPlayedEntry) {
-      playEntry(user.lastPlayedEntry, [user.lastPlayedEntry], false);
-    }
-  }, [user, playbackState]);
 
   // Load a beat/track
   const loadEntry = async (entry: Entry, fallback = false) => {
+    console.log('[usePlayback] Loading entry', entry.id)
     if (!entry.videoUrl) return;
 
     const videoUrl = videoSrc(entry.videoUrl, fallback);
-
     setEntry(entry);
-    setPlaybackUri(videoUrl);
-    setPlaybackState(PlaybackState.LOADING);
 
     if (user) {
       setLastPlayedEntry({ variables: { entryId: entry.id } });
@@ -68,6 +55,7 @@ export function usePlayback() {
 
   // Play an entry
   const playEntry = async (newEntry: Entry, playlist: Entry[], shouldPlayTrack = true) => {
+    console.log('[usePlayback] Playing entry', newEntry.id)
     usePlayerStore.getState().setPlaylist(playlist);
 
     if (newEntry.id === entry?.id) {
@@ -201,7 +189,6 @@ export function usePlayback() {
     onError,
 
     // State and utilities
-    playbackUri,
     entry,
     playbackState,
   }

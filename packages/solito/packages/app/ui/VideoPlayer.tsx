@@ -50,7 +50,8 @@ function WebVideoPlayer() {
     loop,
     playbackRate,
     isReady,
-    shouldPlay, // Add this
+    shouldPlay,
+    play,
     setPlayerRef,
     setProgress,
     setPlaybackState,
@@ -69,24 +70,16 @@ function WebVideoPlayer() {
     [setPlayerRef]
   )
 
-  // Player event handlers
-  const handleReady = useCallback(() => {
-    console.log('ReactPlayer ready')
-    setIsReady(true)
-  }, [setIsReady])
 
   const handlePlay = useCallback(() => {
-    console.log('ReactPlayer started playing')
-    setPlaybackState(PlaybackState.PLAYING)
+    // setPlaybackState(PlaybackState.PLAYING)
   }, [setPlaybackState])
 
   const handlePause = useCallback(() => {
-    console.log('ReactPlayer paused')
     setPlaybackState(PlaybackState.PAUSED)
   }, [setPlaybackState])
 
   const handleEnded = useCallback(() => {
-    console.log('ReactPlayer ended')
     setPlaybackState(PlaybackState.ENDED)
   }, [setPlaybackState])
 
@@ -106,10 +99,36 @@ function WebVideoPlayer() {
     setProgress()
   }, [setProgress])
 
+  const handleLoadedData = useCallback(() => {
+    console.log('ReactPlayer loaded data - ready to play')
+    // Don't set to PLAYING yet, wait for time updates
+  }, [])
+
   const handleTimeUpdate = useCallback(() => {
-    console.log('ReactPlayer time update')
-    setPosition()
+    // console.log('ReactPlayer time update')
+    setPosition() // This will now accurately set PLAYING when time progresses
   }, [setPosition])
+
+  const handleLoadStart = useCallback(() => {
+    // console.log('ReactPlayer load start')
+    setPlaybackState(PlaybackState.LOADING)
+  }, [])
+
+  const handleReady = useCallback(() => {
+    // console.log('ReactPlayer ready')
+    setIsReady(true)
+    
+    // If shouldPlay is true, start playing now that we're ready
+    if (shouldPlay) {
+      play()
+    }
+  }, [setIsReady, shouldPlay])
+
+
+  const handleOnStart = useCallback(() => {
+    // console.log('ReactPlayer onStart')
+    // setPlaybackState(PlaybackState.PLAYING)
+  }, [])
 
   return (
     <>
@@ -124,13 +143,12 @@ function WebVideoPlayer() {
             url={playbackUri}
             width="100%"
             height="100%"
-            playing={shouldPlay} // Add this
             volume={muted ? 0 : volume}
             muted={muted}
             loop={loop}
             playbackRate={playbackRate}
-            onLoadStart={() => console.log('onLoadStart')}
-            onStart={() => console.log('onStart')}
+            onLoadStart={handleLoadStart}
+            onStart={handleOnStart}
             onReady={handleReady}
             onPlay={handlePlay}
             onPause={handlePause}
@@ -139,6 +157,7 @@ function WebVideoPlayer() {
             onDurationChange={handleDurationChange}
             onProgress={handleProgress}
             onTimeUpdate={handleTimeUpdate}
+            onLoadedData={handleLoadedData}
             config={{
               file: {
                 forceHLS: true,
@@ -216,18 +235,6 @@ function NativeVideoPlayer() {
 
 // Main VideoPlayer component
 export function VideoPlayer() {
-  const { playbackState } = usePlayerStore()
-
-  // Show loading state
-  if (playbackState === 'LOADING') {
-    return (
-      <View className="aspect-square max-h-[50vh] w-screen items-center justify-center md:max-w-[3.5rem] md:rounded-md">
-        <Poster />
-        {/* Add loading indicator here */}
-      </View>
-    )
-  }
-
   // Render platform-specific player
   if (Platform.OS === 'web') {
     return <WebVideoPlayer />
