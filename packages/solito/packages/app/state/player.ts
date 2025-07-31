@@ -123,6 +123,7 @@ export enum PlaybackState {
   SEEKING = 'SEEKING', // User is seeking
   ERROR = 'ERROR', // Error occurred
   ENDED = 'ENDED', // Playback ended
+  FALLBACK = 'FALLBACK', // Add this
 }
 
 export interface PlayerState {
@@ -164,6 +165,8 @@ export interface PlayerState {
   setEntry: (entry: Entry | null) => void
   setPlaybackUri: (uri: string) => void
   setPlayerRef: (player: any) => void
+  setPlaylist: (playlist: Entry[]) => void
+  setPlayingHistory: (history: Entry[]) => void
 
   // Unified playback controls
   play: (uri?: string) => Promise<void>
@@ -216,6 +219,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   // Basic setters
   setEntry: (entry) => set({ entry }),
   setPlaybackUri: (playbackUri) => set({ playbackUri }),
+  setPlaylist: (playlist) => set({ playlist }),
+  setPlayingHistory: (playingHistory) => set({ playingHistory }),
 
   setPlayerRef: (player) => {
     if (!player) {

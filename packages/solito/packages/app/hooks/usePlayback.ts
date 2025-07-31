@@ -12,6 +12,7 @@ import { useUserStore } from 'app/state/user'
 import { PlaybackState, usePlayerStore } from 'app/state/player'
 import { INVEST_ENTRY, SET_LAST_PLAYED_ENTRY } from 'app/api/graphql/operations'
 import { useMutation } from '@apollo/client'
+import { useEffect } from 'react'
 
 export function usePlayback() {
   // Get user data
@@ -58,16 +59,11 @@ export function usePlayback() {
   // This prevents multiple initializations when the hook is used in multiple components
 
   // Play the last played entry when user data is loaded
-  // useEffect(() => {
-  //   // play the last played entry
-  //   if (
-  //     // playbackRef is removed; rely on context state
-  //     playbackState === 'IDLE' &&
-  //     user?.lastPlayedEntry
-  //   ) {
-  //     playEntry(user.lastPlayedEntry, [user.lastPlayedEntry], false)
-  //   }
-  // }, [user, playbackState]) // Added playbackState to dependency array as it's used and good practice
+  useEffect(() => {
+    if (playbackState === PlaybackState.IDLE && user?.lastPlayedEntry) {
+      playEntry(user.lastPlayedEntry, [user.lastPlayedEntry], false);
+    }
+  }, [user, playbackState]);
 
   // Reset player completely
   const resetPlayerState = () => {
@@ -76,80 +72,36 @@ export function usePlayback() {
   }
 
   // Load a beat/track
-  const loadBeat = async (
-    entry: Entry,
-    fallback = false
-    // shouldPlayTrack = shouldPlay
-  ) => {
-    if (!isSome(entry.videoUrl)) return
-    const videoUrl = videoSrc(entry.videoUrl, fallback)
+  const loadBeat = async (entry: Entry, fallback = false) => {
+    if (!entry.videoUrl) return;
 
-    // try {
-    //   if (!fallback) {
-    //     setPlaybackState('LOADING')
-    //     setEntry(entry)
-    //     setDuration(0)
-    //     setPosition(0)
-    //     setPlayingHistory(append(entry, playingHistory))
-    //   }
+    const videoUrl = videoSrc(entry.videoUrl, fallback);
 
-    //   // Pause any current playback
-    //   pauseAudio()
-    //   setPlaybackUri(videoUrl)
+    setEntry(entry);
+    setPlaybackUri(videoUrl);
+    setPlaybackState(PlaybackState.LOADING);
 
-    //   // Clear any existing timeout
-    //   if (timeoutId) {
-    //     clearTimeout(timeoutId)
-    //   }
+    if (user) {
+      setLastPlayedEntry({ variables: { entryId: entry.id } });
+    }
 
-    //   // Set a timeout to handle fallback or error cases
-    //   const id = setTimeout(() => {
-    //     // No need to set playback state here as resumeAudio already does it
-    //   }, 10000)
-    //   setTimeoutId(id as unknown as NodeJS.Timeout)
-
-    //   // Play the audio if requested
-    //   if (shouldPlayTrack) {
-    //     playAudio(videoUrl)
-    //   } else {
-    //     setPlaybackState('PAUSED')
-    //   }
-
-    //   // Clear the timeout once we're done
-    //   clearTimeout(id)
-
-    //   // Update the user's last played entry
-    //   if (user) {
-    //     setLastPlayedEntry({ variables: { entryId: entry.id } })
-    //   }
-    // } catch (error) {
-    //   console.error('[loadBeat] Error playing audio:', error)
-    //   setPlaybackState('ERROR')
-    //   reportError(Error("Couldn't play that beat. Try Again!"))
-    // }
-  }
+    // Call play with the URL, which will handle playing
+    await play(videoUrl);
+  };
 
   // Play an entry
-  const playEntry = async (
-    newEntry: Entry,
-    playlist: Entry[],
-    shouldPlayTrack = true
-  ) => {
-    // setPlaylist(playlist)
-    // setShouldPlay(shouldPlayTrack)
-    // if (newEntry.id === entry?.id) {
-    //   // If the new entry is the same as the current one, just set position to 0
-    //   setPosition(0) // Update position in state
-    //   if (shouldPlayTrack) {
-    //     // Get the video URL and play it
-    //     const videoUrl = videoSrc(newEntry.videoUrl || '', false)
-    //     playAudio(videoUrl)
-    //   }
-    // } else {
-    //   // Otherwise load the new entry
-    //   await loadBeat(newEntry, false, shouldPlayTrack)
-    // }
-  }
+  const playEntry = async (newEntry: Entry, playlist: Entry[], shouldPlayTrack = true) => {
+    usePlayerStore.getState().setPlaylist(playlist);
+
+    if (newEntry.id === entry?.id) {
+      usePlayerStore.getState().seekTo(0);
+      if (shouldPlayTrack) await resume();
+      return;
+    }
+
+    // Load the new entry
+    await loadBeat(newEntry, false);
+  };
 
   const isPlaying = playbackState === 'PLAYING'
   const isLoading = playbackState === 'LOADING'
@@ -163,13 +115,7 @@ export function usePlayback() {
     } else if (hasMedia) {
       console.log('[usePlayback] Resuming playback')
       await resume()
-    } else {
-      console.log('[usePlayback] No media loaded, cannot play/pause')
-      // Example: play a test video if no media is loaded
-      await play(
-        'https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8'
-      )
-    }
+    } 
   }
 
   // Toggle play/pause
@@ -235,83 +181,54 @@ export function usePlayback() {
 
   // Start seeking
   const startSeeking = async () => {
-    setPlaybackState(PlaybackState.SEEKING)
-    // Use pauseAudio from the top level of the hook
-    // pauseAudio()
-  }
+    setPlaybackState(PlaybackState.SEEKING);
+  };
 
   // Handle seek completion
-  const onSeekCompleted = async (value: number) => {
-    // setPosition(value)
-    // setPlaybackState('LOADING')
-    // // Update our state with the new position
-    // setPosition(value)
-    // // If we should be playing, resume playback
-    // if (shouldPlay && playbackUri) {
-    //   playAudio(playbackUri)
-    // }
-    // setPlaybackState(shouldPlay ? 'PLAYING' : 'PAUSED')
-  }
+  const onSeekCompleted = async (fraction: number) => {
+  };
 
   // Skip to next track
   const skipForward = async () => {
-    const currentIndex = findIndex((item) => item?.id === entry?.id, playlist)
-    if (currentIndex < 0) return
-    let nextIndex: number
-    // if (shuffle) {
-    //   nextIndex = Math.floor(Math.random() * playlist.length)
-    // } else {
-    //   nextIndex = (currentIndex + 1) % playlist.length
-    // }
-    // setPlaybackState('PAUSED')
+    const currentIndex = playlist.findIndex((item) => item?.id === entry?.id);
+    if (currentIndex < 0) return;
 
-    // // Use the pauseAudio function from the Zustand store
-    // pauseAudio()
+    const nextIndex = (currentIndex + 1) % playlist.length;
+    const nextEntry = playlist[nextIndex];
 
-    // const nextEntry = playlist[nextIndex]
-
-    // if (nextEntry) {
-    //   await loadBeat(nextEntry)
-    // }
-  }
+    if (nextEntry) {
+      await playEntry(nextEntry, playlist);
+    }
+  };
 
   // Handle track completion and investing
   const onDidJustFinish = async () => {
-    if (!entry || !user) return
+    if (!entry || !user) return;
 
     await invest({
       variables: {
         id: entry.id,
         amount: lumensToStroops(0.1),
       },
-    })
-  }
+    });
+  };
 
   // Skip to previous track
   const skipBackward = async () => {
-    const previousEntry = last(init(playingHistory))
-    // if (previousEntry === undefined) {
-    // Just reset position to start of track
-    //   setPosition(0)
-    //   if (shouldPlay && playbackUri) {
-    //     // Use playAudio from the Zustand store
-    //     playAudio(playbackUri)
-    //   }
-    //   return
-    // }
-    // setPlaybackState('PAUSED')
-    // // Use pauseAudio from the Zustand store
-    // pauseAudio()
-    // await loadBeat(previousEntry)
-    // setPlayingHistory(init(playingHistory))
-  }
+    const previousEntry = last(playingHistory.slice(0, -1));
+    if (!previousEntry) {
+      usePlayerStore.getState().seekTo(0);
+      return;
+    }
+
+    await playEntry(previousEntry, playlist);
+    usePlayerStore.getState().setPlayingHistory(playingHistory.slice(0, -1));
+  };
 
   // Toggle looping
-  const toggleLoop = async () => {
-    // In our platform-agnostic implementation, we just maintain loop state
-    // The actual implementation would be handled in the platform-specific code
-    // setLooping(!looping)
-  }
+  const toggleLoop = () => {
+    usePlayerStore.getState().toggleLoop();
+  };
 
   // Handle playback status updates with our platform-agnostic approach
   // Instead of relying on AVPlaybackStatus, we'll use our own status object
@@ -367,26 +284,23 @@ export function usePlayback() {
 
   // Handle errors
   const onError = (error: string) => {
-    console.error(error)
-    // if (timeoutId) {
-    //   clearTimeout(timeoutId)
-    // }
-    // if (playbackState === 'FALLBACK' || !entry) {
-    //   setPlaybackState('ERROR')
-    //   reportError(Error("Couldn't play that beat. Try Again!"))
-    //   resetPlayerState()
-    // } else {
-    //   setPlaybackState('FALLBACK')
-    //   if (entry) {
-    //     loadBeat(entry, true)
-    //   }
-    // }
-  }
+    console.error(error);
+    reportError(new Error("Couldn't play that beat. Try Again!"));
+    setPlaybackState(PlaybackState.ERROR);
+  };
 
   // Toggle shuffle
   const toggleShuffle = () => {
-    // setShuffle(!shuffle)
-  }
+    // Implement if needed
+  };
+
+  // Add useEffect for handling ENDED state
+  useEffect(() => {
+    if (playbackState === PlaybackState.ENDED && !usePlayerStore.getState().loop) {
+      onDidJustFinish();
+      skipForward();
+    }
+  }, [playbackState]);
 
   return {
     // Player control functions

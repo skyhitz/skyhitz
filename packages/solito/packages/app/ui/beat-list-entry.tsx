@@ -10,6 +10,7 @@ import LikeButton from 'app/ui/buttons/likeButton'
 // import DownloadBtn from 'app/ui/buttons/download'
 import Stellar from 'app/ui/icons/stellar'
 import { stroopsToLumens } from 'app/utils/stroopsToLumens'
+import { usePlayback } from 'app/hooks/usePlayback'
 
 // Reusable component for APR text with consistent styling
 function APRText({ apr }: { apr: string }) {
@@ -32,9 +33,10 @@ export function BeatListEntry({
   playlist = [],
 }: BeatListEntryProps) {
   const { push } = useRouter()
+  const { playEntry } = usePlayback()
 
   const handlePress = () => {
-    push(`/beat/${entry.id}`)
+    playEntry(entry, playlist)
   }
 
   // Format TVL in lumens and APR values to match legacy app styling

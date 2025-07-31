@@ -1,7 +1,7 @@
 'use client'
 import { Entry } from 'app/api/graphql/types'
 import { ShareButton } from 'app/ui/buttons/ShareButton'
-// import { PlayButton } from './PlayButton'
+import { PlayButton } from './PlayButton'
 import LikeButton from 'app/ui/buttons/likeButton'
 import DownloadBtn from 'app/ui/buttons/download/index'
 
@@ -14,7 +14,8 @@ export function ActionButtons({ entry }: ActionButtonsProps) {
 
   return (
     <>
-      {/* <PlayButton entry={entry} /> */}
+      <PlayButton entry={entry} />
+
       {/* Like button */}
       <LikeButton entry={entry} size={22} />
 

@@ -50,6 +50,7 @@ function WebVideoPlayer() {
     loop,
     playbackRate,
     isReady,
+    shouldPlay, // Add this
     setPlayerRef,
     setProgress,
     setPlaybackState,
@@ -123,6 +124,7 @@ function WebVideoPlayer() {
             url={playbackUri}
             width="100%"
             height="100%"
+            playing={shouldPlay} // Add this
             volume={muted ? 0 : volume}
             muted={muted}
             loop={loop}
