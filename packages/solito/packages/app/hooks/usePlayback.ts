@@ -4,8 +4,8 @@
  */
 import { Entry } from 'app/api/graphql/types'
 
-import { lumensToStroops, isSome } from 'app/utils'
-import { append, findIndex, init, last } from 'ramda'
+import { lumensToStroops } from 'app/utils'
+import { last } from 'ramda'
 import { videoSrc } from 'app/utils/entry'
 import { useErrorReport } from 'app/hooks/useErrorReport'
 import { useUserStore } from 'app/state/user'
@@ -25,26 +25,9 @@ export function usePlayback() {
     playbackState,
     playingHistory,
     playlist,
-    // looping,
-    // shuffle,
-    // shouldPlay,
-    // timeoutId,
     setEntry,
     setPlaybackUri,
     setPlaybackState,
-    // setDuration,
-    // setPosition,
-    // setLooping,
-    // setShuffle,
-    // setPlayingHistory,
-    // setPlaylist,
-    // setShouldPlay,
-    // setTimeoutId,
-    // playAudio,
-    // pauseAudio,
-    // resumeAudio,
-    // stopAudio,
-    // resetPlayer,
     play,
     pause,
     resume,
@@ -65,14 +48,8 @@ export function usePlayback() {
     }
   }, [user, playbackState]);
 
-  // Reset player completely
-  const resetPlayerState = () => {
-    // Use the resetPlayer function from the Zustand store
-    // resetPlayer()
-  }
-
   // Load a beat/track
-  const loadBeat = async (entry: Entry, fallback = false) => {
+  const loadEntry = async (entry: Entry, fallback = false) => {
     if (!entry.videoUrl) return;
 
     const videoUrl = videoSrc(entry.videoUrl, fallback);
@@ -100,7 +77,7 @@ export function usePlayback() {
     }
 
     // Load the new entry
-    await loadBeat(newEntry, false);
+    await loadEntry(newEntry, false);
   };
 
   const isPlaying = playbackState === 'PLAYING'
@@ -121,62 +98,6 @@ export function usePlayback() {
   // Toggle play/pause
   const playPause = async () => {
     handlePlayPause()
-    // If nothing is loaded, return
-
-    // // If we have a video URL but we're in IDLE state, we need to initialize the player
-    // if (playbackState === 'IDLE' && playbackUri) {
-    //   console.log('[usePlayback] Initializing player from IDLE state')
-    //   setShouldPlay(true)
-    //   setPlaybackState('LOADING')
-
-    //   try {
-    //     // Play the audio immediately
-    //     playAudio(playbackUri)
-    //     console.log(
-    //       '[usePlayback] Successfully started playback from IDLE state'
-    //     )
-    //   } catch (error) {
-    //     console.error('[usePlayback] Error starting playback:', error)
-    //     setPlaybackState('ERROR')
-    //   }
-    //   return
-    // }
-
-    // // Regular play/pause logic for active player
-    // if (!playbackUri) {
-    //   console.log('[usePlayback] No playback URI available')
-    //   return
-    // }
-
-    // if (playbackState === 'PLAYING') {
-    //   console.log('[usePlayback] Pausing playback')
-    //   pauseAudio()
-    // } else if (playbackState === 'PAUSED') {
-    //   console.log('[usePlayback] Resuming playback')
-    //   resumeAudio()
-    //   setPlaybackState('PLAYING')
-    //   resumeAudio()
-    // } else if (playbackState === 'ERROR') {
-    //   console.log('[usePlayback] Attempting to recover from error')
-
-    //   if (entry) {
-    //     // Try to reload the current entry
-    //     loadBeat(entry, false, true)
-    //   } else if (playbackUri) {
-    //     // If we have a URI but no entry, just try to play it directly
-    //     setShouldPlay(true)
-    //     playAudio(playbackUri)
-    //   }
-    // }
-
-    // if (isPlaying) {
-    //   await pause()
-    // } else if (hasMedia) {
-    //   await resume()
-    // } else {
-    //   // Example: play a test video if no media is loaded
-    //   await play('https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8')
-    // }
   }
 
   // Start seeking
@@ -242,44 +163,10 @@ export function usePlayback() {
   }
 
   const onPlaybackStatusUpdate = (status: PlaybackStatus) => {
-    // if (!status.isLoaded) {
-    //   return
-    // }
-    // if (status.isBuffering && playbackState !== 'LOADING') {
-    //   setPlaybackState('LOADING')
-    // }
-    // if (status.isPlaying && playbackState !== 'PLAYING') {
-    //   setPlaybackState('PLAYING')
-    // }
-    // if (status.didJustFinish && playbackState === 'PLAYING' && !looping) {
-    //   skipForward()
-    //   onDidJustFinish()
-    // }
-    // if (status.durationMillis && !isNaN(status.durationMillis)) {
-    //   setDuration(status.durationMillis)
-    // }
-    // if (
-    //   status.positionMillis &&
-    //   !isNaN(status.positionMillis) &&
-    //   playbackState === 'PLAYING'
-    // ) {
-    //   setPosition(status.positionMillis)
-    // }
   }
 
   // Handle when video is ready to display
   const onReadyForDisplay = async () => {
-    // if (playbackState === 'LOADING' || playbackState === 'FALLBACK') {
-    //   if (timeoutId) {
-    //     clearTimeout(timeoutId)
-    //   }
-    //   if (shouldPlay && playbackUri) {
-    //     // Use resumeAudio from the Zustand store
-    //     resumeAudio()
-    //   } else {
-    //     setPlaybackState('PAUSED')
-    //   }
-    // }
   }
 
   // Handle errors
@@ -319,7 +206,6 @@ export function usePlayback() {
     onError,
 
     // State and utilities
-    resetPlayer: resetPlayerState,
     playbackUri,
     entry,
     playbackState,
