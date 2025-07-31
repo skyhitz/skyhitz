@@ -153,6 +153,7 @@ export function ActivityIndicator({
           ? (theme as any)?.extend?.colors?.['grey']['DEFAULT']
           : (theme as any)?.extend?.colors?.['blue']['brand']
       }
+      className={className}
       {...rest}
     />
   )
