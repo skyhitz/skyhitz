@@ -46,7 +46,7 @@ export function PlayerButtonsRow({ size = 'small', className = '' }: Props) {
       </Pressable>
 
       {playbackState === PlaybackState.LOADING ? (
-        <ActivityIndicator className="md:mx-2" size={22}/>
+        <ActivityIndicator className="md:mx-2" size={iconSize}/>
       ) : (
         <Pressable onPress={playPause} className="md:mx-2">
           {playbackState === PlaybackState.PLAYING ||
