@@ -85,7 +85,7 @@ export function usePlayback() {
   const hasMedia = playbackState !== 'IDLE'
 
   // Handle play/pause toggle
-  const handlePlayPause = async () => {
+  const playPause = async () => {
     if (isPlaying) {
       console.log('[usePlayback] Pausing playback')
       await pause()
@@ -93,11 +93,6 @@ export function usePlayback() {
       console.log('[usePlayback] Resuming playback')
       await resume()
     } 
-  }
-
-  // Toggle play/pause
-  const playPause = async () => {
-    handlePlayPause()
   }
 
   // Start seeking
