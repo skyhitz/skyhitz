@@ -32,13 +32,13 @@ export function videoSrc(videoUrl?: string, useFallback = false): string {
   return `${gateway}/${videoUrl.replace(ipfsProtocol, '')}`;
 }
 
-// New imageSrc for R2
-export function imageSrc(imageUrl?: string, ext = 'png'): string {
+// New imageSrc for R2 - no extension needed, just like IPFS!
+export function imageSrc(imageUrl?: string): string {
   if (!imageUrl) return '';
 
   if (useR2 && isIpfs(imageUrl)) {
     const hash = imageUrl.replace('ipfs://', '');
-    return `${r2BaseUrl}/${hash}/index.${ext}`;
+    return `${r2BaseUrl}/${hash}/index`; // No extension - Content-Type header handles format
   }
 
   // Existing Pinata logic
@@ -64,6 +64,11 @@ export function imageUrlSmall(imageUrl?: string): string {
   }
   
   if (isIpfs(imageUrl)) {
+    // Use R2 for consistency with imageSrc
+    if (useR2) {
+      const hash = imageUrl.replace('ipfs://', '');
+      return `${r2BaseUrl}/${hash}/index`;
+    }
     return `${pinataGateway}/${imageUrl.replace(ipfsProtocol, '')}`;
   }
   
@@ -82,6 +87,11 @@ export function imageUrlMedium(imageUrl?: string): string {
   }
   
   if (isIpfs(imageUrl)) {
+    // Use R2 for consistency with imageSrc
+    if (useR2) {
+      const hash = imageUrl.replace('ipfs://', '');
+      return `${r2BaseUrl}/${hash}/index`;
+    }
     return `${pinataGateway}/${imageUrl.replace(ipfsProtocol, '')}`;
   }
   

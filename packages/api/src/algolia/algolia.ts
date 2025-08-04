@@ -80,6 +80,25 @@ export class AlgoliaClient {
 		return allEntries;
 	}
 
+	async getAllUsers(): Promise<User[]> {
+		const hitsPerPage = 1000; // Adjust based on your needs
+		let allUsers: User[] = [];
+		let page = 0;
+		let hasMore = true;
+
+		while (hasMore) {
+			const res = await this.indices.usersIndex.search('', {
+				hitsPerPage,
+				page,
+			});
+			allUsers = allUsers.concat(res.hits as User[]);
+			hasMore = res.hits.length === hitsPerPage;
+			page++;
+		}
+
+		return allUsers;
+	}
+
 	async deleteEntry(id: string) {
 		return this.indices.entriesIndex.deleteObject(id);
 	}
