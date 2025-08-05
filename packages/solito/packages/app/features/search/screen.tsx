@@ -13,8 +13,8 @@ export function SearchScreen() {
   const [searchPhrase, setSearchPhrase] = useState('')
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-[--bg-color]">
-      <View className="mx-auto w-full max-w-7xl flex-1 px-4 pb-0 pt-4">
+    <SafeAreaView edges={['top']} className="flex-1 bg-[--bg-color] pb-24">
+      <View className="mx-auto w-full max-w-7xl flex-1 px-4 pt-4">
         <SearchInputField
           value={searchPhrase}
           autoCapitalize="none"

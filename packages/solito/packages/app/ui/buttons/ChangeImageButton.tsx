@@ -54,8 +54,6 @@ export function ChangeImageButton({
           src={imageSrc(current.url)}
           className="h-full w-full"
           alt="Profile image"
-          width={128}
-          height={128}
           fill={true}
         />
       ) : (

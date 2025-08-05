@@ -13,7 +13,7 @@ export default function CollectionScreen({ user }: { user: User }) {
 
   return (
     <SafeAreaView className="bg-[--bg-color]">
-      <View className="w-full flex-1">
+      <View className="w-full flex-1 pb-32">
         <P className="web:flex font-unbounded my-4 ml-8 hidden text-lg font-bold">
           Collection
         </P>
