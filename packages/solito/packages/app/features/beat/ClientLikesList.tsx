@@ -34,7 +34,7 @@ type Props = {
 }
 
 // This is a client component that handles all router functionality
-export default function ClientLikesList({ entry }: Props): JSX.Element {
+export default function ClientLikesList({ entry }: Props) {
   const { data, loading } = useQuery(ENTRY_LIKES, {
     variables: { id: entry.id },
     skip: !entry.id,
@@ -97,7 +97,7 @@ export default function ClientLikesList({ entry }: Props): JSX.Element {
   }
 
   return (
-    <CollapsableView
+    likes.length > 0 || loading ? <CollapsableView
       headerText="Likes"
       initCollapsed={true}
       className="mt-4 w-full"
@@ -115,6 +115,6 @@ export default function ClientLikesList({ entry }: Props): JSX.Element {
       ) : (
         <P className="py-2 text-center text-gray-400">No likes yet</P>
       )}
-    </CollapsableView>
+    </CollapsableView> : null
   )
 }

@@ -57,7 +57,7 @@ export function BeatScreen({ entry: serverEntry, id: passedId }: Props) {
 
   return (
     <View className="flex flex-1 bg-[--bg-color]">
-      <ScrollView contentContainerClassName="flex w-full mx-auto max-w-screen-xl md:flex-row gap-4 p-4">
+      <ScrollView contentContainerClassName="flex w-full mx-auto max-w-screen-xl md:flex-row gap-4 pt-4 pb-32">
         <View className="w-full md:w-1/2">
           <View className="relative aspect-square w-full overflow-hidden rounded-lg shadow-lg">
             <SolitoImage
