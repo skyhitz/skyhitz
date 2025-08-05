@@ -13,26 +13,7 @@ import ffmpeg from 'fluent-ffmpeg';
 import { S3Client, PutObjectCommand, HeadObjectCommand, GetObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
 import mime from 'mime-types';
 
-async function main() {
-  // Set up environment variables
-  const env = {
-    ALGOLIA_APP_ID: process.env.ALGOLIA_APP_ID,
-    ALGOLIA_ADMIN_API_KEY: process.env.ALGOLIA_ADMIN_API_KEY,
-    APP_URL: process.env.APP_URL,
-  };
-
-  if (!env.ALGOLIA_APP_ID || !env.ALGOLIA_ADMIN_API_KEY) {
-    throw new Error('Please set ALGOLIA_APP_ID and ALGOLIA_ADMIN_API_KEY environment variables');
-  }
-
-  // Set ffmpeg path (adjust based on your system)
-  ffmpeg.setFfmpegPath('/opt/homebrew/bin/ffmpeg');
-  ffmpeg.setFfprobePath('/opt/homebrew/bin/ffprobe');
-
-  const algolia = new AlgoliaClient(env as any);
-
-  const entries = await algolia.getAllEntries();
-  const BASE_URL = 'https://8d06a01e958a084add5fcf155430e0fa.r2.cloudflarestorage.com';
+const BASE_URL = 'https://8d06a01e958a084add5fcf155430e0fa.r2.cloudflarestorage.com';
 
   const s3 = new S3Client({
     region: 'auto',
@@ -68,6 +49,26 @@ async function main() {
     throw new Error('Download failed after retries');
   }
 
+async function main() {
+  // Set up environment variables
+  const env = {
+    ALGOLIA_APP_ID: process.env.ALGOLIA_APP_ID || '',
+    ALGOLIA_ADMIN_API_KEY: process.env.ALGOLIA_ADMIN_API_KEY || '',
+    APP_URL: process.env.APP_URL || 'https://skyhitz.io',
+  };
+
+  if (!env.ALGOLIA_APP_ID || !env.ALGOLIA_ADMIN_API_KEY) {
+    throw new Error('Please set ALGOLIA_APP_ID and ALGOLIA_ADMIN_API_KEY environment variables');
+  }
+
+  // Set ffmpeg path (adjust based on your system)
+  ffmpeg.setFfmpegPath('/opt/homebrew/bin/ffmpeg');
+  ffmpeg.setFfprobePath('/opt/homebrew/bin/ffprobe');
+
+  const algolia = new AlgoliaClient(env as any);
+
+  const entries = await algolia.getAllEntries();
+  
   const pinataGateway = 'https://ipfs.skyhitz.io/ipfs';
   const publicBaseUrl = BASE_URL + '/skyhitz';
 
@@ -115,7 +116,8 @@ async function main() {
     } catch (error) {
       console.error(`Failed to get image type for ${entry.id}:`, error);
     }
-    const imageKey = `${imageHash}/index.${imageExt}`;
+    // Store without extension like IPFS - rely on Content-Type header
+    const imageKey = `${imageHash}/index`;
     const imageExists = await objectExists(imageKey);
     if (!imageExists) {
       let imageData;
@@ -125,20 +127,34 @@ async function main() {
         console.error(`Failed to download image for ${entry.id}:`, error);
       }
       if (imageData) {
+        // Detect file type from content for proper Content-Type header
+        if (imageExt === 'png' && imageData.length > 8) {
+          const signature = imageData.subarray(0, 8);
+          if (signature[0] === 0xFF && signature[1] === 0xD8 && signature[2] === 0xFF) {
+            imageExt = 'jpg';
+          } else if (signature[0] === 0x89 && signature[1] === 0x50 && signature[2] === 0x4E && signature[3] === 0x47) {
+            imageExt = 'png';
+          } else if (signature.toString('ascii', 0, 4) === 'RIFF' && signature.toString('ascii', 8, 12) === 'WEBP') {
+            imageExt = 'webp';
+          } else if (signature.toString('ascii', 0, 3) === 'GIF') {
+            imageExt = 'gif';
+          }
+        }
+        
         await s3.send(new PutObjectCommand({
           Bucket: 'skyhitz',
           Key: imageKey,
           Body: imageData,
           ContentType: mime.lookup(imageExt) || 'image/png',
         }));
-        console.log(`Uploaded image to ${imageKey}`);
+        console.log(`Uploaded image to ${imageKey} (${imageExt})`);
       }
     } else {
       console.log(`Image already exists: ${imageKey}`);
     }
     imageCount++;
 
-    // Handle video (using entry.videoUrl hash)
+    // // Handle video (using entry.videoUrl hash)
     const videoHash = entry.videoUrl.replace('ipfs://', '');
     const videoUrl = `${pinataGateway}/${videoHash}`;
     const mp4Key = `${videoHash}/mp4/index.mp4`;
@@ -261,39 +277,136 @@ async function main() {
   console.log(`Image entries: ${imageCount}`);
   console.log(`Total Algolia entries: ${entries.length}`);
   console.log('Migration completed');
-
-  // Cleanup phase: Remove misplaced index.json and index.* from video directories
-  console.log('Starting cleanup of misplaced files...');
-  let cleanedCount = 0;
-  for (const entry of entries) {
-    const videoHash = entry.videoUrl.replace('ipfs://', '');
-    const prefix = `${videoHash}/`;
-
-    // List objects in video directory
-    const listRes = await s3.send(new ListObjectsV2Command({
-      Bucket: 'skyhitz',
-      Prefix: prefix,
-      Delimiter: '/',
-    }));
-
-    const toDelete: { Key: string }[] = [];
-    listRes.Contents?.forEach(obj => {
-      const key = obj.Key;
-      if (key && (key.endsWith('index.json') || key.match(/index\.(png|jpg|jpeg|webp|gif)$/i)) && !key.includes('/mp4/') && !key.includes('/hls/')) {
-        toDelete.push({ Key: key });
-      }
-    });
-
-    if (toDelete.length > 0) {
-      await s3.send(new DeleteObjectsCommand({
-        Bucket: 'skyhitz',
-        Delete: { Objects: toDelete },
-      }));
-      cleanedCount += toDelete.length;
-      console.log(`Cleaned ${toDelete.length} misplaced files from ${videoHash}`);
-    }
-  }
-  console.log(`Cleanup completed: Removed ${cleanedCount} misplaced files.`);
+  
+  // // Then migrate users with proper extension detection
+  // await migrateUsers(algolia, s3, pinataGateway);
 }
 
-main().catch(console.error); 
+main().catch(console.error);
+
+// Add after main
+async function migrateUsers(algolia: AlgoliaClient, s3: S3Client, pinataGateway: string) {
+  const users = await algolia.getAllUsers();
+  let avatarCount = 0;
+  let backgroundCount = 0;
+
+  for (const user of users) {
+    console.log(`Processing user: ${user.objectID || user.id}`);
+
+    // Handle avatar
+    if (user.avatarUrl) {
+      const hash = user.avatarUrl.replace('ipfs://', '');
+      
+      // Check if this is a legacy Cloudinary URL
+      if (hash.startsWith('https://res.cloudinary.com/')) {
+        console.log(`Skipping legacy Cloudinary avatar for user ${user.objectID}: ${hash}`);
+        continue;
+      }
+      
+      const url = `${pinataGateway}/${hash}`;
+      let ext = 'png'; // Default
+      try {
+        const headRes = await axios.head(url);
+        ext = mime.extension(headRes.headers['content-type']) || 'png';
+      } catch (error) {
+        console.error(`Failed to get avatar type for user ${user.objectID}:`, error);
+        // Don't continue here, still try to download with default extension
+      }
+      // Store without extension like IPFS - rely on Content-Type header
+      const key = `${hash}/index`;
+
+      const exists = await objectExists(key);
+      if (!exists) {
+        try {
+          const data = await downloadWithRetry(url);
+          
+          // Detect file type from content for proper Content-Type header
+          if (ext === 'png' && data.length > 8) {
+            const signature = data.subarray(0, 8);
+            if (signature[0] === 0xFF && signature[1] === 0xD8 && signature[2] === 0xFF) {
+              ext = 'jpg';
+            } else if (signature[0] === 0x89 && signature[1] === 0x50 && signature[2] === 0x4E && signature[3] === 0x47) {
+              ext = 'png';
+            } else if (signature.toString('ascii', 0, 4) === 'RIFF' && signature.toString('ascii', 8, 12) === 'WEBP') {
+              ext = 'webp';
+            } else if (signature.toString('ascii', 0, 3) === 'GIF') {
+              ext = 'gif';
+            }
+          }
+          
+          await s3.send(new PutObjectCommand({
+            Bucket: 'skyhitz',
+            Key: key,
+            Body: data,
+            ContentType: mime.lookup(ext) || 'image/png',
+          }));
+          console.log(`Uploaded avatar for ${user.objectID} to ${key} (${ext})`);
+        } catch (error) {
+          console.error(`Failed to upload avatar for ${user.objectID}:`, error);
+        }
+      } else {
+        console.log(`Avatar already exists: ${key}`);
+      }
+      avatarCount++;
+    }
+
+    // Handle background
+    if (user.backgroundUrl) {
+      const hash = user.backgroundUrl.replace('ipfs://', '');
+      
+      // Check if this is a legacy Cloudinary URL
+      if (hash.startsWith('https://res.cloudinary.com/')) {
+        console.log(`Skipping legacy Cloudinary background for user ${user.objectID}: ${hash}`);
+        continue;
+      }
+      
+      const url = `${pinataGateway}/${hash}`;
+      let ext = 'png'; // Default
+      try {
+        const headRes = await axios.head(url);
+        ext = mime.extension(headRes.headers['content-type']) || 'png';
+      } catch (error) {
+        console.error(`Failed to get background type for user ${user.objectID}:`, error);
+        // Don't continue here, still try to download with default extension
+      }
+      // Store without extension like IPFS - rely on Content-Type header
+      const key = `${hash}/index`;
+
+      const exists = await objectExists(key);
+      if (!exists) {
+        try {
+          const data = await downloadWithRetry(url);
+          
+          // Detect file type from content for proper Content-Type header
+          if (ext === 'png' && data.length > 8) {
+            const signature = data.subarray(0, 8);
+            if (signature[0] === 0xFF && signature[1] === 0xD8 && signature[2] === 0xFF) {
+              ext = 'jpg';
+            } else if (signature[0] === 0x89 && signature[1] === 0x50 && signature[2] === 0x4E && signature[3] === 0x47) {
+              ext = 'png';
+            } else if (signature.toString('ascii', 0, 4) === 'RIFF' && signature.toString('ascii', 8, 12) === 'WEBP') {
+              ext = 'webp';
+            } else if (signature.toString('ascii', 0, 3) === 'GIF') {
+              ext = 'gif';
+            }
+          }
+          
+          await s3.send(new PutObjectCommand({
+            Bucket: 'skyhitz',
+            Key: key,
+            Body: data,
+            ContentType: mime.lookup(ext) || 'image/png',
+          }));
+          console.log(`Uploaded background for ${user.objectID} to ${key} (${ext})`);
+        } catch (error) {
+          console.error(`Failed to upload background for ${user.objectID}:`, error);
+        }
+      } else {
+        console.log(`Background already exists: ${key}`);
+      }
+      backgroundCount++;
+    }
+  }
+
+  console.log(`Migrated ${avatarCount} avatars and ${backgroundCount} backgrounds`);
+}

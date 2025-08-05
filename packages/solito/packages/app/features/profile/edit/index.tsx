@@ -15,7 +15,7 @@ import { FormInputWithIcon } from 'app/ui/inputs/FormInputWithIcon'
 import { useRouter, useSearchParams } from 'solito/navigation'
 import { ChangeImage, EditProfileForm } from 'app/types'
 import { editProfileFormSchema } from 'app/validation'
-import useUploadFileToNFTStorage from 'app/hooks/useUploadFileToNFTStorage'
+import useUploadFile from 'app/hooks/useUploadFile'
 import { ipfsProtocol } from 'app/constants/constants'
 import { useToast } from 'app/provider/toast'
 import { ProfileHeader } from '../ProfileHeader'
@@ -41,7 +41,7 @@ export default function EditProfileScreen({ user }: { user: User }) {
     url: user.backgroundUrl ?? '',
   })
   const [updateUser, { data, loading }] = useUpdateUserMutation()
-  const { uploadFile, progress } = useUploadFileToNFTStorage()
+  const { uploadFile, progress } = useUploadFile()
   const { back } = useRouter()
   const toast = useToast()
 

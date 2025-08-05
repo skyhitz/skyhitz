@@ -1,33 +1,30 @@
 import { useCallback, useState } from 'react'
-import { pinataApi } from 'app/constants/constants'
+import { Config } from 'app/config'
+import { SecureStorage } from 'app/utils/secure-storage'
 
 type ReturnType = {
   uploadFile: (_file: Blob) => Promise<string>
   progress: number
 }
 
-export default function useUploadFileToNFTStorage(): ReturnType {
+export default function useUploadFile(): ReturnType {
   const [progress, setProgress] = useState<number>(0)
 
-  const uploadFile = useCallback((file: Blob) => {
-    const formData = new FormData()
-    formData.append('file', file)
-    const options = JSON.stringify({
-      cidVersion: 1,
-    })
-    formData.append('pinataOptions', options)
+  const uploadFile = useCallback((_file: Blob) => {
+    return new Promise<string>(async (resolve, reject) => {
+      const token = await SecureStorage.get('auth-token')
+      if (!token) {
+        reject({ message: 'Not authenticated', code: 'UNAUTHORIZED' })
+        return
+      }
 
-    return new Promise<string>((resolve, reject) => {
+      const uploadUrl = Config.GRAPHQL_URL.replace('/graphql', '/upload')
+      const formData = new FormData()
+      formData.append('file', _file)
+
       const request = new XMLHttpRequest()
-      request.open('POST', `${pinataApi}/pinFileToIPFS`, true)
-      request.setRequestHeader('X-Requested-With', 'XMLHttpRequest')
-      
-      // Using environment variable for API key
-      const apiKey = process.env.NEXT_PUBLIC_PINATA_API_KEY || ''
-      request.setRequestHeader(
-        'Authorization',
-        `Bearer ${apiKey}`
-      )
+      request.open('POST', uploadUrl, true)
+      request.setRequestHeader('Authorization', `Bearer ${token}`)
 
       request.upload.addEventListener('progress', (event) => {
         setProgress(Math.round((event.loaded * 100.0) / event.total))
