@@ -2,7 +2,7 @@
 import { View } from 'react-native'
 import { ProfileHeader } from './ProfileHeader'
 import Cog from 'app/ui/icons/cog'
-// import { CopyWalletPublicKeyButton } from 'app/ui/buttons/CopyWalletPublicKeyButton'
+import { CopyWalletPublicKeyButton } from 'app/ui/buttons/CopyWalletPublicKeyButton'
 import { SafeAreaView } from 'app/design/safe-area-view'
 import Like from 'app/ui/icons/like'
 import StarBorder from 'app/ui/icons/star-border'
@@ -122,11 +122,7 @@ export function ProfileScreen({ user }: { user: User }) {
           }
         />
 
-        {/* <View className="mt-1 w-full items-center justify-center">
-          {user.publicKey && (
-            <CopyWalletPublicKeyButton address={user.publicKey} />
-          )}
-        </View> */}
+       
 
         <View className="mt-8 w-full items-center justify-center px-4">
           <View className="mb-0.5 flex w-full flex-row items-center justify-between">
@@ -149,6 +145,11 @@ export function ProfileScreen({ user }: { user: User }) {
                 Send
               </P>
             </View>
+          </View>
+          <View className="my-4 w-full items-start justify-center">
+            {user.publicKey && (
+              <CopyWalletPublicKeyButton walletPublicKey={user.publicKey} />
+            )}
           </View>
 
           <View className="flex w-full flex-col">

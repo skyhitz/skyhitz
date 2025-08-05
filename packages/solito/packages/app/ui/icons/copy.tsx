@@ -4,11 +4,11 @@ import Svg, { Path, Rect } from 'react-native-svg'
 
 type Props = React.ComponentProps<typeof Svg>
 
-export default function Copy(props: Props) {
+export default function Copy({size = 24, ...props}: Props) {
   return (
     <Svg 
-      width="24" 
-      height="24" 
+      width={size} 
+      height={size} 
       viewBox="0 0 24 24" 
       fill="none" 
       stroke="currentColor" 

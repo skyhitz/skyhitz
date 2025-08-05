@@ -1,46 +1,49 @@
 'use client'
-import * as React from 'react'
-// Import from our typed components file instead of directly from react-native
-import { Pressable, Text } from 'react-native'
+import { Platform, Share, Pressable } from 'react-native'
+import { useCallback, useState } from 'react'
 import Copy from 'app/ui/icons/copy'
-import * as Clipboard from 'expo-clipboard'
+import Check from 'app/ui/icons/check'
+import { P } from 'app/design/typography'
 
-type CopyWalletPublicKeyButtonProps = {
-  address: string
+type Props = {
+  walletPublicKey: string
 }
 
-export function CopyWalletPublicKeyButton({
-  address,
-}: CopyWalletPublicKeyButtonProps) {
-  const [copied, setCopied] = React.useState(false)
+export function CopyWalletPublicKeyButton({ walletPublicKey }: Props) {
+  const [copied, changeCopied] = useState(false)
 
-  // Format address to show shortened version (first 6 and last 4 characters)
-  const formattedAddress = React.useMemo(() => {
-    if (!address || address.length < 12) return address
-    return `${address.substring(0, 6)}...${address.substring(
-      address.length - 4
-    )}`
-  }, [address])
-
-  const handleCopy = React.useCallback(async () => {
+  const copyPublicKey = useCallback(async () => {
     try {
-      await Clipboard.setStringAsync(address)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      if (Platform.OS === 'web') {
+        navigator.clipboard.writeText(walletPublicKey)
+        changeCopied(true)
+      } else if (Platform.OS === 'ios') {
+        await Share.share({
+          url: walletPublicKey,
+        }).then(({ action }) => {
+          if (action !== Share.dismissedAction) changeCopied(true)
+        })
+      } else {
+        await Share.share({
+          message: walletPublicKey,
+        }).then(({ action }) => {
+          if (action === Share.sharedAction) changeCopied(true)
+        })
+      }
     } catch (error) {
-      console.log('Failed to copy text:', error)
+      // no-op
     }
-  }, [address])
+  }, [walletPublicKey])
 
   return (
     <Pressable
-      onPress={handleCopy}
-      className="flex-row items-center rounded-full bg-gray-800 px-4 py-2"
+      className="flex h-fit flex-1 flex-row items-center justify-start"
+      onPress={copyPublicKey}
+      disabled={copied}
     >
-      <Copy className="mr-2 h-4 w-4 stroke-current text-gray-300" />
-      <Text className="text-sm text-gray-300">
-        {copied ? 'Copied!' : formattedAddress}
-      </Text>
+      {!copied && <Copy className="text-white" size={18} />}
+      {copied && <Check className="text-green" size={18} />}
+      <P className="mx-2 truncate text-xs">{walletPublicKey}</P>
     </Pressable>
   )
 }
