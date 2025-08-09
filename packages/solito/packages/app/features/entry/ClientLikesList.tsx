@@ -46,10 +46,11 @@ export default function ClientLikesList({ entry }: Props) {
     // For web, use a native anchor tag that doesn't require router
     if (Platform.OS === 'web') {
       return (
-        <a
-          href={`/collector/${item.id}`}
-          className="mb-2 flex flex-row items-center rounded-md p-2 hover:bg-gray-800 no-underline"
-        >
+        // <a
+        //   href={`/collector/${item.id}`}
+        //   className="mb-2 flex flex-row items-center rounded-md p-2 hover:bg-gray-800 no-underline"
+        // >
+        <View className="mb-2 flex flex-row items-center rounded-md p-2 hover:bg-gray-800 no-underline">
           <View className="mr-3">
             <UserAvatar
               avatarUrl={item.avatarUrl}
@@ -63,7 +64,8 @@ export default function ClientLikesList({ entry }: Props) {
             <P className="font-semibold">{item.displayName || item.username}</P>
             <P className="text-xs text-gray-400">@{item.username}</P>
           </View>
-        </a>
+        </View>
+        // </a>
       )
     }
 
@@ -71,9 +73,9 @@ export default function ClientLikesList({ entry }: Props) {
     return (
       <Pressable
         onPress={() => {
-          if (Platform.OS === 'web') {
-            window.location.href = `/collector/${item.id}`
-          }
+          // if (Platform.OS === 'web') {
+          //   window.location.href = `/collector/${item.id}`
+          // }
           // Note: For native, we'd need a navigation solution that doesn't rely on router
           // This component is only used in web currently so we're focusing on that
         }}
