@@ -12,7 +12,7 @@ type Props = {
   entry: Entry
 }
 
-export function BeatSummaryColumn({ entry }: Props) {
+export function EntrySummaryColumn({ entry }: Props) {
   return (
     <View className="flex w-full md:ml-4 md:flex-1">
       <View>

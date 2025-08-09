@@ -58,7 +58,12 @@ module.exports = {
     return [
       {
         source: '/dashboard/beat/:id',
-        destination: '/beat/:id',
+        destination: '/music/:id',
+        permanent: true,
+      },
+      {
+        source: '/beat/:id',
+        destination: '/music/:id',
         permanent: true,
       },
       {

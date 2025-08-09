@@ -7,7 +7,7 @@ type Props = {
   link: string
 }
 
-export function Details({ id, link }: Props) {
+export function EntryDetails({ id, link }: Props) {
   const Row = ({
     label,
     trailingWidget,

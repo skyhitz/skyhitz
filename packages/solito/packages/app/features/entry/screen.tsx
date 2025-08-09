@@ -1,32 +1,32 @@
 'use client'
 import * as React from 'react'
 import { useState, useEffect } from 'react'
-import { useBeatParam } from 'app/hooks/param/useBeatParam'
+import { useEntryParam } from 'app/hooks/param/useEntryParam'
 import { Entry } from 'app/api/graphql/types'
 import { ScrollView, View, Text } from 'react-native'
-import { Details } from './BeatDetails'
+import { EntryDetails } from './BeatDetails'
 import { imageUrlMedium } from 'app/utils/entry'
-import { BeatSummaryColumn } from './BeatSummaryColumn'
+import { EntrySummaryColumn } from './BeatSummaryColumn'
 import { pinataGateway } from 'app/constants/constants'
 import { useGetEntry } from 'app/hooks/algolia/useGetEntry'
 import { SolitoImage } from 'app/design/solito-image'
 
-// BeatScreen component props
+// EntryScreen component props
 type Props = {
   entry?: Entry
   id?: string // Allow passing id directly for native
 }
 
-export function BeatScreen({ entry: serverEntry, id: passedId }: Props) {
+export function EntryScreen({ entry: serverEntry, id: passedId }: Props) {
   // Use passed id if available (for native), otherwise use param from URL (for web)
-  const paramId = useBeatParam()
+  const paramId = useEntryParam()
   const id = passedId || paramId
 
   // Manual check instead of assert.ok
   if (id === undefined) {
     return (
       <View className="flex flex-1 items-center justify-center">
-        <Text>Error: Beat ID is required</Text>
+        <Text>Error: Entry ID is required</Text>
       </View>
     )
   }
@@ -70,10 +70,10 @@ export function BeatScreen({ entry: serverEntry, id: passedId }: Props) {
             />
           </View>
 
-          <Details id={entry.id} link={`${pinataGateway}/${entry.id}`} />
+          <EntryDetails id={entry.id} link={`${pinataGateway}/${entry.id}`} />
         </View>
 
-        <BeatSummaryColumn entry={entry} />
+        <EntrySummaryColumn entry={entry} />
       </ScrollView>
     </View>
   )

@@ -2,7 +2,7 @@
 
 import type { Metadata } from 'next'
 import React from 'react'
-import BeatScreen from 'app/features/beat'
+import EntryScreen from 'app/features/entry'
 import { getEntry } from 'app/hooks/algolia/getEntry'
 import { imageUrlMedium, videoSrc } from 'app/utils/entry'
 import { Config } from 'app/config'
@@ -13,7 +13,7 @@ type Props = {
   params: { id: string }
 }
 
-export async function generateMetadata(props: Props): Promise<Metadata> {
+export async function generateEntryMetadata(props: Props): Promise<Metadata> {
   // read route params - properly await params object in Next.js 15
   const { id } = await props.params
 
@@ -26,7 +26,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     }
   }
 
-  const url = `${Config.APP_URL}/beat/${entry.id}`
+  const url = `${Config.APP_URL}/music/${entry.id}`
 
   return {
     title: entry.artist ? `${entry.artist} - ${entry.title}` : entry.title,
@@ -34,7 +34,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     twitter: {
       card: 'player',
       title: entry.artist ? `${entry.artist} - ${entry.title}` : entry.title,
-      description: entry.description || 'Listen to this beat on Skyhitz',
+      description: entry.description || 'Listen to this music on Skyhitz',
       // Next.js expects 'players' property with these specific fields
       players: {
         playerUrl: videoSrc(entry.videoUrl),
@@ -65,7 +65,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   }
 }
 
-export default async function BeatPage(props: Props) {
+export async function EntryPageComponent(props: Props) {
   // Properly await params in Next.js 15
   const { id } = await props.params
 
@@ -78,5 +78,5 @@ export default async function BeatPage(props: Props) {
   }
 
   // Cast the entry to handle the type mismatch between Entry|null and Entry|undefined
-  return <BeatScreen entry={entry as Entry} />
+  return <EntryScreen entry={entry as Entry} />
 }

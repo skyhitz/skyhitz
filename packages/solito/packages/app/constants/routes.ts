@@ -7,7 +7,7 @@
 
 export const ROUTES = {
   HOME: '/',
-  BEAT: '/beat',
+  MUSIC: '/music',
   CHART: '/chart',
   PROFILE: '/profile',
   SEARCH: '/search',
@@ -25,7 +25,7 @@ export const ROUTES = {
  * Routes that should include the main navigation UI (navbar + tab bar)
  */
 export const NAVIGATION_ROUTES = [
-  ROUTES.BEAT,
+  ROUTES.MUSIC,
   ROUTES.CHART,
   ROUTES.PROFILE, 
   ROUTES.SEARCH

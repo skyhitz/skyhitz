@@ -1,7 +1,5 @@
 'use client'
 import { Entry } from 'app/api/graphql/types'
-import { videoSrc } from 'app/utils/entry'
-import { useCallback, useEffect, useRef, useState } from 'react'
 import { Pressable } from 'react-native'
 import PlayIcon from 'app/ui/icons/play'
 import PauseIcon from 'app/ui/icons/pause'
