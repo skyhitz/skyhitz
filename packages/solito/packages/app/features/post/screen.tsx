@@ -1,5 +1,5 @@
 'use client'
-import { H1, H2, H3, P } from 'app/design/typography'
+import { H1, H2, H3, P, A } from 'app/design/typography'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
 import Footer from 'app/ui/footer'
 import { Navbar } from 'app/ui/navbar/Navbar'
@@ -25,7 +25,6 @@ function parseHtmlContent(html: string): React.ReactNode[] {
       .replace(/&bull;/g, '•')
       .replace(/&lsquo;|&rsquo;/g, "'")
       .replace(/&ldquo;|&rdquo;/g, '"')
-      .trim()
   }
 
   // Helper to extract content between tags
@@ -41,126 +40,175 @@ function parseHtmlContent(html: string): React.ReactNode[] {
     return matches
   }
 
-  // Parse block-level elements
-  const parseBlocks = () => {
-    const result: React.ReactNode[] = []
-    
-    // Parse divs and sections - avoiding 's' flag for compatibility
-    const divMatches: string[] = html.match(/<div[^>]*>([\s\S]*?)<\/div>/g) || []
-    divMatches.forEach((divContent, index) => {
-      // Process content within divs
-      const innerContent = divContent.replace(/<div[^>]*>|<\/div>/g, '')
-      const paragraphs = extractContent(innerContent, 'p')
-      
-      if (paragraphs.length > 0) {
-        paragraphs.forEach((para, pIndex) => {
-          result.push(
-            <P key={`div-p-${index}-${pIndex}`} className="mb-4 text-[--text-color]">
-              {formatTextContent(para)}
-            </P>
-          )
-        })
-      } else if (innerContent.trim()) {
-        // Handle divs without p tags but with content
-        result.push(
-          <P key={`div-${index}`} className="mb-4 text-[--text-color]">
-            {formatTextContent(innerContent)}
-          </P>
-        )
-      }
-    })
-    
-    // Parse headings (h1, h2, h3)
-    for (let level = 1; level <= 3; level++) {
-      const headings = extractContent(html, `h${level}`)
-      headings.forEach((heading, index) => {
-        if (level === 1) {
-          result.push(
-            <H1 key={`h1-${index}`} className="mb-4 mt-6 text-[--text-color]">
-              {formatTextContent(heading)}
-            </H1>
-          )
-        } else if (level === 2) {
-          result.push(
-            <H2 key={`h2-${index}`} className="mb-3 mt-5 text-[--text-color]">
-              {formatTextContent(heading)}
-            </H2>
-          )
-        } else {
-          result.push(
-            <H3 key={`h3-${index}`} className="mb-2 mt-4 text-[--text-color]">
-              {formatTextContent(heading)}
-            </H3>
-          )
-        }
-      })
+  // Strip remaining tags but keep inner text; keep simple strong handling
+  const stripTags = (text: string): string => {
+    let stripped = text.replace(/<strong>(.*?)<\/strong>/g, '$1')
+    stripped = stripped.replace(/<em>(.*?)<\/em>/g, '$1')
+    return stripped.replace(/<\/?[^>]+(>|$)/g, '')
+  }
+
+  // Global key generator for stable keys within a render
+  let globalKeyCounter = 0
+
+  // Convert inline HTML (with <a> tags) into React nodes using <A>
+  const formatInlineNodes = (fragment: string): React.ReactNode[] => {
+    const nodes: React.ReactNode[] = []
+    const anchorRegex = /<a[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi
+    let lastIndex = 0
+    let m: RegExpExecArray | null
+
+    const pushText = (textPart: string) => {
+      const cleaned = decodeEntities(stripTags(textPart))
+      if (cleaned) nodes.push(cleaned)
     }
-    
-    // Parse standalone paragraphs
-    const paragraphs = extractContent(html, 'p')
-    paragraphs.forEach((para, index) => {
-      // Skip paragraphs that are already processed within divs
-      if (!divMatches.some(div => div.includes(`<p>${para}</p>`) || div.includes(`<p>${para.trim()}</p>`))) {
+
+    while ((m = anchorRegex.exec(fragment)) !== null) {
+      const before = fragment.slice(lastIndex, m.index)
+      if (before) {
+        const decoded = decodeEntities(stripTags(before))
+        if (decoded) {
+          const contentWithoutTrailing = decoded.replace(/[ \t\u00A0]+$/, '')
+          const hadTrailingWhitespace = /[ \t\u00A0]+$/.test(decoded)
+          if (contentWithoutTrailing) nodes.push(contentWithoutTrailing)
+          if (hadTrailingWhitespace) nodes.push(' ')
+        }
+      }
+
+      const href = m[1] || ''
+      const label = decodeEntities(stripTags(m[2] || '')) || href
+      nodes.push(
+        <A key={`a-${globalKeyCounter++}`} href={href} target="_blank">
+          {label}
+        </A>
+      )
+
+      lastIndex = anchorRegex.lastIndex
+    }
+
+    const trailing = fragment.slice(lastIndex)
+    pushText(trailing)
+
+    return nodes
+  }
+
+  // Parse HTML in a single pass preserving original order
+  const parseBlocks = (source: string = html): React.ReactNode[] => {
+    const result: React.ReactNode[] = []
+    const blockRegex = /<(h[1-3]|p|ul|ol|div|section)\b[^>]*>([\s\S]*?)<\/\1>/gi
+    let match: RegExpExecArray | null
+    let lastIndex = 0
+
+    const pushTextIfAny = (text: string) => {
+      const cleaned = text.trim()
+      if (!cleaned) return
+      result.push(
+        <P key={`text-${globalKeyCounter++}`} className="mb-4 text-[--text-color]">
+          {formatInlineNodes(cleaned)}
+        </P>
+      )
+    }
+
+    const renderBlock = (tag: string, inner: string) => {
+      if (tag === 'div' || tag === 'section') {
+        // Recursively parse inner to preserve nested order
+        const children = parseBlocks(inner)
+        if (children.length > 0) {
+          // Do not wrap to avoid extra spacing differences; inline the children
+          children.forEach((child) => result.push(child))
+        }
+        return
+      }
+
+      if (tag === 'p') {
         result.push(
-          <P key={`p-${index}`} className="mb-4 text-[--text-color]">
-            {formatTextContent(para)}
+          <P key={`p-${globalKeyCounter++}`} className="mb-4 text-[--text-color]">
+            {formatInlineNodes(inner)}
           </P>
         )
+        return
       }
-    })
-    
-    // Parse lists - using multiline-compatible pattern
-    const ulLists: string[] = html.match(/<ul[^>]*>([\s\S]*?)<\/ul>/g) || []
-    ulLists.forEach((list, listIndex) => {
-      const items = extractContent(list, 'li')
-      const listItems = items.map((item, itemIndex) => (
-        <View key={`ul-${listIndex}-li-${itemIndex}`} className="flex-row mb-2">
-          <Text className="text-[--text-color] mr-2">•</Text>
-          <P className="flex-1 text-[--text-color]">{formatTextContent(item)}</P>
-        </View>
-      ))
-      
-      result.push(
-        <View key={`ul-${listIndex}`} className="mb-4 ml-4">
-          {listItems}
-        </View>
-      )
-    })
-    
-    const olLists: string[] = html.match(/<ol[^>]*>([\s\S]*?)<\/ol>/g) || []
-    olLists.forEach((list, listIndex) => {
-      const items = extractContent(list, 'li')
-      const listItems = items.map((item, itemIndex) => (
-        <View key={`ol-${listIndex}-li-${itemIndex}`} className="flex-row mb-2">
-          <Text className="text-[--text-color] mr-2">{itemIndex + 1}.</Text>
-          <P className="flex-1 text-[--text-color]">{formatTextContent(item)}</P>
-        </View>
-      ))
-      
-      result.push(
-        <View key={`ol-${listIndex}`} className="mb-4 ml-4">
-          {listItems}
-        </View>
-      )
-    })
-    
+
+      if (tag === 'h1') {
+        result.push(
+          <H1 key={`h1-${globalKeyCounter++}`} className="mb-4 mt-6 text-[--text-color]">
+            {formatInlineNodes(inner)}
+          </H1>
+        )
+        return
+      }
+
+      if (tag === 'h2') {
+        result.push(
+          <H2 key={`h2-${globalKeyCounter++}`} className="mb-3 mt-5 text-[--text-color]">
+            {formatInlineNodes(inner)}
+          </H2>
+        )
+        return
+      }
+
+      if (tag === 'h3') {
+        result.push(
+          <H3 key={`h3-${globalKeyCounter++}`} className="mb-2 mt-4 text-[--text-color]">
+            {formatInlineNodes(inner)}
+          </H3>
+        )
+        return
+      }
+
+      if (tag === 'ul') {
+        const items = extractContent(inner, 'li')
+        const listItems = items.map((item, itemIndex) => (
+          <View key={`ul-li-${globalKeyCounter++}-${itemIndex}`} className="flex-row mb-2">
+            <Text className="text-[--text-color] mr-2">•</Text>
+            <P className="flex-1 text-[--text-color]">{formatInlineNodes(item)}</P>
+          </View>
+        ))
+        result.push(
+          <View key={`ul-${globalKeyCounter++}`} className="mb-4 ml-4">
+            {listItems}
+          </View>
+        )
+        return
+      }
+
+      if (tag === 'ol') {
+        const items = extractContent(inner, 'li')
+        const listItems = items.map((item, itemIndex) => (
+          <View key={`ol-li-${globalKeyCounter++}-${itemIndex}`} className="flex-row mb-2">
+            <Text className="text-[--text-color] mr-2">{itemIndex + 1}.</Text>
+            <P className="flex-1 text-[--text-color]">{formatInlineNodes(item)}</P>
+          </View>
+        ))
+        result.push(
+          <View key={`ol-${globalKeyCounter++}`} className="mb-4 ml-4">
+            {listItems}
+          </View>
+        )
+        return
+      }
+    }
+
+    while ((match = blockRegex.exec(source)) !== null) {
+      const before = source.slice(lastIndex, match.index)
+      pushTextIfAny(before)
+
+      const tag = match[1]
+      const inner = match[2]
+      if (typeof tag === 'string') {
+        renderBlock(tag, inner ?? '')
+      }
+
+      lastIndex = blockRegex.lastIndex
+    }
+
+    // Trailing text after the last block
+    const trailing = source.slice(lastIndex)
+    pushTextIfAny(trailing)
+
     return result
   }
 
-  // Clean and format text content
-  const formatTextContent = (text: string) => {
-    // Handle strong/bold text
-    let formatted = text.replace(/<strong>(.*?)<\/strong>/g, '*$1*')
-
-    // Handle links - using a compatible regex pattern
-    formatted = formatted.replace(
-      /<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/g,
-      '$2 [$1]'
-    )
-
-    // Remove remaining tags and decode
-    return decodeEntities(formatted.replace(/<\/?[^>]+(>|$)/g, ''))
-  }
+  // Clean and format text content — replaced by formatInlineNodes above
 
   // Process all blocks and return the result
   return parseBlocks()
@@ -196,7 +244,7 @@ export function PostScreen({ post }: { post: any }) {
           }}
         />
 
-        <View className="aspect-[3/2] w-full object-cover">
+        <View className="aspect-[3/2] w-full object-cover mb-8">
           <View className="relative h-full w-full overflow-hidden rounded-2xl">
             <SolitoImage
               src={imageUrl}
