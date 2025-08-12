@@ -38,7 +38,7 @@ export function Featured({ title, subtitle, features = [], imgUrl }: any) {
                       <P className="font-semibold leading-8 text-[--text-color]">
                         {feature.name}
                       </P>
-                      <P className="inline leading-8 text-gray-600">
+                      <P className="inline leading-8">
                         {feature.desc}
                       </P>
                     </View>

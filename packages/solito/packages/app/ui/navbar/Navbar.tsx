@@ -16,7 +16,7 @@ export const Navbar = ({ className }: { className?: string }) => {
           <View className="flex flex-row items-center justify-start">
             <View className="flex min-h-[2.25rem] flex-row items-center">
               <SkyhitzLogo id="navbar" />
-              <P className="font-raleway pl-4 text-sm tracking-[12px] text-gray-600 sm:text-lg">
+              <P className="font-raleway pl-4 text-sm tracking-[12px] text-[--logo-color] sm:text-lg">
                 SKYHITZ
               </P>
             </View>

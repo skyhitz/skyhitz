@@ -25,6 +25,9 @@ export const themes = {
     '--bg-secondary-color': '#F9F9F9',
     '--success-bg-color': '#5ce67e',
     '--error-bg-color': '#ff444a',
+
+    // Logo color
+    '--logo-color': 'rgb(75 85 99)',
   }),
   dark: vars({
     // Base colors
@@ -47,6 +50,9 @@ export const themes = {
     '--bg-secondary-color': '#1A1A1A',
     '--success-bg-color': '#5ce67e',
     '--error-bg-color': '#ff444a',
+
+    // Logo color
+    '--logo-color': '#e5e7eb',
   }),
 }
 

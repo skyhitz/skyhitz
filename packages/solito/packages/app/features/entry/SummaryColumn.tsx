@@ -16,13 +16,13 @@ export function EntrySummaryColumn({ entry }: Props) {
   return (
     <View className="flex w-full md:ml-4 md:flex-1">
       <View>
-        <H1 className="font-unbounded mb-2 text-3xl font-bold md:text-5xl">
+        <H1 className="font-unbounded mb-2 text-3xl font-bold md:text-5xl md:ml-0 ml-4">
           {entry.title}
         </H1>
-        <P className="md:text-2xl">{entry.artist}</P>
+        <P className="md:text-2xl md:ml-0 ml-4">{entry.artist}</P>
 
         {/* Action buttons below title/artist to match legacy layout */}
-        <View className="mt-4 flex-row items-center gap-4">
+        <View className="mt-4 flex-row items-center gap-4 md:ml-0 ml-4">
           <ActionButtons entry={entry} />
         </View>
       </View>
