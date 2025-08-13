@@ -1,6 +1,8 @@
 import { BlogScreen } from 'app/features/blog/screen'
 import JsonLdScript from 'app/seo/jsonLd'
 import { fetchBlogPosts } from 'app/api/algolia'
+import type { Metadata } from 'next'
+import { Config } from 'app/config'
 
 export default async function BlogPage() {
   const blog = await fetchBlogPosts()
@@ -13,7 +15,9 @@ export default async function BlogPage() {
   )
 }
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Skyhitz Blog',
   description: 'News and Updates from Skyhitz',
+  alternates: { canonical: `${Config.APP_URL}/blog` },
+  robots: { index: true, follow: true },
 }

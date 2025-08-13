@@ -3,6 +3,8 @@
 import { SignInWithToken } from 'app/features/accounts/sign-in/signInWithToken'
 import { useSearchParams } from 'next/navigation'
 import { View } from 'react-native'
+import type { Metadata } from 'next'
+import { Config } from 'app/config'
 import { H1 } from 'app/design/typography'
 
 export default function SignInWithTokenPage() {
@@ -18,7 +20,11 @@ export default function SignInWithTokenPage() {
   )
 }
 
-export const metadata = {
-  title: 'Sign In | Skyhitz',
-  description: 'Sign in to your Skyhitz account',
+export const metadata: Metadata = {
+  title: 'Skyhitz - Sign In With Token',
+  description: 'Sign in to your Skyhitz account using a magic link token',
+  alternates: {
+    canonical: `${Config.APP_URL}/sign-in-with-token`,
+  },
+  robots: { index: false, follow: false },
 }

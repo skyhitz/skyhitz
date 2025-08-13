@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   alternates: {
     canonical: `${Config.APP_URL}/top-up`,
   },
+  robots: { index: false, follow: false },
 }
 
 export default function TopUpPage() {

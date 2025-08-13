@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   alternates: {
     canonical: `${Config.APP_URL}/privacy`,
   },
+  robots: { index: true, follow: true },
 }
 
 export default function PrivacyPage() {

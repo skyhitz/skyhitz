@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   alternates: {
     canonical: `${Config.APP_URL}/chart`,
   },
+  robots: { index: true, follow: true },
 }
 
 // Disable Next.js cache for this route

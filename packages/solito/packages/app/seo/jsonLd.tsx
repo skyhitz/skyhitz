@@ -1,6 +1,13 @@
 import { footer, homeContent, keywords } from 'app/constants/content'
 import { Config } from 'app/config'
-import { Post } from 'app/types'
+type BlogPost = {
+  title: string
+  imageUrl: string
+  slug: string
+  tag: string
+  content: string
+  publishedAtTimestamp: number
+}
 import { Entry, PublicUser } from 'app/api/graphql'
 import { formattedISODate, randomIntFromInterval } from 'app/utils'
 import { imageUrlMedium } from 'app/utils/entry'
@@ -23,8 +30,8 @@ export default function JsonLdScript({
 }: {
   landing?: boolean
   chart?: Entry[]
-  blog?: Post[]
-  post?: Post
+  blog?: BlogPost[]
+  post?: BlogPost
   entry?: Entry
   collector?: PublicUser
 }) {
@@ -40,7 +47,7 @@ export default function JsonLdScript({
       description: homeContent.header.desc,
       logo: {
         '@type': 'ImageObject',
-        url: 'https://skyhitz.io/icon.png',
+        url: `${Config.APP_URL}/icon.png`,
       },
       url: Config.APP_URL,
       '@id': `${Config.APP_URL}#mission`,
@@ -75,7 +82,7 @@ export default function JsonLdScript({
         position: index + 1,
         item: {
           '@type': 'Product',
-          url: `http://skyhitz.io/beat/${entry.id}`,
+          url: `${Config.APP_URL}/music/${entry.id}`,
           name: entry.artist ? `${entry.artist} ${entry.title}` : entry.title,
           image: imageUrlMedium(entry.imageUrl),
           ...(entry.description ? { description: entry.description } : {}),
@@ -97,7 +104,7 @@ export default function JsonLdScript({
           '@type': 'BlogPosting',
           headline: post.title,
           image: post.imageUrl,
-          url: `https://skyhitz.io/blog/${post.slug}`,
+          url: `${Config.APP_URL}/blog/${post.slug}`,
           genre: post.tag,
           keywords: keywords,
           publisher: footer.companyName,
@@ -123,7 +130,7 @@ export default function JsonLdScript({
       '@type': 'BlogPosting',
       headline: post.title,
       image: post.imageUrl,
-      url: `https://skyhitz.io/blog/${post.slug}`,
+      url: `${Config.APP_URL}/blog/${post.slug}`,
       genre: post.tag,
       keywords: keywords,
       publisher: footer.companyName,
@@ -146,7 +153,7 @@ export default function JsonLdScript({
     jsonLd = {
       '@context': 'https://schema.org',
       '@type': 'Product',
-      url: `http://skyhitz.io/beat/${entry.id}`,
+      url: `${Config.APP_URL}/music/${entry.id}`,
       name: entry.artist ? `${entry.artist} ${entry.title}` : entry.title,
       image: imageUrlMedium(entry.imageUrl),
       ...(entry.description ? { description: entry.description } : {}),

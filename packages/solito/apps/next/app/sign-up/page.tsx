@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   alternates: {
     canonical: `${Config.APP_URL}/sign-up`,
   },
+  robots: { index: false, follow: false },
 }
 
 export default SignUp

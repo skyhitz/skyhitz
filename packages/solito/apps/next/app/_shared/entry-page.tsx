@@ -8,6 +8,7 @@ import { imageUrlMedium, videoSrc } from 'app/utils/entry'
 import { Config } from 'app/config'
 import { redirect } from 'next/navigation'
 import { Entry } from 'app/api/graphql/types'
+import JsonLdScript from 'app/seo/jsonLd'
 
 type Props = {
   params: { id: string }
@@ -31,6 +32,7 @@ export async function generateEntryMetadata(props: Props): Promise<Metadata> {
   return {
     title: entry.artist ? `${entry.artist} - ${entry.title}` : entry.title,
     description: entry.description,
+    alternates: { canonical: url },
     twitter: {
       card: 'player',
       title: entry.artist ? `${entry.artist} - ${entry.title}` : entry.title,
@@ -78,5 +80,10 @@ export async function EntryPageComponent(props: Props) {
   }
 
   // Cast the entry to handle the type mismatch between Entry|null and Entry|undefined
-  return <EntryScreen entry={entry as Entry} />
+  return (
+    <>
+      <EntryScreen entry={entry as Entry} />
+      <JsonLdScript entry={entry as Entry} />
+    </>
+  )
 }

@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   alternates: {
     canonical: `${Config.APP_URL}/search`,
   },
+  robots: { index: true, follow: true },
 }
 
 export default function SearchPage() {
