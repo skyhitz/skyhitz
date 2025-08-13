@@ -77,7 +77,7 @@ export function SendXLMModal({
 
             <View className="mt-8 w-full flex flex-row items-center justify-center">
               <Stellar size={18} className="mr-2" />
-              <P className="font-unbounded text-[--text-color]">
+              <P className="font-unbounded text-[--text-color] ml-2">
                 Current Balance: {currentBalance.toFixed(2)} XLM
               </P>
             </View>

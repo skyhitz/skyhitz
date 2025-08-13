@@ -24,6 +24,8 @@ import { P, ActivityIndicator } from 'app/design/typography'
 import { useToast } from 'app/provider/toast'
 import Stellar from 'app/ui/icons/stellar'
 
+const MIN_WITHDRAWAL_AMOUNT = 3
+
 export function ProfileScreen({ user }: { user: User }) {
   const [lowBalanceModalVisible, setLowBalanceModalVisible] =
     useState<boolean>(false)
@@ -98,8 +100,7 @@ export function ProfileScreen({ user }: { user: User }) {
   }, [claimEarnings, refetchUserCredits, toast])
 
   const handleWithdraw = () => {
-    // Use hardcoded minimum withdrawal amount (5 XLM) as in the legacy app
-    if (credits?.userCredits && credits.userCredits < 5) {
+    if (credits?.userCredits && credits.userCredits < MIN_WITHDRAWAL_AMOUNT) {
       setLowBalanceModalVisible(true)
     } else {
       setSendModalVisible(true)
@@ -188,7 +189,7 @@ export function ProfileScreen({ user }: { user: User }) {
       <LowBalanceModal
         visible={lowBalanceModalVisible}
         onClose={() => setLowBalanceModalVisible(false)}
-        minWithdrawalAmount={5}
+        minWithdrawalAmount={MIN_WITHDRAWAL_AMOUNT}
       />
 
       <SendXLMModal
