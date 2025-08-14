@@ -1,14 +1,17 @@
 import { BlogScreen } from 'app/features/blog/screen'
 import JsonLdScript from 'app/seo/jsonLd'
-import { fetchBlogPosts } from 'app/api/algolia'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 import type { Metadata } from 'next'
 import { Config } from 'app/config'
 
 export default async function BlogPage() {
-  const blog = await fetchBlogPosts()
-
+  // SSR is safe now (Algolia uses fetch requester); still fine if it fails
+  let blog: any[] = []
+  try {
+    const { fetchBlogPosts } = await import('app/api/algolia')
+    blog = await fetchBlogPosts(0, 20)
+  } catch {}
   return (
     <>
       <BlogScreen posts={blog} />

@@ -31,10 +31,10 @@ export function usePaginatedAlgoliaSearch<T>({
 
   const { data, error, size, setSize } = useSWRInfinite(getKey, fetcher, {
     dedupingInterval: 10000,
-    revalidateOnFocus: true,
-    revalidateOnMount: true,
+    revalidateOnFocus: false,
+    revalidateOnMount: false,
     revalidateIfStale: true,
-    revalidateAll: true,
+    revalidateAll: false,
   })
 
   const isLoadingInitialData = !data && !error

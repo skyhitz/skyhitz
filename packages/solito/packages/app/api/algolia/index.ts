@@ -1,25 +1,37 @@
 import { Config } from 'app/config'
+// Use the standard client; on Workers we only call it from client-side paths now
 import { algoliasearch } from 'algoliasearch'
+import { createFetchRequester } from '@algolia/requester-fetch'
 import { filter, isEmpty } from 'ramda'
 import { isSome } from 'app/utils'
 import { Post } from 'app/types/index'
 
 export const appDomain = Config.APP_URL.replace('https://', '')
+// Cloudflare worker hosts (workers.dev or custom domain) should also map to the
+// production appDomain. Normalize known hosts to avoid mismatched index names.
+const normalizedHost = (host: string) =>
+  host
+    .replace('https://', '')
+    .replace('http://', '')
+    .replace('.workers.dev', '')
+    .replace('skyhitz-app.', '')
+
 
 // Initialize the Algolia client with v5 API
 export const algoliaClient = algoliasearch(
   Config.ALGOLIA_APP_ID,
-  Config.ALGOLIA_SEARCH_KEY
+  Config.ALGOLIA_SEARCH_KEY,
+  { requester: createFetchRequester() }
 )
 
 // Define index names for use with v5 API
 export const indexNames = {
-  entries: `${appDomain}:entries`,
-  users: `${appDomain}:users`,
-  blog: `${appDomain}:blog`,
-  shares: `${appDomain}:shares`,
-  entriesRatingDesc: `${appDomain}:entries_rating_desc`,
-  entriesTimestampDesc: `${appDomain}:entries_timestamp_desc`,
+  entries: `${normalizedHost(appDomain)}:entries`,
+  users: `${normalizedHost(appDomain)}:users`,
+  blog: `${normalizedHost(appDomain)}:blog`,
+  shares: `${normalizedHost(appDomain)}:shares`,
+  entriesRatingDesc: `${normalizedHost(appDomain)}:entries_rating_desc`,
+  entriesTimestampDesc: `${normalizedHost(appDomain)}:entries_timestamp_desc`,
 }
 
 /**
@@ -138,6 +150,8 @@ export async function fetchBlogPosts(page = 0, hitsPerPage = 20) {
         query: '',
         page,
         hitsPerPage,
+        attributesToRetrieve: ['*'],
+        filters: 'publishedAtTimestamp>0',
       },
     })
 

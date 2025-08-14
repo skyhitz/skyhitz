@@ -5,7 +5,7 @@ import { usePaginatedAlgoliaSearch } from './usePaginatedAlgoliaSearch'
 import type { Post } from 'app/types/index'
 
 export const queryKey = 'blog?page='
-const pageSize = 20
+export const pageSize = 20
 
 const fetchBlog = async (key: string) => {
   const page = parseInt(key.replace(queryKey, ''), 10)
@@ -15,6 +15,12 @@ const fetchBlog = async (key: string) => {
       query: '',
       page,
       hitsPerPage: pageSize,
+      attributesToRetrieve: ['*'],
+
+      // Ensure we only get published posts
+      filters: 'publishedAtTimestamp>0',
+      // Prefer recent first if index supports timestamp sorting
+      // sort based on replica if configured; otherwise rely on index settings
     }
   })
   return filter(isSome, response.hits as unknown as Post[]) as NonNullable<Post>[]
@@ -23,12 +29,10 @@ const fetchBlog = async (key: string) => {
 export function useBlogPosts(pageStart?: number) {
   return usePaginatedAlgoliaSearch({
     fetcher: async (key: string) => {
-      if (pageStart) {
-        const page = parseInt(key.replace(queryKey, ''), 10) + pageStart
-
-        return fetchBlog(queryKey + page)
-      }
-      return fetchBlog(key)
+      // Always start from page 0; SWR will pass 0 for the first page
+      const page = parseInt(key.replace(queryKey, ''), 10)
+      const normalized = Math.max(0, pageStart ? page + pageStart : page)
+      return fetchBlog(queryKey + normalized)
     },
     commonKey: queryKey,
     pageSize,

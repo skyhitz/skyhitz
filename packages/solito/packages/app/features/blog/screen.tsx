@@ -45,7 +45,7 @@ export function BlogScreen({ posts = [] }: { posts?: any[] }) {
     isLoadingMore = false,
     onNextPage = () => {},
     loadMoreEnabled = false,
-  } = useBlogPosts(1) || {}
+  } = useBlogPosts(0) || {}
 
   return (
     <View
