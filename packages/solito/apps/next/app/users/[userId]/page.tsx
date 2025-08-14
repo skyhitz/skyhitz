@@ -6,7 +6,7 @@ import JsonLdScript from 'app/seo/jsonLd'
 import { imageUrlMedium } from 'app/utils/entry'
 import { notFound } from 'next/navigation'
 
-type Props = { params: { userId: string } }
+type Props = { params: Promise<{ userId: string }> }
 
 async function getPublicUser(userId: string) {
   const res = await usersIndex.search<PublicUser>('', {

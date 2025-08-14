@@ -11,4 +11,6 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-export default SignUp
+export default function SignUpPage() {
+  return <SignUp />
+}

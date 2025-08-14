@@ -1,4 +1,3 @@
-import { StylesProvider } from './styles-provider'
 import 'app/design/global.css'
 import { inter, raleway, unbounded } from './fonts'
 import { Provider } from 'app/provider/index'
@@ -76,11 +75,9 @@ export default function RootLayout({
       className={`${inter.variable} ${raleway.variable} ${unbounded.variable} font-sans`}
     >
       <ThemeProvider>
-        <StylesProvider>
-          <Provider>
-            <MainLayout>{children}</MainLayout>
-          </Provider>
-        </StylesProvider>
+        <Provider>
+          <MainLayout>{children}</MainLayout>
+        </Provider>
       </ThemeProvider>
     </html>
   )

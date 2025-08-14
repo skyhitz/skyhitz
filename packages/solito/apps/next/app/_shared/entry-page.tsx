@@ -1,6 +1,3 @@
-/** @jsxImportSource react */
-
-import type { Metadata } from 'next'
 import React from 'react'
 import EntryScreen from 'app/features/entry'
 import { getEntry } from 'app/hooks/algolia/getEntry'
@@ -11,10 +8,10 @@ import { Entry } from 'app/api/graphql/types'
 import JsonLdScript from 'app/seo/jsonLd'
 
 type Props = {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
-export async function generateEntryMetadata(props: Props): Promise<Metadata> {
+export async function generateEntryMetadata(props: Props) {
   // read route params - properly await params object in Next.js 15
   const { id } = await props.params
 

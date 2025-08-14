@@ -1,23 +1,11 @@
-'use client'
-
-import { SignInWithToken } from 'app/features/accounts/sign-in/signInWithToken'
-import { useSearchParams } from 'next/navigation'
-import { View } from 'react-native'
+import { SignInWithTokenClient } from './sign-in-with-token-client'
 import type { Metadata } from 'next'
 import { Config } from 'app/config'
-import { H1 } from 'app/design/typography'
+
+export const dynamic = 'force-dynamic'
 
 export default function SignInWithTokenPage() {
-  const searchParams = useSearchParams()
-  const uid = searchParams.get('uid') || ''
-  const token = searchParams.get('token') || ''
-
-  return (
-    <View className="flex-1 items-center justify-center p-4">
-      <H1 className="mb-8 text-center">Sign In to Skyhitz</H1>
-      <SignInWithToken uid={uid} token={token} />
-    </View>
-  )
+  return <SignInWithTokenClient />
 }
 
 export const metadata: Metadata = {

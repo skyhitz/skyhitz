@@ -1,4 +1,3 @@
-import type { Metadata } from 'next'
 import { PostScreen } from 'app/features/post/screen'
 import { combinedTitle } from 'app/constants/content'
 import { imageUrlMedium } from 'app/utils/entry'
@@ -7,10 +6,10 @@ import JsonLdScript from 'app/seo/jsonLd'
 import { fetchPost } from 'app/api/algolia'
 
 type Props = {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params }: Props) {
   // read route params
   const { slug } = await params
 
@@ -61,7 +60,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function BlogPage({
   params,
 }: {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
   const post = await fetchPost(slug)

@@ -1,9 +1,7 @@
-/** @jsxImportSource react */
-
 import { generateEntryMetadata, EntryPageComponent } from '../../_shared/entry-page'
 
 type Props = {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 // Re-export the shared metadata generation

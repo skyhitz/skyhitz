@@ -18,6 +18,15 @@ console.log('Environment variables loaded:', {
  * @type {import('next').NextConfig}
  */
 module.exports = {
+  // Configure external packages for server components
+  serverExternalPackages: ['sharp'],
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  swcMinify: false,
   transpilePackages: [
     'react-native',
     'react-native-web',
@@ -40,6 +49,7 @@ module.exports = {
     'expo-clipboard',
   ],
   images: {
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',

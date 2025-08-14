@@ -1,4 +1,3 @@
-'use client'
 import { Config } from 'app/config'
 import TermsScreen from 'app/features/legal/termsScreen'
 import { Metadata } from 'next'

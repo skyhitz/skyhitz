@@ -1,4 +1,3 @@
-'use client'
 import { Config } from 'app/config'
 import PrivacyScreen from 'app/features/legal/privacyScreen'
 import { Metadata } from 'next'

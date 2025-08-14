@@ -1,8 +1,6 @@
-'use client'
-import { ComponentAuthGuard } from 'app/utils/authGuard'
-import LikesScreen from 'app/features/profile/likes'
 import type { Metadata } from 'next'
 import { Config } from 'app/config'
+import LikesClient from './likes-client'
 
 export const metadata: Metadata = {
   title: 'Skyhitz - My Likes',
@@ -12,9 +10,5 @@ export const metadata: Metadata = {
 }
 
 export default function LikesPage() {
-  return (
-    <ComponentAuthGuard>
-      <LikesScreen />
-    </ComponentAuthGuard>
-  )
+  return <LikesClient />
 }

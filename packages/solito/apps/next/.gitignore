@@ -36,3 +36,14 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# OpenNext Cloudflare build output
+.open-next/
+
+# Wrangler
+.wrangler/
+
+# package-lock.json (we use yarn)
+package-lock.json
+
+wrangler.toml
