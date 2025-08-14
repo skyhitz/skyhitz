@@ -26,7 +26,6 @@ module.exports = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  swcMinify: false,
   transpilePackages: [
     'react-native',
     'react-native-web',
