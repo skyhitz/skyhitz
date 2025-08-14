@@ -1,6 +1,8 @@
 import { BlogScreen } from 'app/features/blog/screen'
 import JsonLdScript from 'app/seo/jsonLd'
 import { fetchBlogPosts } from 'app/api/algolia'
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 import type { Metadata } from 'next'
 import { Config } from 'app/config'
 

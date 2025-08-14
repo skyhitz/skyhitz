@@ -1,6 +1,5 @@
 import { Config } from 'app/config'
-import * as algoliaModule from 'algoliasearch'
-const { algoliasearch } = algoliaModule
+import { algoliasearch } from 'algoliasearch'
 import { filter, isEmpty } from 'ramda'
 import { isSome } from 'app/utils'
 import { Post } from 'app/types/index'

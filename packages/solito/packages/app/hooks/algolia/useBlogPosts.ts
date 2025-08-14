@@ -2,7 +2,7 @@ import { algoliaClient, indexNames } from 'app/api/algolia'
 import { filter } from 'ramda'
 import { isSome } from 'app/utils'
 import { usePaginatedAlgoliaSearch } from './usePaginatedAlgoliaSearch'
-import { Post } from 'app/types'
+import type { Post } from 'app/types/index'
 
 export const queryKey = 'blog?page='
 const pageSize = 20

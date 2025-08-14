@@ -20,19 +20,22 @@ export const revalidate = 0
 export const dynamic = 'force-dynamic'
 
 async function getChart() {
-  const res = await ratingEntriesIndex.search<Entry>('', {
-    attributesToRetrieve: ['*'],
-    facets: ['apr'],
-  })
+  try {
+    const res = await ratingEntriesIndex.search<Entry>('', {
+      attributesToRetrieve: ['*'],
+      facets: ['apr'],
+    })
 
-  if (isEmpty(res.hits)) {
+    if (isEmpty(res.hits)) {
+      return []
+    }
+
+    // Convert Algolia search results to Entry objects
+    return res.hits.map((hit: any) => hit as unknown as Entry)
+  } catch (error) {
+    console.error('Chart fetch error:', error)
     return []
   }
-
-  // Convert Algolia search results to Entry objects
-  return res.hits.map((hit: any) => {
-    return hit as unknown as Entry
-  })
 }
 
 export default async function ChartPage() {

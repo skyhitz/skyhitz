@@ -3,6 +3,9 @@ import { fetchHomePagePosts } from 'app/api/algolia'
 import { homeContent } from 'app/constants/content'
 import JsonLdScript from 'app/seo/jsonLd'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default async function HomePage() {
   const posts = await fetchHomePagePosts()
 
