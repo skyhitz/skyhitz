@@ -69,7 +69,7 @@ async function main() {
 
   const entries = await algolia.getAllEntries();
   
-  const pinataGateway = 'https://ipfs.skyhitz.io/ipfs';
+  const pinataGateway = 'https://ipfs.io/ipfs';
   const publicBaseUrl = BASE_URL + '/skyhitz';
 
   let mp4Count = 0;

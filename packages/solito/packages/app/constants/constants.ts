@@ -4,7 +4,7 @@
 
 // IPFS related constants
 export const ipfsProtocol = 'ipfs://'
-export const pinataGateway = 'https://ipfs.skyhitz.io/ipfs'
+export const pinataGateway = 'https://ipfs.io/ipfs'
 export const fallbackGateway = 'https://ipfs.io/ipfs'
 
 // Storage keys
