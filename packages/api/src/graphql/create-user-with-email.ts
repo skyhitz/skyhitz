@@ -1,5 +1,5 @@
 import { AlgoliaClient } from '../algolia/algolia';
-import Mailer from '../sendgrid/sendgrid';
+import Mailer from '../postmark/mailer';
 import StellarClient from '../stellar/operations';
 import { Context, User } from '../util/types';
 import { GraphQLError } from 'graphql';

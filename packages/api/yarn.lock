@@ -2175,35 +2175,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sendgrid/client@npm:^8.1.3":
-  version: 8.1.3
-  resolution: "@sendgrid/client@npm:8.1.3"
-  dependencies:
-    "@sendgrid/helpers": "npm:^8.0.0"
-    axios: "npm:^1.6.8"
-  checksum: 10c0/1977e9e541d1277a0d8a29eff7f63d4580d2fc2c5e7d9d2adbaee46a471350b1967d6f03dac6adab63522f1775ee5a9e8eddb5502039d3ac8ae98acfedf190cf
-  languageName: node
-  linkType: hard
-
-"@sendgrid/helpers@npm:^8.0.0":
-  version: 8.0.0
-  resolution: "@sendgrid/helpers@npm:8.0.0"
-  dependencies:
-    deepmerge: "npm:^4.2.2"
-  checksum: 10c0/e7f341099c63915eb095102f8c7ec220a8f2fb66a0cd836ab91e7424005e7c5fd27b65e3a5ed43654f5b2b3608fa7d14ebba924ff86e5d0bdfeaf0248f836a50
-  languageName: node
-  linkType: hard
-
-"@sendgrid/mail@npm:^8.1.3":
-  version: 8.1.3
-  resolution: "@sendgrid/mail@npm:8.1.3"
-  dependencies:
-    "@sendgrid/client": "npm:^8.1.3"
-    "@sendgrid/helpers": "npm:^8.0.0"
-  checksum: 10c0/180d4609710dd22e60ecfcfcc7aaf37d8936872c3b7f9413b86d32e55e9d20f21842c4d81fff35d0906ca3750262a6df95b6c96eae5c48fe6c260d8214bd54b8
-  languageName: node
-  linkType: hard
-
 "@sinclair/typebox@npm:^0.27.8":
   version: 0.27.8
   resolution: "@sinclair/typebox@npm:0.27.8"
@@ -2221,7 +2192,6 @@ __metadata:
     "@aws-sdk/client-s3": "npm:^3.850.0"
     "@cloudflare/vitest-pool-workers": "npm:^0.1.0"
     "@cloudflare/workers-types": "npm:^4.20240614.0"
-    "@sendgrid/mail": "npm:^8.1.3"
     "@stellar/stellar-sdk": "npm:^13.1.0"
     "@tsndr/cloudflare-worker-jwt": "npm:^2.5.3"
     "@types/mime-types": "npm:^3"
@@ -2232,6 +2202,7 @@ __metadata:
     fluent-ffmpeg: "npm:^2.1.3"
     graphql: "npm:^16.8.2"
     mime-types: "npm:^3.0.1"
+    postmark: "npm:^3.0.11"
     stripe: "npm:^17.5.0"
     tmp: "npm:^0.2.3"
     tmp-promise: "npm:^3.0.3"
@@ -3308,7 +3279,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"axios@npm:^1.6.7, axios@npm:^1.6.8, axios@npm:^1.7.9":
+"axios@npm:^0.25.0":
+  version: 0.25.0
+  resolution: "axios@npm:0.25.0"
+  dependencies:
+    follow-redirects: "npm:^1.14.7"
+  checksum: 10c0/33475dc847e8494341db5ff5d3ce3a830e511d9698eda1e2507618a0a875ca774e7c59b9194c70664e886699b5917416175da2ea5ccb67a2945f7cdc939d7c56
+  languageName: node
+  linkType: hard
+
+"axios@npm:^1.6.7, axios@npm:^1.7.9":
   version: 1.8.4
   resolution: "axios@npm:1.8.4"
   dependencies:
@@ -3715,13 +3695,6 @@ __metadata:
   dependencies:
     type-detect: "npm:^4.0.0"
   checksum: 10c0/264e0613493b43552fc908f4ff87b8b445c0e6e075656649600e1b8a17a57ee03e960156fce7177646e4d2ddaf8e5ee616d76bd79929ff593e5c79e4e5e6c517
-  languageName: node
-  linkType: hard
-
-"deepmerge@npm:^4.2.2":
-  version: 4.3.1
-  resolution: "deepmerge@npm:4.3.1"
-  checksum: 10c0/e53481aaf1aa2c4082b5342be6b6d8ad9dfe387bc92ce197a66dea08bd4265904a087e75e464f14d1347cf2ac8afe1e4c16b266e0561cc5df29382d3c5f80044
   languageName: node
   linkType: hard
 
@@ -4308,6 +4281,16 @@ __metadata:
     async: "npm:^0.2.9"
     which: "npm:^1.1.1"
   checksum: 10c0/0397379ec3237c10b2389edeef26fdaf93f36d1b20b0f28f8945fe6d9121dcee9b0c615bf7d44edb7abd37233e0d24f0db39389668d3c86a1a2a0d59e3f4457b
+  languageName: node
+  linkType: hard
+
+"follow-redirects@npm:^1.14.7":
+  version: 1.15.11
+  resolution: "follow-redirects@npm:1.15.11"
+  peerDependenciesMeta:
+    debug:
+      optional: true
+  checksum: 10c0/d301f430542520a54058d4aeeb453233c564aaccac835d29d15e050beb33f339ad67d9bddbce01739c5dc46a6716dbe3d9d0d5134b1ca203effa11a7ef092343
   languageName: node
   linkType: hard
 
@@ -5528,6 +5511,15 @@ __metadata:
     picocolors: "npm:^1.0.1"
     source-map-js: "npm:^1.2.0"
   checksum: 10c0/c1828fc59e7ec1a3bf52b3a42f615dba53c67960ed82a81df6441b485fe43c20aba7f4e7c55425762fd99c594ecabbaaba8cf5b30fd79dfec5b52a9f63a2d690
+  languageName: node
+  linkType: hard
+
+"postmark@npm:^3.0.11":
+  version: 3.11.0
+  resolution: "postmark@npm:3.11.0"
+  dependencies:
+    axios: "npm:^0.25.0"
+  checksum: 10c0/6bbbebdebf3bbbfab3e7ca01a8305deb3979e83e06db07ffef85e4e26fc37d97a0271ec9bee8d106cb03e83c89ce285d3992f787c60a77fd4defed83e8b5188a
   languageName: node
   linkType: hard
 

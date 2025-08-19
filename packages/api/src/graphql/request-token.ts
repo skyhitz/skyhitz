@@ -1,7 +1,7 @@
 import { AlgoliaClient } from '../algolia/algolia';
 import { GraphQLError } from 'graphql';
 import PasswordlessAuth from '../auth/passwordless';
-import Mailer from '../sendgrid/sendgrid';
+import Mailer from '../postmark/mailer';
 import { Context } from '../util/types';
 
 export const requestTokenResolver = async (

@@ -23,7 +23,7 @@ This project provides a serverless backend for the Skyhitz platform, handling us
 - **Database**: Algolia
 - **Authentication**: JWT
 - **Payments**: Stripe
-- **Email**: SendGrid
+- **Email**: Postmark
 
 ## Project Structure
 
@@ -42,7 +42,7 @@ cloudflare-graphql/
 │   ├── constants/             # Constants
 │   ├── graphql/               # GraphQL schema and resolvers
 │   ├── kraken/                # Kraken integration
-│   ├── sendgrid/              # Email service
+│   ├── postmark/              # Email service
 │   ├── stellar/               # Stellar blockchain utilities
 │   ├── stripe/                # Payment processing
 │   ├── util/                  # Utility functions
@@ -125,7 +125,7 @@ Required environment variables:
 - `ALGOLIA_APP_ID`: Algolia application ID
 - `ISSUER_SEED`: Stellar issuer seed 
 - `JWT_SECRET`: JWT signing secret
-- `SENDGRID_API_KEY`: SendGrid API key
+- `POSTMARK_SERVER_TOKEN`: Postmark server token
 - `STRIPE_SECRET_KEY`: Stripe secret key
 - `STRIPE_WEBHOOK_SECRET`: Stripe webhook secret
 - `STELLAR_NETWORK`: Network selection ('testnet' or 'mainnet')

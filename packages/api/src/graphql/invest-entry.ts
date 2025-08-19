@@ -1,4 +1,4 @@
-import Mailer from '../sendgrid/sendgrid';
+import Mailer from '../postmark/mailer';
 import { Context } from '../util/types';
 import { requireAuth } from '../auth/auth-context';
 import ContractClient from '../../contract';

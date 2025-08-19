@@ -6,7 +6,7 @@ export interface IConfig {
 	ISSUER_SEED: string;
 	ALGOLIA_APP_ID: string;
 	ALGOLIA_ADMIN_API_KEY: string;
-	SENDGRID_API_KEY: string;
+	POSTMARK_SERVER_TOKEN: string;
 	STELLAR_NETWORK: string;
 	STRIPE_SECRET_KEY: string;
 	STRIPE_WEBHOOK_SECRET: string;

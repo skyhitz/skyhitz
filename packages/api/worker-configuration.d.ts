@@ -9,7 +9,7 @@ interface Env {
 	ISSUER_ID: string;
 	ISSUER_SEED: string;
 	ALGOLIA_ADMIN_API_KEY: string;
-	SENDGRID_API_KEY: string;
+	POSTMARK_SERVER_TOKEN: string;
 	STRIPE_SECRET_KEY: string;
 	STRIPE_WEBHOOK_SECRET: string;
 	STELLAR_NETWORK: string;

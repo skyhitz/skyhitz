@@ -1,6 +1,6 @@
 import { GraphQLError } from 'graphql';
 import { AlgoliaClient } from '../algolia/algolia';
-import Mailer from '../sendgrid/sendgrid';
+import Mailer from '../postmark/mailer';
 import { Context } from '../util/types';
 
 export const submitLinkResolver = async (_: any, { link, email }: { link: string; email: string }, context: Context) => {
