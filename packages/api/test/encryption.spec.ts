@@ -11,7 +11,6 @@ describe('Encryption', () => {
 		ALGOLIA_ADMIN_API_KEY: '',
 		POSTMARK_SERVER_TOKEN: '',
 		STELLAR_NETWORK: '',
-		PINATA_JWT: '',
 		ALCHEMY_API_KEY: '',
 	};
 

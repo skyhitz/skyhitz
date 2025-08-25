@@ -13,7 +13,6 @@ interface Env {
 	STRIPE_SECRET_KEY: string;
 	STRIPE_WEBHOOK_SECRET: string;
 	STELLAR_NETWORK: string;
-	PINATA_JWT: string;
 	ALCHEMY_API_KEY: string;
 	KRAKEN_API_KEY: string;
 	KRAKEN_API_PRIVATE_KEY: string;
