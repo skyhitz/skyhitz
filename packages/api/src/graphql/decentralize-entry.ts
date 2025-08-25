@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { GraphQLError } from 'graphql';
 import { fetchAndConvertImage } from 'src/util/image-conversion';
-import Pinanta from 'src/util/pinanta';
+import StorageClient from '../util/storage-client';
 import { Context } from 'src/util/types';
 
 const ipfsProtocolUrl = (hash: string) => {
@@ -9,7 +9,7 @@ const ipfsProtocolUrl = (hash: string) => {
 };
 
 export const decentralizeEntryResolver = async (_: any, { contract, tokenId, network }: any, context: Context) => {
-	const pinata = new Pinanta(context.env);
+	const pinata = new StorageClient(context.env);
 	const networks: { [key: string]: string } = {
 		ethereum: 'eth-mainnet',
 		polygon: 'polygon-mainnet',

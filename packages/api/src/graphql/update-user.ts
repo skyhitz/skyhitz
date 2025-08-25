@@ -4,7 +4,7 @@ import { ipfsProtocol } from '../constants/constants';
 import { GraphQLError } from 'graphql';
 import { requireAuth } from 'src/auth/auth-context';
 import { Context, User } from 'src/util/types';
-import PinataClient from 'src/util/pinanta'; // Import the PinataClient class
+import StorageClient from '../util/storage-client';
 
 type UpdateUserArgs = {
 	avatarUrl?: string | null;
@@ -34,7 +34,7 @@ const updateUserSchema: yup.SchemaOf<UpdateUserArgs> = yup.object().shape({
 export const updateUserResolver = async (_: any, updateUserArgs: UpdateUserArgs, ctx: Context) => {
 	const user = requireAuth(ctx);
 	const algolia = new AlgoliaClient(ctx.env);
-	const pinanta = new PinataClient(ctx.env);
+	const pinanta = new StorageClient(ctx.env);
 	const validatedUpdate = await updateUserSchema.validate(updateUserArgs, {
 		stripUnknown: true,
 	});
@@ -53,14 +53,14 @@ export const updateUserResolver = async (_: any, updateUserArgs: UpdateUserArgs,
 	if (validatedUpdate.avatarUrl) {
 		const result = await pinanta.pinIpfsFile(validatedUpdate.avatarUrl.replace(ipfsProtocol, ''), `${user.username}-image`);
 		if (!result) {
-			throw new GraphQLError("Couldn't pin image to pinata!");
+			throw new GraphQLError("Couldn't upload image to storage!");
 		}
 		console.log('Pinned image!');
 	}
 	if (validatedUpdate.backgroundUrl) {
 		const result = await pinanta.pinIpfsFile(validatedUpdate.backgroundUrl.replace(ipfsProtocol, ''), `${user.username}-backgroundimage`);
 		if (!result) {
-			throw new GraphQLError("Couldn't pin background image to pinata!");
+			throw new GraphQLError("Couldn't upload background image to storage!");
 		}
 		console.log('Pinned background image!');
 	}
