@@ -1,150 +1,144 @@
 # Skyhitz
 
-Skyhitz is a comprehensive music and media platform with blockchain integration, allowing creators to tokenize and monetize their content. The platform consists of both web and mobile applications with a unified backend.
+Skyhitz is a music and media platform with blockchain integration, allowing creators to tokenize and monetize their content. The platform includes a Next.js web app and an API deployed on Cloudflare Workers.
 
 ## Project Structure
 
-This is a monorepo containing both the API and UI components of the Skyhitz platform:
+Monorepo with API and Web app plus shared packages:
 
 ```
 skyhitz/
 ├── packages/
-│   ├── api/      # Backend API using Cloudflare Workers
-│   └── ui/       # Frontend applications and shared components
+│   ├── api/                      # GraphQL API (Cloudflare Workers)
+│   └── solito/                   # Web/Mobile apps and shared code
 │       ├── apps/
-│       │   ├── appdir/  # Web application (Next.js)
-│       │   └── expo/    # Mobile application (React Native/Expo)
+│       │   ├── next/             # Web app (Next.js + OpenNext Cloudflare)
+│       │   └── expo/             # Mobile app (React Native/Expo)
 │       └── packages/
-│           └── app/     # Shared components and functionality
+│           └── app/              # Shared components and functionality
 ```
 
 ## Technology Stack
 
 ### Backend (API)
 
-- **Cloudflare Workers**: Serverless edge computing platform for the API
-- **Apollo Server**: GraphQL server implementation
-- **Stellar SDK**: Integration with Stellar blockchain for NFT functionality
-- **Algolia**: Search functionality
-- **Stripe**: Payment processing
-- **Postmark**: Email services
-- **JWT**: Authentication
+- Cloudflare Workers (Wrangler)
+- Apollo Server (GraphQL)
+- Stellar/Soroban SDK (smart contracts)
+- Algolia, Stripe, Postmark, JWT
 
-### Frontend (UI)
+### Frontend (Web/Mobile)
 
-- **Next.js**: Web application framework (production)
-- **React Native/Expo**: Mobile application framework (in development)
-- **TailwindCSS**: Styling
-- **Apollo Client**: GraphQL client
-- **Shared Component Library**: Common UI elements and business logic
+- Next.js 15 (React 19) for web
+- OpenNext Cloudflare runtime (`@opennextjs/cloudflare`)
+- React Native/Expo for mobile (optional)
+- TailwindCSS
 
-## Key Features
-
-- User authentication and profile management
-- Media content management (entries with video and images)
-- Blockchain integration for tokenizing content
-- Payment processing and credits system
-- Like/favorite functionality
-- Activity tracking
-- Content discovery
-
-## Smart Contract Integration
-
-The platform includes a Stellar blockchain integration for:
-
-- Tokenizing media entries
-- Managing ownership and investments
-- Tracking transaction history
-- Claiming earnings
-
-## Development Setup
+## Development
 
 ### Prerequisites
 
-- Node.js
-- Yarn package manager
-- Cloudflare Wrangler CLI (for API development)
-- Expo CLI (for mobile development)
+- Node.js and Yarn
+- Cloudflare Wrangler CLI
 
-### Getting Started
+### Install dependencies
 
-1. **Install dependencies**:
+```
+yarn install
+```
 
-   ```
-   yarn install
-   ```
+### Run locally
 
-2. **Run the API locally**:
+- API (Cloudflare Worker dev server):
+```
+yarn api:dev
+```
 
-   ```
-   yarn api:dev
-   ```
+- Web (Next.js):
+```
+cd packages/solito/apps/next && yarn dev
+```
 
-3. **Run the web application**:
+- Mobile (Expo):
+```
+cd packages/solito && yarn native
+```
 
-   ```
-   yarn ui:dev
-   ```
+## Deployment
 
-   Or more specifically:
+### Web (Cloudflare via OpenNext)
 
-   ```
-   cd packages/ui && yarn web
-   ```
+Wrangler config: `packages/solito/apps/next/wrangler.toml`
 
-4. **Run the mobile application**:
-   ```
-   cd packages/ui && yarn native
-   ```
+From repo root:
+```
+yarn cf:build                 # Build web for Cloudflare
+yarn cf:preview               # Preview locally using CF
+yarn cf:deploy                # Deploy (default env)
+yarn cf:deploy:staging        # Deploy to staging
+yarn cf:deploy:production     # Deploy to production
+```
 
-### Deployment
+Environments configured in `wrangler.toml`:
+- production: `skyhitz-app`
+- staging: `skyhitz-app-staging`
 
-Deploy the API to Cloudflare Workers:
+### API (Cloudflare Workers)
 
+Wrangler config: `packages/api/wrangler.toml`
+
+From repo root:
+```
+yarn api:deploy
+```
+
+Or from `packages/api/`:
 ```
 yarn deploy
 ```
 
-## Project Structure Details
+## Environment Variables
 
-### API Structure
+Use Wrangler environment variables or `.dev.vars` for local dev.
 
-- `src/`: Main source code
+### API
+- `ALGOLIA_ADMIN_KEY`
+- `ALGOLIA_APP_ID`
+- `ISSUER_SEED`
+- `JWT_SECRET`
+- `POSTMARK_SERVER_TOKEN`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STELLAR_NETWORK` (e.g. `testnet` | `mainnet`)
 
-  - `algolia/`: Search integration
-  - `auth/`: Authentication services
-  - `config/`: Application configuration
-  - `constants/`: Constant values
-  - `graphql/`: GraphQL schema and resolvers
-  - `kraken/`: Exchange rate services
-  - `postmark/`: Email service integration
-  - `stellar/`: Blockchain integration
-  - `stripe/`: Payment processing
-  - `util/`: Utility functions
-  - `webhooks/`: Webhook handlers
+### Web (public)
+- `NEXT_PUBLIC_EXPO_SKYHITZ_ENV` (e.g. `production` | `staging` | `test` | `local-prod`)
+- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
 
-- `contract/`: Stellar smart contract implementation
+These can be set per-environment under `[env.<name>.vars]` in `packages/solito/apps/next/wrangler.toml`.
 
-### UI Structure
+## Smart Contract (Soroban)
 
-- `apps/appdir/`: Next.js web application
-- `apps/expo/`: React Native mobile application
-- `packages/app/`: Shared components and functionality
-  - `api/`: API client
-  - `config/`: Application configuration
-  - `constants/`: Constant values
-  - `design/`: Design system
-  - `features/`: Feature-specific components
-    - `accounts/`: User account management
-    - `dashboard/`: Main dashboard
-    - `player/`: Media player
-    - And others...
-  - `hooks/`: Custom React hooks
-  - `navigation/`: Navigation configuration
-  - `provider/`: Context providers
-  - `state/`: State management
-  - `ui/`: UI components
-  - `utils/`: Utility functions
+Located under `packages/api/contract/`.
+
+Testnet:
+```
+yarn workspace @skyhitz/api testnet:contract:setup
+yarn workspace @skyhitz/api testnet:contract:upgrade
+```
+
+Mainnet:
+```
+yarn workspace @skyhitz/api mainnet:contract:setup
+yarn workspace @skyhitz/api mainnet:contract:upgrade
+yarn workspace @skyhitz/api mainnet:contract:bindings
+```
+
+## Notes
+
+- API uses Wrangler v4 with `nodejs_compat` enabled in `packages/api/wrangler.toml`.
+- Web app is built and deployed with OpenNext for Cloudflare.
+- Email provider is Postmark.
 
 ## License
 

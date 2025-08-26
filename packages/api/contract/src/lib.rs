@@ -1,5 +1,45 @@
 #![no_std]
 
+//! Skyhitz Soroban smart contract
+//!
+//! This contract manages media entries, user investments, and earnings
+//! distribution on Stellar (Soroban). It stores entries with tracked
+//! Total Value Locked (TVL), escrow, and per-user equity shares, and it
+//! computes claimable earnings proportionally to user shares.
+//!
+//! Key concepts:
+//! - Entries: Identified by a string `id`. Each entry tracks `apr`, `tvl`,
+//!   `escrow`, a map of `shares` per user, and `withdrawn_earnings` per user.
+//! - TVL: Sum of equity-bearing amounts invested in an entry.
+//! - Escrow: Total funds held by the contract for the entry (may exceed TVL
+//!   when earnings accumulate).
+//! - Earnings: The portion of `escrow` that exceeds `tvl`. Users can claim a
+//!   proportional share of earnings based on their equity fraction.
+//!
+//! Storage layout (see `DataKey`):
+//! - `Index`: Vector of all entry ids.
+//! - `Entries(String)`: The stored `Entry` for the given id.
+//! - `Network`: Selected Stellar network ("testnet" or "public").
+//! - `Admin`: Address authorized to initialize, set, remove, and upgrade.
+//!
+//! Token transfer:
+//! - Native token contract address is selected by network in `get_xlm_address`.
+//! - `transfer` handles token movements for invest and claim flows.
+//!
+//! Precision:
+//! - Uses a fixed `SCALE` of 1_000_000 for 6-decimal arithmetic when
+//!   computing proportional earnings.
+//!
+//! Main flows:
+//! - init(admin, network, ids): one-time initialization, sets admin, network,
+//!   and optionally bootstraps entries for provided ids.
+//! - invest(user, id, amount): transfers tokens to the contract, updates
+//!   `escrow`, and if `amount` is greater than a download threshold adds to
+//!   user equity shares and TVL.
+//! - claim_earnings(user, id): calculates the user’s claimable portion of
+//!   the earnings (escrow - tvl minus previously withdrawn), transfers it to
+//!   the user, and persists updated state.
+
 use soroban_sdk::{contract, contracttype, Map, contractimpl, Env, BytesN, String, Address, token, log, Vec, vec };
 
 #[contracttype]
@@ -29,6 +69,8 @@ pub struct Contract;
 
 #[contractimpl]
 impl Contract {
+    /// Stores or replaces an `Entry` by id and appends the id to the global
+    /// index. Only callable by `Admin`.
     pub fn set_entry(e: Env, entry: Entry) {
         let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
         admin.require_auth();
@@ -41,6 +83,8 @@ impl Contract {
         e.storage().persistent().set(&DataKey::Index, &index);
     }
 
+    /// Removes an `Entry` by id and updates the global index. Only callable
+    /// by `Admin`. Panics if the entry does not exist.
     pub fn remove_entry(e: Env, id: String) {
         let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
         admin.require_auth();
@@ -63,6 +107,7 @@ impl Contract {
         e.storage().persistent().set(&DataKey::Index, &new_index);
     }
 
+    /// Returns an `Entry` by id. Panics if the entry does not exist.
     pub fn get_entry(e: &Env, id: String) -> Entry {
         let key = DataKey::Entries(id.clone());
         if !e.storage().persistent().has(&key) {
@@ -71,10 +116,18 @@ impl Contract {
         e.storage().persistent().get(&key).unwrap()
     }
 
+    /// Bumps when contract logic changes in a way that clients may care about.
     pub fn version() -> u32 {
         19
     }
 
+    /// One-time initialization of admin, network, and optional entry ids.
+    ///
+    /// - `admin`: Address with privileged rights (set/remove/upgrade).
+    /// - `network`: Must be "public" or "testnet".
+    /// - `ids`: Optional seed list of entry ids to create with zeroed values.
+    ///
+    /// Panics if called more than once or if network is invalid.
     pub fn init(e: Env, admin: Address, network: String, ids: Vec<String>) {
         if e.storage().instance().has(&DataKey::Admin) {
             panic!("Already initialized");
@@ -114,6 +167,7 @@ impl Contract {
         e.storage().persistent().set(&DataKey::Index, &index);
     }
 
+    /// Upgrades the contract code. Only callable by `Admin`.
     pub fn upgrade(e: Env, new_wasm_hash: BytesN<32>) {
         let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
         admin.require_auth();
@@ -121,6 +175,16 @@ impl Contract {
         e.deployer().update_current_contract_wasm(new_wasm_hash);
     }
      
+    /// Invest tokens into an entry.
+    ///
+    /// Behavior:
+    /// - Transfers `amount` from `user` to the contract.
+    /// - Always increases `escrow` by `amount`.
+    /// - If `amount` > `download_amount` threshold, increases user equity
+    ///   shares and `tvl` by `amount`.
+    /// - Recomputes APR.
+    /// - Lazily creates the entry if it does not exist, and ensures it’s
+    ///   listed in the global index.
     pub fn invest(e: Env, user: Address, id: String, amount: i128) {
         user.require_auth();
         let download_amount = 3000000; 
@@ -173,6 +237,12 @@ impl Contract {
         transfer(&e, &user, &e.current_contract_address(), amount);
     }
 
+    /// Claim the caller's proportional earnings for an entry.
+    ///
+    /// Earnings are defined as `escrow - tvl` when positive. The user's
+    /// proportional share is `(user_shares / tvl) * total_earnings`, adjusted
+    /// by previously withdrawn amounts. Transfers the claimable amount to the
+    /// user and persists updated accounting. Returns the claimed amount.
     pub fn claim_earnings(e: Env, user: Address, id: String) -> i128 {
         user.require_auth();
 
@@ -236,6 +306,7 @@ impl Contract {
     }
 }
 
+/// Returns the configured network string, defaulting to "testnet" when unset.
 fn get_network(e: &Env) -> String {
     e.storage()
         .instance()
@@ -243,6 +314,8 @@ fn get_network(e: &Env) -> String {
         .unwrap_or_else(|| String::from_str(e, "testnet")) 
 }
 
+/// Computes APR as a percentage based on excess escrow over TVL.
+/// Returns 0 if TVL is 0 or escrow <= TVL.
 fn get_apr(_: &Env, entry: Entry) -> i128 {
     if entry.tvl == 0 || entry.escrow <= entry.tvl {
         return 0;
@@ -250,12 +323,16 @@ fn get_apr(_: &Env, entry: Entry) -> i128 {
     ((entry.escrow - entry.tvl) * SCALE * 100) / (entry.tvl * SCALE)
 }
 
+/// Transfers `amount` of the native token between two addresses via the token
+/// client determined by the current network.
 fn transfer(e: &Env, from: &Address, to: &Address, amount: i128) {
     let token_contract_id = &get_xlm_address(e);
     let client = token::Client::new(e, token_contract_id);
     client.transfer(from, to, &amount)
 }
 
+/// Returns the native token contract address for the configured network.
+/// Panics for unknown networks.
 fn get_xlm_address(e: &Env) -> Address {
     let network = get_network(e);
     let testnet = String::from_str(e, "testnet");
