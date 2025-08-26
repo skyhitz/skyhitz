@@ -7,6 +7,7 @@ import { resolvers } from './graphql/resolvers';
 import { Schema } from './graphql/schema';
 import { authenticateUser } from './auth/auth-context';
 import { handleWebhook } from './webhooks/stripe';
+import { handleUpload } from './upload';
 
 const server = new ApolloServer<Context>({
 	typeDefs: Schema,
@@ -24,6 +25,9 @@ export default {
 		if (request.method === 'POST' && new URL(request.url).pathname === '/webhook') {
 			return handleWebhook(request, env);
 		}
+		if (request.method === 'POST' && new URL(request.url).pathname === '/upload') {
+			return handleUpload(request, env, context);
+		}
 		let response = await handler(request, env, context);
 
 		response = new Response(response.body, response);
@@ -37,7 +41,6 @@ export default {
 		if (request.method === 'OPTIONS') {
 			return new Response(null, {
 				headers: response.headers,
-				status: 204, // Explicitly set status code for OPTIONS
 			});
 		}
 

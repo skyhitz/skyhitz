@@ -1,0 +1,16 @@
+import { Config } from 'app/config'
+import { SignIn } from 'app/features/accounts/sign-in'
+import { Metadata } from 'next'
+
+export const dynamic = 'force-dynamic'
+
+export const metadata: Metadata = {
+  title: 'Skyhitz - Sign In',
+  description: 'Authenticate to Skyhitz',
+  alternates: {
+    canonical: `${Config.APP_URL}/sign-in`,
+  },
+  robots: { index: false, follow: false },
+}
+
+export default SignIn

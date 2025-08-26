@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "strictNullChecks": true,
+    "noUncheckedIndexedAccess": true,
+    "paths": {
+      "app/*": ["./packages/app/*"]
+    },
+    "baseUrl": ".",
+    "jsx": "react-jsx",
+    "moduleResolution": "node",
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "typeRoots": ["./node_modules/@types", "./types"],
+    "types": ["node"]
+  },
+  "include": ["packages/**/*", "apps/**/*", "types/**/*"],
+  "exclude": ["**/node_modules/*", "**/android/*", "**/ios/*"]
+}

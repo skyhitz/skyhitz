@@ -4,7 +4,7 @@ import StripeClient from 'src/stripe/client';
 import { createUserWithEmailResolver } from 'src/graphql/create-user-with-email';
 import { Context } from 'src/util/types';
 import KrakenClient from 'src/kraken/client';
-import Mailer from 'src/sendgrid/sendgrid';
+import Mailer from 'src/postmark/mailer';
 
 export async function handleWebhook(request: Request, env: Env): Promise<Response> {
 	const sig = request.headers.get('stripe-signature');

@@ -5,6 +5,12 @@
     "packages/*"
   ],
   "scripts": {
+    "cf:deploy": "cd packages/solito/apps/next && yarn cf:deploy",
+    "cf:deploy:staging": "cd packages/solito/apps/next && yarn cf:deploy:staging",
+    "cf:deploy:production": "cd packages/solito/apps/next && yarn cf:deploy:production",
+    "cf:build": "cd packages/solito/apps/next && yarn cf:build",
+    "cf:preview": "cd packages/solito/apps/next && yarn cf:preview",
+    "api:deploy": "yarn workspace @skyhitz/api deploy",
     "dev": "yarn workspaces run dev",
     "build": "yarn workspaces run build",
     "api:dev": "yarn workspace @skyhitz/api dev",
@@ -21,5 +27,6 @@
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
-  }
+  },
+  "packageManager": "yarn@1.22.22+sha1.ac34549e6aa8e7ead463a7407e1c7390f61a6610"
 }

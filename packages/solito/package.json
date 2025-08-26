@@ -1,0 +1,41 @@
+{
+  "name": "@skyhitz/solito",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "devDependencies": {
+    "@types/ramda": "^0",
+    "@types/react": "~19.0.10",
+    "@types/react-native": "^0.73.0",
+    "eslint": "^8.21.0",
+    "turbo": "^2.4.4",
+    "typescript": "~5.8.3"
+  },
+  "scripts": {
+    "native": "cd apps/expo && yarn start",
+    "web": "cd apps/next && yarn dev"
+  },
+  "packageManager": "yarn@4.7.0",
+  "resolutions": {
+    "@react-native/assets-registry@^0.72.0": "patch:@react-native/assets-registry@npm%3A0.73.1#./.yarn/patches/@react-native-assets-registry-npm-0.73.1-6ddee188d1.patch",
+    "@react-native/assets-registry@0.73.1": "patch:@react-native/assets-registry@npm%3A0.73.1#./.yarn/patches/@react-native-assets-registry-npm-0.73.1-6ddee188d1.patch"
+  },
+  "eslintConfig": {
+    "extends": "next",
+    "settings": {
+      "next": {
+        "rootDir": "apps/next/"
+      }
+    },
+    "root": true
+  },
+  "prettier": {
+    "semi": false,
+    "useTabs": false,
+    "tabWidth": 2,
+    "singleQuote": true,
+    "trailingComma": "es5"
+  }
+}

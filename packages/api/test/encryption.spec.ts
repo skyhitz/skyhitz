@@ -9,9 +9,8 @@ describe('Encryption', () => {
 		ENV: '',
 		JWT_SECRET: '',
 		ALGOLIA_ADMIN_API_KEY: '',
-		SENDGRID_API_KEY: '',
+		POSTMARK_SERVER_TOKEN: '',
 		STELLAR_NETWORK: '',
-		PINATA_JWT: '',
 		ALCHEMY_API_KEY: '',
 	};
 

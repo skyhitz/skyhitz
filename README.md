@@ -27,7 +27,7 @@ skyhitz/
 - **Stellar SDK**: Integration with Stellar blockchain for NFT functionality
 - **Algolia**: Search functionality
 - **Stripe**: Payment processing
-- **SendGrid**: Email services
+- **Postmark**: Email services
 - **JWT**: Authentication
 
 ### Frontend (UI)
@@ -117,7 +117,7 @@ yarn deploy
   - `constants/`: Constant values
   - `graphql/`: GraphQL schema and resolvers
   - `kraken/`: Exchange rate services
-  - `sendgrid/`: Email service integration
+  - `postmark/`: Email service integration
   - `stellar/`: Blockchain integration
   - `stripe/`: Payment processing
   - `util/`: Utility functions

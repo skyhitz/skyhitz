@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "solito-blank",
+    "slug": "solito-blank",
+    "version": "1.0.0",
+    "scheme": "solito-blank",
+    "platforms": ["ios", "android"],
+    "ios": {
+      "bundleIdentifier": "com.solito.blank"
+    },
+    "newArchEnabled": true,
+    "experiments": {
+      "reactCanary": true,
+      "reactCompiler": true
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "userInterfaceStyle": "automatic",
+    "plugins": ["expo-router", "expo-audio", "expo-video", "expo-font", "expo-secure-store"]
+  }
+}

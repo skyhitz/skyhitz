@@ -1,0 +1,59 @@
+{
+  "dependencies": {
+    "@expo-google-fonts/inter": "^0.3.0",
+    "@expo-google-fonts/raleway": "^0.3.0",
+    "@expo-google-fonts/unbounded": "^0.3.0",
+    "@expo/metro-config": "^0.20.14",
+    "@react-navigation/bottom-tabs": "^7.3.13",
+    "@react-navigation/native": "^7.1.9",
+    "@react-navigation/native-stack": "^7.3.13",
+    "app": "*",
+    "expo": "^53.0.0",
+    "expo-audio": "~0.4.5",
+    "expo-clipboard": "^7.1.4",
+    "expo-constants": "~17.1.6",
+    "expo-file-system": "^18.1.10",
+    "expo-font": "~13.3.1",
+    "expo-image": "~2.1.7",
+    "expo-linear-gradient": "~14.1.4",
+    "expo-linking": "~7.1.5",
+    "expo-router": "~5.0.7",
+    "expo-secure-store": "~14.2.3",
+    "expo-splash-screen": "~0.30.8",
+    "expo-status-bar": "~2.2.3",
+    "expo-video": "~2.1.9",
+    "metro-config": "^0.82.3",
+    "react-native": "0.79.2",
+    "react-native-edge-to-edge": "^1.6.0",
+    "react-native-gesture-handler": "~2.24.0",
+    "react-native-htmlview": "^0.17.0",
+    "react-native-reanimated": "~3.17.4",
+    "react-native-safe-area-context": "5.4.0",
+    "react-native-screens": "~4.10.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.0",
+    "@types/react": "~19.0.10",
+    "@types/react-native-htmlview": "^0",
+    "babel-plugin-react-compiler": "19.0.0-beta-3229e95-20250315",
+    "react-compiler-runtime": "19.0.0-beta-3229e95-20250315",
+    "tailwindcss": "^3.4.17",
+    "typescript": "~5.8.3"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
+  },
+  "main": "index.js",
+  "version": "1.0.0",
+  "private": true,
+  "name": "expo-app",
+  "expo": {
+    "install": {
+      "exclude": [
+        "react"
+      ]
+    }
+  }
+}
