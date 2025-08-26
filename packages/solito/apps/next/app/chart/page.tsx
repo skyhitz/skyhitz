@@ -22,6 +22,8 @@ export const dynamic = 'force-dynamic'
 async function getChart() {
   try {
     const res = await ratingEntriesIndex.search<Entry>('', {
+      page: 0,
+      hitsPerPage: 20,
       attributesToRetrieve: ['*'],
       facets: ['apr'],
     })
