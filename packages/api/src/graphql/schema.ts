@@ -6,6 +6,7 @@ type Query {
   userEntries(userId: String!): [Entry!]!
   userLikes: [Entry!]!
   xlmPrice: String!
+  searchExternalMusic(query: String!, limit: Int, offset: Int): [ExternalTrack!]!
 }
 
 type Mutation {
@@ -204,5 +205,15 @@ type ClaimEarningsResponse {
 type ClaimedEntry {
     entryId: String!
     amount: Float!
+}
+
+type ExternalTrack {
+  id: String!
+  title: String!
+  artist: String
+  genre: String
+  source: String!
+  url: String
+  imageUrl: String
 }
 `;

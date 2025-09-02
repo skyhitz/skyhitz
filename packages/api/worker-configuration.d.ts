@@ -20,4 +20,8 @@ interface Env {
 	R2_SECRET_ACCESS_KEY: string;
 	R2_ENDPOINT: string;
 	R2_BUCKET: string;
+OPENSEA_API_KEY?: string;
+	SOUND_API_KEY?: string; // Fe26 token used as auth-token
+	SOUND_CLIENT_KEY?: string; // x-sound-client-key
+	SOUND_WEBAPP_VERSION?: string; // x-sound-webapp-version
 }

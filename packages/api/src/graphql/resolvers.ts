@@ -19,6 +19,7 @@ import { submitLinkResolver } from './submit-link';
 import { createPaymentIntentResolver } from './create-payment-intent';
 import { checkPendingWithdrawalsResolver } from './check-pending-withdrawals';
 import { claimEarningsResolver } from './claim-earnings';
+import { searchExternalMusicResolver } from './search-external-music';
 
 const Query = {
 	entry: entryByIdResolver,
@@ -27,6 +28,7 @@ const Query = {
 	userEntries: userEntriesResolver,
 	userLikes: userLikesResolver,
 	xlmPrice: XLMPriceResolver,
+	searchExternalMusic: searchExternalMusicResolver,
 };
 
 const Mutation = {
