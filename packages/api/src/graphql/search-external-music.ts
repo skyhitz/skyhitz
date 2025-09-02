@@ -260,10 +260,12 @@ export const externalAudioUrlResolver = async (
       if (!authToken && !clientKey) return null
 
       const endpoint = 'https://api.sound.xyz/graphql'
-      const body = {
+      const trackInfoQuery = {
         query:
-          'query ReleasePlayback($id: ID!){ release(id:$id){ id title tracks{ id title audio{ url mimeType } } } }',
-        variables: { id: rawId },
+          'query PlayerTrackInfo($trackId: UUID!){ track(id:$trackId){ id audio{ audio128k{ id url } audioHls{ id url } audioOriginal{ id url } } } }',
+      }
+      const releaseTracksQuery = {
+        query: 'query ReleaseTracks($id: ID!){ release(id:$id){ id tracks{ id } } }',
       }
       const headers: Record<string, string> = {
         'content-type': 'application/json',
@@ -274,17 +276,42 @@ export const externalAudioUrlResolver = async (
       if (clientKey) headers['x-sound-client-key'] = clientKey
       if (webappVersion) headers['x-sound-webapp-version'] = webappVersion
 
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-        signal,
+      async function fetchGraphQL(q: { query: string; variables: Record<string, unknown> }) {
+        const r = await fetch(endpoint, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(q),
+          signal,
+        })
+        if (!r.ok) return null
+        return (await r.json()) as any
+      }
+
+      // 1) Try treating rawId as a trackId directly
+      const tryTrack = await fetchGraphQL({
+        query: trackInfoQuery.query,
+        variables: { trackId: rawId },
       })
-      if (!res.ok) return null
-      const json = (await res.json()) as any
-      const tracks = json?.data?.release?.tracks || []
-      const audioUrl = tracks?.[0]?.audio?.url as string | undefined
-      return audioUrl ?? null
+      const directTrack = tryTrack?.data?.track
+      if (directTrack?.audio) {
+        const audioHls = directTrack.audio?.audioHls?.url as string | undefined
+        const audio128k = directTrack.audio?.audio128k?.url as string | undefined
+        const original = directTrack.audio?.audioOriginal?.url as string | undefined
+        return audioHls ?? audio128k ?? original ?? null
+      }
+
+      // 2) Otherwise, treat rawId as releaseId → get first track → fetch track info
+      const rel = await fetchGraphQL({ query: releaseTracksQuery.query, variables: { id: rawId } })
+      const firstTrackId = rel?.data?.release?.tracks?.[0]?.id as string | undefined
+      if (!firstTrackId) return null
+
+      const trackRes = await fetchGraphQL({ query: trackInfoQuery.query, variables: { trackId: firstTrackId } })
+      const track = trackRes?.data?.track
+      if (!track?.audio) return null
+      const audioHls = track.audio?.audioHls?.url as string | undefined
+      const audio128k = track.audio?.audio128k?.url as string | undefined
+      const original = track.audio?.audioOriginal?.url as string | undefined
+      return audioHls ?? audio128k ?? original ?? null
     }
 
     return null
