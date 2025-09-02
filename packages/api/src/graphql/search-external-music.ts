@@ -228,4 +228,71 @@ export const searchExternalMusicResolver = async (
   }
 }
 
+export const externalAudioUrlResolver = async (
+  _root: unknown,
+  args: { id: string },
+  { env }: Context,
+) => {
+  const { id } = args
+  if (!id) throw new GraphQLError('id is required')
+
+  // id is prefixed like 'audius:...' or 'soundxyz:...'
+  const [source, rawId] = id.split(':', 2)
+  if (!source || !rawId) throw new GraphQLError('invalid id')
+
+  const ac = new AbortController()
+  const { signal } = ac
+  try {
+    if (source === 'audius') {
+      // Resolve an Audius host and construct the stream endpoint
+      const hostsRes = await fetch('https://api.audius.co', { signal })
+      const hosts = (await hostsRes.json()) as { data: string[] }
+      const host = hosts?.data?.[0]
+      if (!host) return null
+      return `${host}/v1/tracks/${encodeURIComponent(rawId)}/stream?app_name=skyhitz`
+    }
+
+    if (source === 'soundxyz') {
+      // Query release playback for signed audio URL using site headers
+      const authToken = (env as any).SOUND_API_KEY as string | undefined
+      const clientKey = (env as any).SOUND_CLIENT_KEY as string | undefined
+      const webappVersion = (env as any).SOUND_WEBAPP_VERSION as string | undefined
+      if (!authToken && !clientKey) return null
+
+      const endpoint = 'https://api.sound.xyz/graphql'
+      const body = {
+        query:
+          'query ReleasePlayback($id: ID!){ release(id:$id){ id title tracks{ id title audio{ url mimeType } } } }',
+        variables: { id: rawId },
+      }
+      const headers: Record<string, string> = {
+        'content-type': 'application/json',
+        origin: 'https://www.sound.xyz',
+        referer: 'https://www.sound.xyz/',
+      }
+      if (authToken) headers['auth-token'] = authToken
+      if (clientKey) headers['x-sound-client-key'] = clientKey
+      if (webappVersion) headers['x-sound-webapp-version'] = webappVersion
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+        signal,
+      })
+      if (!res.ok) return null
+      const json = (await res.json()) as any
+      const tracks = json?.data?.release?.tracks || []
+      const audioUrl = tracks?.[0]?.audio?.url as string | undefined
+      return audioUrl ?? null
+    }
+
+    return null
+  } catch (_) {
+    return null
+  } finally {
+    ac.abort()
+  }
+}
+
 

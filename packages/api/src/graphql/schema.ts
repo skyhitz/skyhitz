@@ -7,6 +7,7 @@ type Query {
   userLikes: [Entry!]!
   xlmPrice: String!
   searchExternalMusic(query: String!, limit: Int, offset: Int): [ExternalTrack!]!
+  externalAudioUrl(id: String!): String
 }
 
 type Mutation {

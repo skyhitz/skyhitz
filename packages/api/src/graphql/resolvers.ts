@@ -19,7 +19,7 @@ import { submitLinkResolver } from './submit-link';
 import { createPaymentIntentResolver } from './create-payment-intent';
 import { checkPendingWithdrawalsResolver } from './check-pending-withdrawals';
 import { claimEarningsResolver } from './claim-earnings';
-import { searchExternalMusicResolver } from './search-external-music';
+import { searchExternalMusicResolver, externalAudioUrlResolver } from './search-external-music';
 
 const Query = {
 	entry: entryByIdResolver,
@@ -29,6 +29,7 @@ const Query = {
 	userLikes: userLikesResolver,
 	xlmPrice: XLMPriceResolver,
 	searchExternalMusic: searchExternalMusicResolver,
+	externalAudioUrl: externalAudioUrlResolver,
 };
 
 const Mutation = {
