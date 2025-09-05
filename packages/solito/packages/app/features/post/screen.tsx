@@ -7,6 +7,7 @@ import { formattedDate } from 'app/utils'
 import { View, ScrollView, Text } from 'react-native'
 import { SolitoImage } from 'app/design/solito-image'
 import * as React from 'react'
+import { imageSrc } from 'app/utils/entry'
 
 // Parse HTML into formatted blocks with design system components
 function parseHtmlContent(html: string): React.ReactNode[] {
@@ -247,7 +248,7 @@ export function PostScreen({ post }: { post: any }) {
         <View className="aspect-[3/2] w-full object-cover mb-8">
           <View className="relative h-full w-full overflow-hidden rounded-2xl">
             <SolitoImage
-              src={imageUrl}
+              src={imageSrc(imageUrl)}
               alt={title || 'Blog post image'}
               fill
               contentFit="cover"

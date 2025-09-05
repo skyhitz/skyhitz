@@ -2,6 +2,7 @@ import { A, H3, P } from 'app/design/typography'
 import { formattedDate } from 'app/utils'
 import { View } from 'react-native'
 import { SolitoImage } from 'app/design/solito-image'
+import { imageSrc } from 'app/utils/entry'
 
 export default function Card({
   imageUrl = '/img/landing-3.webp',
@@ -18,7 +19,7 @@ export default function Card({
         <View className="relative w-full">
           <View className="aspect-[3/2] w-full object-cover">
             <SolitoImage
-              src={imageUrl}
+              src={imageSrc(imageUrl)}
               alt={title}
               fill
               contentFit="cover"

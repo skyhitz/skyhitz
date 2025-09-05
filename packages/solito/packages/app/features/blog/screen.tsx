@@ -9,6 +9,7 @@ import { View } from 'react-native'
 import { SolitoImage } from 'app/design/solito-image'
 import { formattedDate } from 'app/utils'
 import { Post } from 'app/types/index'
+import { imageSrc } from 'app/utils/entry'
 
 const PostWrapper = ({ imageUrl, title, publishedAtTimestamp, slug }: Post) => {
   return (
@@ -17,7 +18,7 @@ const PostWrapper = ({ imageUrl, title, publishedAtTimestamp, slug }: Post) => {
         <View className="aspect-[2/2] w-32 object-cover">
           <View className="relative h-full w-full overflow-hidden rounded-2xl">
             <SolitoImage
-              src={imageUrl}
+              src={imageSrc(imageUrl)}
               alt={title}
               contentFit="cover"
               fill
