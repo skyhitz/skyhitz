@@ -3,16 +3,22 @@ import { useState, useEffect, useCallback } from 'react'
 import { View, FlatList } from 'react-native'
 import { ActivityIndicator, P } from 'app/design/typography'
 import { entriesIndex, usersIndex } from 'app/api/algolia'
+import { useLazyQuery } from '@apollo/client'
+import { SEARCH_EXTERNAL_MUSIC, EXTERNAL_AUDIO_URL } from 'app/api/graphql/operations'
+import Pickaxe from 'app/ui/icons/pickaxe'
+import { Pressable } from 'react-native'
 import { Entry, User } from 'app/api/graphql/types'
 import { BeatListEntry } from 'app/ui/beat-list-entry'
 import { TextLink } from 'solito/link'
 import { UserAvatar } from 'app/ui/user-avatar'
+import { usePlayback } from 'app/hooks/usePlayback'
+import { SolitoImage } from 'app/design/solito-image'
 
 // Define a union type for our search results
 type SearchResult = {
   id: string
-  type: 'entry' | 'user'
-  data: Entry | User
+  type: 'entry' | 'user' | 'external'
+  data: Entry | User | ExternalTrack
 }
 
 type CombinedSearchResultListProps = {
@@ -64,6 +70,9 @@ export function CombinedSearchResultList({
     useState(searchPhrase)
   const [results, setResults] = useState<SearchResult[]>([])
   const [loading, setLoading] = useState(false)
+  const [loadExternal, { data: externalData }] = useLazyQuery(SEARCH_EXTERNAL_MUSIC)
+  const [resolveAudioUrl] = useLazyQuery(EXTERNAL_AUDIO_URL)
+  const { playEntry } = usePlayback()
 
   // Debounce search phrase to avoid too many API calls
   useEffect(() => {
@@ -85,8 +94,9 @@ export function CombinedSearchResultList({
       Promise.all([
         entriesIndex.search(debouncedSearchPhrase),
         usersIndex.search(debouncedSearchPhrase),
+        loadExternal({ variables: { query: debouncedSearchPhrase, limit: 20 } }),
       ])
-        .then(([entriesResult, usersResult]) => {
+        .then(([entriesResult, usersResult, externalResult]) => {
           console.log('Combined search results:', {
             entries: entriesResult.hits.length,
             users: usersResult.hits.length,
@@ -108,8 +118,16 @@ export function CombinedSearchResultList({
             data: hit as unknown as User,
           }))
 
-          // Combine and sort by relevance
-          const combinedResults = interleaveResults(entryResults, userResults)
+          // Map external tracks directly from this promise result
+          const externalTracks = ((externalResult as any)?.data?.searchExternalMusic || []) as ExternalTrack[]
+          const externalResults: SearchResult[] = externalTracks.map((t) => ({
+            id: t.id,
+            type: 'external',
+            data: t,
+          }))
+
+          // Combine and sort by relevance (entries + users + external)
+          const combinedResults = interleaveResults(entryResults, userResults, externalResults)
           setResults(combinedResults)
           setLoading(false)
         })
@@ -125,9 +143,10 @@ export function CombinedSearchResultList({
   // Function to interleave results to combine both types
   const interleaveResults = (
     entries: SearchResult[],
-    users: SearchResult[]
+    users: SearchResult[],
+    externals: SearchResult[],
   ): SearchResult[] => {
-    const maxLength = Math.max(entries.length, users.length)
+    const maxLength = Math.max(entries.length, users.length, externals.length)
     const combined: SearchResult[] = []
 
     // Push entries and users alternately
@@ -147,6 +166,14 @@ export function CombinedSearchResultList({
           combined.push(user)
         }
       }
+
+      // For external - check existence and push
+      if (i < externals.length) {
+        const ext = externals[i]
+        if (ext !== undefined) {
+          combined.push(ext)
+        }
+      }
     }
 
     return combined
@@ -157,6 +184,26 @@ export function CombinedSearchResultList({
     ({ item }: { item: SearchResult }) => {
       if (item.type === 'entry') {
         return <BeatListEntry entry={item.data as Entry} />
+      } else if (item.type === 'external') {
+        const t = item.data as ExternalTrack
+        return (
+          <ExternalTrackRow
+            track={t}
+            onSelect={async () => {
+              const { data } = await resolveAudioUrl({ variables: { id: t.id } })
+              const url = data?.externalAudioUrl as string | undefined
+              if (!url) return
+              const fakeEntry: Entry = {
+                id: t.id,
+                title: t.title,
+                artist: t.artist || '',
+                imageUrl: t.imageUrl || '',
+                videoUrl: url,
+              } as any
+              await playEntry(fakeEntry, [])
+            }}
+          />
+        )
       } else {
         return <UserCard user={item.data as User} />
       }
@@ -203,5 +250,51 @@ export function CombinedSearchResultList({
         <NoResultsComponent />
       ) : null}
     </View>
+  )
+}
+
+// Local types and simple row for external tracks
+type ExternalTrack = {
+  id: string
+  title: string
+  artist?: string
+  genre?: string
+  source: 'audius' | 'soundxyz'
+  url?: string
+  imageUrl?: string
+}
+
+function ExternalTrackRow({ track, onSelect }: { track: ExternalTrack; onSelect: () => void }) {
+  return (
+    <Pressable onPress={onSelect} className="flex">
+      <View
+        className="flex flex-row items-center py-2 border-b border-[--border-color]"
+        style={{ borderBottomWidth: 0.5 }}
+      >
+        <View className="aspect-[2/2] w-12 object-cover">
+          <SolitoImage
+            src={track.imageUrl || 'https://skyhitz.io/icon.png'}
+            alt={track.title || ''}
+            contentFit="cover"
+            fill
+            sizes="4rem"
+            style={{ borderRadius: 6 }}
+          />
+        </View>
+        <View className="ml-2 flex flex-1 justify-center pr-2">
+          <P numberOfLines={1} className="text-sm font-bold leading-6">
+            {track.title}
+          </P>
+          <P numberOfLines={1} className="text-xs leading-6 text-[--text-secondary-color]">
+            {track.artist}
+          </P>
+        </View>
+        <View className="flex flex-row items-center">
+          <Pressable onPress={() => {}}>
+            <Pickaxe size={20} color="var(--text-color)" />
+          </Pressable>
+        </View>
+      </View>
+    </Pressable>
   )
 }

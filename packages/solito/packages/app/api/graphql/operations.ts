@@ -244,3 +244,25 @@ export const SET_LAST_PLAYED_ENTRY = gql`
     setLastPlayedEntry(entryId: $entryId)
   }
 `
+
+// External music search
+export const SEARCH_EXTERNAL_MUSIC = gql`
+  query SearchExternalMusic($query: String!, $limit: Int, $offset: Int) {
+    searchExternalMusic(query: $query, limit: $limit, offset: $offset) {
+      id
+      title
+      artist
+      genre
+      source
+      url
+      imageUrl
+    }
+  }
+`
+
+// External audio url resolver
+export const EXTERNAL_AUDIO_URL = gql`
+  query ExternalAudioUrl($id: String!) {
+    externalAudioUrl(id: $id)
+  }
+`

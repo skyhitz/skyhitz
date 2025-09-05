@@ -130,6 +130,9 @@ function WebVideoPlayer() {
     // setPlaybackState(PlaybackState.PLAYING)
   }, [])
 
+  // Determine if current source is audio-only
+  const isAudioOnly = !!playbackUri && !/m3u8/i.test(playbackUri)
+
   return (
     <>
       <View
@@ -137,16 +140,20 @@ function WebVideoPlayer() {
           isReady ? 'opacity-100' : 'opacity-0'
         }`}
       >
+        {/* Always render poster behind for artwork, useful for audio-only */}
+        <Poster />
         {!!playbackUri && (
           <ReactPlayer
             ref={handleRef}
             url={playbackUri}
             width="100%"
             height="100%"
+            style={isAudioOnly ? { opacity: 0, position: 'absolute' } : undefined}
             volume={muted ? 0 : volume}
             muted={muted}
             loop={loop}
             playbackRate={playbackRate}
+            playsinline
             onLoadStart={handleLoadStart}
             onStart={handleOnStart}
             onReady={handleReady}
@@ -160,7 +167,9 @@ function WebVideoPlayer() {
             onLoadedData={handleLoadedData}
             config={{
               file: {
-                forceHLS: true,
+                // Allow both HLS and direct audio (e.g. MP3) previews
+                forceHLS: /m3u8/i.test(playbackUri) || /\/hls\//i.test(playbackUri),
+                forceAudio: /^https?:\/\//i.test(playbackUri) && !/m3u8/i.test(playbackUri),
                 attributes: {
                   preload: 'metadata',
                 },
@@ -169,7 +178,6 @@ function WebVideoPlayer() {
           />
         )}
       </View>
-      {!isReady && <Poster />}
     </>
   )
 }

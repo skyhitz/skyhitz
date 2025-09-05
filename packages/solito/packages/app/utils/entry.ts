@@ -18,6 +18,10 @@ const useR2 = true; // Feature flag: set to false to fallback to Pinata
 // Updated videoSrc to use R2 with HLS preference
 export function videoSrc(videoUrl?: string, useFallback = false): string {
   if (!videoUrl) return '';
+  // Pass through absolute URLs (external previews like Audius/Sound.xyz)
+  if (videoUrl.startsWith('http://') || videoUrl.startsWith('https://')) {
+    return videoUrl;
+  }
 
   if (useR2 && isIpfs(videoUrl)) {
     const hash = videoUrl.replace('ipfs://', '');
