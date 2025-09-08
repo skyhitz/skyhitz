@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { View, FlatList } from 'react-native'
+import { View, FlatList, ScrollView } from 'react-native'
 import { ActivityIndicator, P } from 'app/design/typography'
 import { entriesIndex, usersIndex } from 'app/api/algolia'
 import { useLazyQuery } from '@apollo/client'
@@ -68,8 +68,14 @@ export function CombinedSearchResultList({
 }: CombinedSearchResultListProps) {
   const [debouncedSearchPhrase, setDebouncedSearchPhrase] =
     useState(searchPhrase)
-  const [results, setResults] = useState<SearchResult[]>([])
-  const [loading, setLoading] = useState(false)
+  // Progressive, per-section state
+  const [entryResults, setEntryResults] = useState<SearchResult[]>([])
+  const [userResults, setUserResults] = useState<SearchResult[]>([])
+  const [externalResults, setExternalResults] = useState<SearchResult[]>([])
+
+  const [entriesLoading, setEntriesLoading] = useState(false)
+  const [usersLoading, setUsersLoading] = useState(false)
+  const [externalLoading, setExternalLoading] = useState(false)
   const [loadExternal, { data: externalData }] = useLazyQuery(SEARCH_EXTERNAL_MUSIC)
   const [resolveAudioUrl] = useLazyQuery(EXTERNAL_AUDIO_URL)
   const { playEntry } = usePlayback()
@@ -85,128 +91,106 @@ export function CombinedSearchResultList({
     }
   }, [searchPhrase])
 
-  // Search both indices and combine results
+  // Progressive searches per section
   useEffect(() => {
-    if (debouncedSearchPhrase) {
-      setLoading(true)
+    let cancelled = false
+    if (!debouncedSearchPhrase) {
+      setEntryResults([])
+      setUserResults([])
+      setExternalResults([])
+      setEntriesLoading(false)
+      setUsersLoading(false)
+      setExternalLoading(false)
+      return
+    }
 
-      // Run both searches in parallel
-      Promise.all([
-        entriesIndex.search(debouncedSearchPhrase),
-        usersIndex.search(debouncedSearchPhrase),
-        loadExternal({ variables: { query: debouncedSearchPhrase, limit: 20 } }),
-      ])
-        .then(([entriesResult, usersResult, externalResult]) => {
-          console.log('Combined search results:', {
-            entries: entriesResult.hits.length,
-            users: usersResult.hits.length,
-          })
+    // Reset and trigger each search independently
+    setEntriesLoading(true)
+    setUsersLoading(true)
+    setExternalLoading(true)
 
-          // Convert entries to SearchResult objects
-          const entryResults: SearchResult[] = entriesResult.hits.map(
-            (hit) => ({
-              id: (hit as unknown as Entry).id,
-              type: 'entry',
-              data: hit as unknown as Entry,
-            })
-          )
+    entriesIndex
+      .search(debouncedSearchPhrase)
+      .then((entriesResult) => {
+        if (cancelled) return
+        const mapped: SearchResult[] = entriesResult.hits.map((hit) => ({
+          id: (hit as unknown as Entry).id,
+          type: 'entry',
+          data: hit as unknown as Entry,
+        }))
+        setEntryResults(mapped)
+      })
+      .finally(() => !cancelled && setEntriesLoading(false))
 
-          // Convert users to SearchResult objects
-          const userResults: SearchResult[] = usersResult.hits.map((hit) => ({
-            id: (hit as unknown as User).id,
-            type: 'user',
-            data: hit as unknown as User,
-          }))
+    usersIndex
+      .search(debouncedSearchPhrase)
+      .then((usersResult) => {
+        if (cancelled) return
+        const mapped: SearchResult[] = usersResult.hits.map((hit) => ({
+          id: (hit as unknown as User).id,
+          type: 'user',
+          data: hit as unknown as User,
+        }))
+        setUserResults(mapped)
+      })
+      .finally(() => !cancelled && setUsersLoading(false))
 
-          // Map external tracks directly from this promise result
-          const externalTracks = ((externalResult as any)?.data?.searchExternalMusic || []) as ExternalTrack[]
-          const externalResults: SearchResult[] = externalTracks.map((t) => ({
-            id: t.id,
-            type: 'external',
-            data: t,
-          }))
+    loadExternal({ variables: { query: debouncedSearchPhrase, limit: 20 } })
+      .then((externalResult) => {
+        if (cancelled) return
+        const externalTracks = ((externalResult as any)?.data?.searchExternalMusic || []) as ExternalTrack[]
+        const mapped: SearchResult[] = externalTracks.map((t) => ({
+          id: t.id,
+          type: 'external',
+          data: t,
+        }))
+        setExternalResults(mapped)
+      })
+      .finally(() => !cancelled && setExternalLoading(false))
 
-          // Combine and sort by relevance (entries + users + external)
-          const combinedResults = interleaveResults(entryResults, userResults, externalResults)
-          setResults(combinedResults)
-          setLoading(false)
-        })
-        .catch((error) => {
-          console.error('Combined search error:', error)
-          setLoading(false)
-        })
-    } else {
-      setResults([])
+    return () => {
+      cancelled = true
     }
   }, [debouncedSearchPhrase])
 
-  // Function to interleave results to combine both types
-  const interleaveResults = (
-    entries: SearchResult[],
-    users: SearchResult[],
-    externals: SearchResult[],
-  ): SearchResult[] => {
-    const maxLength = Math.max(entries.length, users.length, externals.length)
-    const combined: SearchResult[] = []
+  // Simple section header
+  const SectionHeader = ({ title }: { title: string }) => (
+    <View className="mt-4 mb-2">
+      <P className="text-xs uppercase tracking-wide text-[--text-secondary-color]">{title}</P>
+    </View>
+  )
 
-    // Push entries and users alternately
-    for (let i = 0; i < maxLength; i++) {
-      // For entries - check existence and push
-      if (i < entries.length) {
-        const entry = entries[i]
-        if (entry !== undefined) {
-          combined.push(entry)
-        }
-      }
+  const renderEntryItem = useCallback(
+    (item: SearchResult) => <BeatListEntry entry={item.data as Entry} />,
+    []
+  )
 
-      // For users - check existence and push
-      if (i < users.length) {
-        const user = users[i]
-        if (user !== undefined) {
-          combined.push(user)
-        }
-      }
+  const renderUserItem = useCallback(
+    (item: SearchResult) => <UserCard user={item.data as User} />,
+    []
+  )
 
-      // For external - check existence and push
-      if (i < externals.length) {
-        const ext = externals[i]
-        if (ext !== undefined) {
-          combined.push(ext)
-        }
-      }
-    }
-
-    return combined
-  }
-
-  // Render different items based on their type
-  const renderSearchResultItem = useCallback(
-    ({ item }: { item: SearchResult }) => {
-      if (item.type === 'entry') {
-        return <BeatListEntry entry={item.data as Entry} />
-      } else if (item.type === 'external') {
-        const t = item.data as ExternalTrack
-        return (
-          <ExternalTrackRow
-            track={t}
-            onSelect={async () => {
-              const { data } = await resolveAudioUrl({ variables: { id: t.id } })
-              const url = data?.externalAudioUrl as string | undefined
-              if (!url) return
-              const fakeEntry: Entry = {
-                id: t.id,
-                title: t.title,
-                artist: t.artist || '',
-                imageUrl: t.imageUrl || '',
-                videoUrl: url,
-              } as any
-              await playEntry(fakeEntry, [])
-            }}
-          />
-        )
-      } else {
-        return <UserCard user={item.data as User} />
-      }
+  const renderExternalItem = useCallback(
+    (item: SearchResult) => {
+      const t = item.data as ExternalTrack
+      return (
+        <ExternalTrackRow
+          track={t}
+          onSelect={async () => {
+            const { data } = await resolveAudioUrl({ variables: { id: t.id } })
+            const url = data?.externalAudioUrl as string | undefined
+            if (!url) return
+            const fakeEntry: Entry = {
+              id: t.id,
+              title: t.title,
+              artist: t.artist || '',
+              imageUrl: t.imageUrl || '',
+              videoUrl: url,
+            } as any
+            await playEntry(fakeEntry, [])
+          }}
+        />
+      )
     },
     []
   )
@@ -233,23 +217,51 @@ export function CombinedSearchResultList({
     []
   )
 
+  const allDone = !entriesLoading && !usersLoading && !externalLoading
+  const totalCount = entryResults.length + userResults.length + externalResults.length
+
   return (
-    <View className="flex-1">
-      {loading ? (
+    <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 120 }}>
+      {/* Entries section */}
+      {/* <SectionHeader title="Beats" /> */}
+      {entriesLoading && entryResults.length === 0 ? (
         <LoadingComponent />
-      ) : results.length > 0 ? (
-        <FlatList
-          data={results}
-          keyExtractor={(item) => `${item.type}-${item.id}`}
-          renderItem={renderSearchResultItem}
-          className="flex-1"
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 120 }}
-        />
-      ) : debouncedSearchPhrase ? (
+      ) : (
+        <View>
+          {entryResults.map((r) => (
+            <View key={`entry-${r.id}`}>{renderEntryItem(r)}</View>
+          ))}
+        </View>
+      )}
+
+      {/* Users section */}
+      {/* <SectionHeader title="Users" /> */}
+      {usersLoading && userResults.length === 0 ? (
+        <LoadingComponent />
+      ) : (
+        <View>
+          {userResults.map((r) => (
+            <View key={`user-${r.id}`}>{renderUserItem(r)}</View>
+          ))}
+        </View>
+      )}
+
+      {/* External section */}
+      {/* <SectionHeader title="External" /> */}
+      {externalLoading && externalResults.length === 0 ? (
+        <LoadingComponent />
+      ) : (
+        <View>
+          {externalResults.map((r) => (
+            <View key={`external-${r.id}`}>{renderExternalItem(r)}</View>
+          ))}
+        </View>
+      )}
+
+      {debouncedSearchPhrase && allDone && totalCount === 0 ? (
         <NoResultsComponent />
       ) : null}
-    </View>
+    </ScrollView>
   )
 }
 
