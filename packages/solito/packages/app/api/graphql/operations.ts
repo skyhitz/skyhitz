@@ -280,3 +280,14 @@ export const MINE_EXTERNAL_ENTRY = gql`
     }
   }
 `
+
+// Preview claimable earnings without invoking claim on-chain
+export const CLAIMABLE_EARNINGS_PREVIEW = gql`
+  query ClaimableEarningsPreview {
+    claimableEarningsPreview {
+      success
+      message
+      totalClaimedAmount
+    }
+  }
+`

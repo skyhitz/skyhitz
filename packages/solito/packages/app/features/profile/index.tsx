@@ -20,6 +20,8 @@ import {
   useUserLikesQuery,
   useClaimEarningsMutation,
 } from 'app/api/graphql/mutations'
+import { useLazyQuery } from '@apollo/client'
+import { CLAIMABLE_EARNINGS_PREVIEW } from 'app/api/graphql/operations'
 import { P, ActivityIndicator } from 'app/design/typography'
 import { useToast } from 'app/provider/toast'
 import Stellar from 'app/ui/icons/stellar'
@@ -35,6 +37,7 @@ export function ProfileScreen({ user }: { user: User }) {
   const { data: userLikesData } = useUserLikesQuery()
   const { data: userCollectionData } = useUserCollectionQuery(user.id)
   const [claimEarnings] = useClaimEarningsMutation()
+  const [loadPreview] = useLazyQuery(CLAIMABLE_EARNINGS_PREVIEW)
   const toast = useToast()
 
   // Use a ref to track if we've already attempted to claim earnings
@@ -51,6 +54,14 @@ export function ProfileScreen({ user }: { user: User }) {
 
       try {
         setIsClaimingEarnings(true)
+        // Preview first; skip invoking if nothing to claim
+        const preview = await loadPreview()
+        const previewAmt = Number(preview?.data?.claimableEarningsPreview?.totalClaimedAmount || 0)
+        if (!previewAmt || previewAmt <= 0) {
+          setIsClaimingEarnings(false)
+          return
+        }
+
         const earningsResult = await claimEarnings()
         const response = earningsResult.data?.claimEarnings
 
@@ -66,12 +77,6 @@ export function ProfileScreen({ user }: { user: User }) {
             toast.show(
               `Successfully claimed ${response.totalClaimedAmount} XLM!`,
               { type: 'success' }
-            )
-          } else {
-            // No earnings to claim
-            toast.show(
-              response.message || 'No earnings available to claim at this time',
-              { type: 'info' }
             )
           }
         } else {
