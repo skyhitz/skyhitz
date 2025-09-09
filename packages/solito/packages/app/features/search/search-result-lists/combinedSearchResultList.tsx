@@ -335,7 +335,12 @@ function ExternalTrackRow({ track, onSelect }: { track: ExternalTrack; onSelect:
               try {
                 const { __typename, ...input } = (track as any) || {}
                 setMining(true)
-                await mineExternal({ variables: { input } })
+                const res = await mineExternal({ variables: { input }, errorPolicy: 'none' as any })
+                const failed = !res?.data || !res?.data?.mineExternalEntry
+                if (failed) {
+                  toast.show('Transaction failed. Please try again later.', { type: 'danger' })
+                  return
+                }
                 const refreshed = await refetchCredits()
                 const newBal = Number(refreshed?.data?.userCredits ?? 0).toFixed(2)
                 toast.show(`Mined successfully. Balance: ${newBal} XLM`, { type: 'success' })

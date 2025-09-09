@@ -87,29 +87,45 @@ export const mineExternalEntryResolver = async (_: any, { input }: { input: Exte
   const investEscrow = Math.min((ONE_XLM * topApr) / 100, 0.3);
   const remaining = ONE_XLM - investEscrow;
   const half = remaining / 2;
+  console.log('mine: partition', { topApr, investEscrow, half, user: user.publicKey, entry: metaCid, network: env.STELLAR_NETWORK });
 
   // Escrow invest (no equity if <= 0.3 per contract rules)
   const userSeed = await encryption.decrypt(user.seed);
   try {
+    console.log('mine: invest escrow', { amount: Math.round(investEscrow * 1_000_000) });
     await contract.invest(userSeed, metaCid, Math.round(investEscrow * 1_000_000));
-  } catch (e) {
-    console.log('First invest failed', e);
+  } catch (e: any) {
+    try {
+      const msg = (e && (e.message || e.toString())) || 'unknown';
+      console.log('First invest failed', msg);
+      console.log('First invest error detail', JSON.stringify(e, Object.getOwnPropertyNames(e)));
+    } catch {}
     throw new GraphQLError('INVEST_ESCROW_FAILED');
   }
 
   // Pay ISSUER_ID half
   try {
+    console.log('mine: user pay', { to: env.ISSUER_ID, amount: half });
     await stellar.userPay(env.ISSUER_ID, half, userSeed);
-  } catch (e) {
-    console.log('User payment failed', e);
+  } catch (e: any) {
+    try {
+      const msg = (e && (e.message || e.toString())) || 'unknown';
+      console.log('User payment failed', msg);
+      console.log('User payment error detail', JSON.stringify(e, Object.getOwnPropertyNames(e)));
+    } catch {}
     throw new GraphQLError('USER_PAYMENT_FAILED');
   }
 
   // Invest for equity with remaining half
   try {
+    console.log('mine: invest equity', { amount: Math.round(half * 1_000_000) });
     await contract.invest(userSeed, metaCid, Math.round(half * 1_000_000));
-  } catch (e) {
-    console.log('Equity invest failed', e);
+  } catch (e: any) {
+    try {
+      const msg = (e && (e.message || e.toString())) || 'unknown';
+      console.log('Equity invest failed', msg);
+      console.log('Equity invest error detail', JSON.stringify(e, Object.getOwnPropertyNames(e)));
+    } catch {}
     throw new GraphQLError('INVEST_EQUITY_FAILED');
   }
 
@@ -133,10 +149,18 @@ export const mineExternalEntryResolver = async (_: any, { input }: { input: Exte
   // Update Algolia shares for the user based on on-chain state
   try {
     const chainEntry = await contract.getEntry(metaCid);
-    const userShares = (chainEntry.shares as any)?.get?.(user.publicKey) || 0;
-    if (userShares > 0) {
-      await algolia.updateShares(metaCid, user.id, Number(userShares));
+    let userShares = 0;
+    const rawShares: any = (chainEntry as any)?.shares;
+    if (Array.isArray(rawShares)) {
+      // Some SDK shapes return a tuple array [[pubkey, amount], ...]
+      const pair = rawShares.find((s: any) => s && s[0] === user.publicKey);
+      userShares = pair ? Number(pair[1] || 0) : 0;
+    } else if (rawShares && typeof rawShares.get === 'function') {
+      // Map-like structure
+      const val = rawShares.get(user.publicKey);
+      userShares = val ? Number(val) : 0;
     }
+    await algolia.updateShares(metaCid, user.id, Number(userShares || 0));
     await algolia.partialUpdateEntry({
       objectID: metaCid,
       tvl: chainEntry.tvl,

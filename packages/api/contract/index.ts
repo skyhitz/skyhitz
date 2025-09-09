@@ -176,15 +176,27 @@ class ContractClient {
 		const jsonFromUser = txUser.toJSON();
 		const txRoot = this.contract.fromJSON['invest'](jsonFromUser);
 		const result = await txRoot.signAndSend();
-		const getRes = result.getTransactionResponse as any;
-		console.log(getRes.resultXdr.toXDR('base64'));
-		xdr.TransactionMeta.fromXDR(getRes.resultMetaXdr.toXDR('base64'), 'base64')
-			.v3()
-			.sorobanMeta()
-			?.diagnosticEvents()
-			.forEach((event: any) => {
-				console.log(scValToNative(event.event().body().v0().data()));
-			});
+		try {
+			const getRes = result.getTransactionResponse as any;
+			if (getRes?.resultXdr) {
+				console.log(getRes.resultXdr.toXDR('base64'));
+			}
+			if (getRes?.resultMetaXdr) {
+				try {
+					const meta = xdr.TransactionMeta.fromXDR(getRes.resultMetaXdr.toXDR('base64'), 'base64');
+					// v3 may not be present on all networks or SDK versions; guard access
+					const v3 = (meta as any).v3?.call ? (meta as any).v3() : null;
+					const sorobanMeta = v3?.sorobanMeta?.call ? v3.sorobanMeta() : null;
+					sorobanMeta?.diagnosticEvents?.()?.forEach((event: any) => {
+						console.log(scValToNative(event.event().body().v0().data()));
+					});
+				} catch (e) {
+					console.log('invest: meta parse skipped', (e as any)?.message || e);
+				}
+			}
+		} catch (e) {
+			console.log('invest: diagnostic logging failed', (e as any)?.message || e);
+		}
 		return result.getTransactionResponse;
 	};
 }
