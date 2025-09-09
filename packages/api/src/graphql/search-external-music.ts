@@ -244,12 +244,26 @@ export const externalAudioUrlResolver = async (
   const { signal } = ac
   try {
     if (source === 'audius') {
-      // Resolve an Audius host and construct the stream endpoint
+      // Resolve Audius hosts and try each for stream; some hosts may 404 for certain ids
       const hostsRes = await fetch('https://api.audius.co', { signal })
-      const hosts = (await hostsRes.json()) as { data: string[] }
-      const host = hosts?.data?.[0]
-      if (!host) return null
-      return `${host}/v1/tracks/${encodeURIComponent(rawId)}/stream?app_name=skyhitz`
+      const hostsJson = (await hostsRes.json()) as { data: string[] }
+      const hosts = (hostsJson?.data || []).filter(Boolean)
+      if (!hosts.length) return null
+
+      for (const h of hosts) {
+        const url = `${h}/v1/tracks/${encodeURIComponent(rawId)}/stream?app_name=skyhitz`
+        try {
+          const r = await fetch(url, { method: 'HEAD', redirect: 'manual', signal })
+          if (r.status === 200 || r.status === 302) {
+            return url
+          }
+        } catch {}
+      }
+      // As a fallback, try GET against first host (some environments disallow HEAD)
+      const fallbackUrl = `${hosts[0]}/v1/tracks/${encodeURIComponent(rawId)}/stream?app_name=skyhitz`
+      const fr = await fetch(fallbackUrl, { method: 'GET', redirect: 'manual', signal })
+      if (fr.status === 200 || fr.status === 302) return fallbackUrl
+      return null
     }
 
     if (source === 'soundxyz') {
