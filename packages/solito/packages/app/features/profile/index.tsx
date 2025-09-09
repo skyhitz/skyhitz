@@ -123,19 +123,17 @@ export function ProfileScreen({ user }: { user: User }) {
           }
         />
 
-       
-
         <View className="mt-8 w-full items-center justify-center px-4">
           <View className="mb-0.5 flex w-full flex-row items-center justify-between">
-            <View className="ml-2">
-              {isClaimingEarnings ? (
-                <ActivityIndicator size="small" />
-              ) : (
+            <View className="ml-2 flex flex-row items-center gap-2">
                 <P className="flex flex-row items-center font-bold font-unbounded text-[--text-color] gap-2">
                   <Stellar size={18} />
                   {`${credits?.userCredits || 0} XLM`}
                 </P>
-              )}
+
+              {isClaimingEarnings ? (
+                <ActivityIndicator size="small" />
+              ) : null}
             </View>
             <View className="mr-2">
               <P
