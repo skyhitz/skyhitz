@@ -13,8 +13,8 @@ export const keywords =
 export const socialDesc =
   'Collect, stream and trade valuable music NFTs with the best smart music contracts platform!'
 export const header = {
-  title: 'Recording Label with Smart Music Contracts',
-  desc: 'The next-gen recording label, powered by smart contracts, offering music fans, collectors, and creators a groundbreaking way to discover, stream, and invest in unique tracks. Through a decentralized platform, users can access exclusive music while empowering creators with transparent monetization.',
+  title: 'Discover decentralized music with Smart Contracts',
+  desc: 'The next-gen music platform, powered by stellar smart contracts, offering music fans, collectors, and creators a groundbreaking way to discover, stream, and invest in unique tracks. Through a decentralized platform, users can access exclusive music while empowering creators with transparent monetization.',
 }
 export const combinedTitle = `${orgName} - ${header.title}`
 const cta = {

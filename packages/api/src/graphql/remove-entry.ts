@@ -10,8 +10,11 @@ export const removeEntryResolver = async (_: any, { id }: any, ctx: Context) => 
 	const algolia = new AlgoliaClient(ctx.env);
 
 	if (user.id === adminId) {
-		// Delete from Algolia
-		await algolia.deleteEntry(id);
+		// Read entry first to gather associated media hashes
+		let entry: any = null;
+		try {
+			entry = await algolia.getEntry(id);
+		} catch (_) {}
 
 		// Remove from Soroban contract index (admin-only)
 		try {
@@ -21,7 +24,7 @@ export const removeEntryResolver = async (_: any, { id }: any, ctx: Context) => 
 			console.log('Contract remove_entry failed', e);
 		}
 
-		// Also delete associated objects in R2 under prefix `${id}/`
+		// Also delete associated objects in R2 under relevant prefixes
 		const s3 = new S3Client({
 			region: 'auto',
 			endpoint: ctx.env.R2_ENDPOINT,
@@ -32,13 +35,42 @@ export const removeEntryResolver = async (_: any, { id }: any, ctx: Context) => 
 		});
 
 		const bucket = ctx.env.R2_BUCKET;
-		const prefix = `${id}/`;
 
-		const listed = await s3.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix }));
-		const toDelete = (listed.Contents || []).map((o) => ({ Key: o.Key! }));
-		if (toDelete.length > 0) {
-			await s3.send(new DeleteObjectsCommand({ Bucket: bucket, Delete: { Objects: toDelete } }));
+		const extractHash = (url?: string) => {
+			if (!url) return null;
+			if (url.startsWith('ipfs://')) return url.replace('ipfs://', '');
+			return null;
+		};
+
+		const imageHash = extractHash(entry?.imageUrl);
+		const videoHash = extractHash(entry?.videoUrl);
+
+		const prefixes = new Set<string>();
+		// metadata
+		prefixes.add(`${id}/`);
+		prefixes.add(`${id}/mp4/`);
+		prefixes.add(`${id}/hls/`);
+		// image
+		if (imageHash) {
+			prefixes.add(`${imageHash}/`);
 		}
+		// audio/video
+		if (videoHash) {
+			prefixes.add(`${videoHash}/`);
+			prefixes.add(`${videoHash}/mp4/`);
+			prefixes.add(`${videoHash}/hls/`);
+		}
+
+		for (const prefix of prefixes) {
+			const listed = await s3.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix }));
+			const toDelete = (listed.Contents || []).map((o) => ({ Key: o.Key! }));
+			if (toDelete.length > 0) {
+				await s3.send(new DeleteObjectsCommand({ Bucket: bucket, Delete: { Objects: toDelete } }));
+			}
+		}
+
+		// Delete from Algolia last
+		await algolia.deleteEntry(id);
 
 		return true;
 	}
