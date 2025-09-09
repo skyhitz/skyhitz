@@ -41,6 +41,16 @@ export class AlgoliaClient {
 		};
 	}
 
+	async getTopApr(): Promise<number> {
+		// ratingReplicaIndex is sorted by APR desc
+		const res = await this.indices.ratingReplicaIndex.search<Entry>('', {
+			hitsPerPage: 1,
+			page: 0,
+		});
+		const [top] = res.hits as Entry[];
+		return top && (top as any).apr ? Number((top as any).apr) : 0;
+	}
+
 	async partialUpdateEntry(obj: any) {
 		return this.indices.entriesIndex.partialUpdateObject(obj).wait();
 	}

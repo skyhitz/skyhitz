@@ -21,8 +21,8 @@ export function ActionButtons({ entry }: ActionButtonsProps) {
 
       {/* Share button */}
       <ShareButton
-        url={`https://skyhitz.io/beat/${entry.id}`}
-        title="Share this beat!"
+        url={`https://skyhitz.io/music/${entry.id}`}
+        title="Share it!"
       />
 
       {/* Download button */}

@@ -20,6 +20,8 @@ import { createPaymentIntentResolver } from './create-payment-intent';
 import { checkPendingWithdrawalsResolver } from './check-pending-withdrawals';
 import { claimEarningsResolver } from './claim-earnings';
 import { searchExternalMusicResolver, externalAudioUrlResolver } from './search-external-music';
+import { claimEarningsPreviewResolver } from './xlm-price';
+import { mineExternalEntryResolver } from './mine-external-entry';
 
 const Query = {
 	entry: entryByIdResolver,
@@ -30,6 +32,7 @@ const Query = {
 	xlmPrice: XLMPriceResolver,
 	searchExternalMusic: searchExternalMusicResolver,
 	externalAudioUrl: externalAudioUrlResolver,
+	claimableEarningsPreview: claimEarningsPreviewResolver,
 };
 
 const Mutation = {
@@ -46,6 +49,7 @@ const Mutation = {
 	signInWithToken: signInWithTokenResolver,
 	submitLink: submitLinkResolver,
 	claimEarnings: claimEarningsResolver,
+	mineExternalEntry: mineExternalEntryResolver,
 	updateUser: updateUserResolver,
 	withdrawToExternalWallet: withdrawToExternalAddressResolver,
 };

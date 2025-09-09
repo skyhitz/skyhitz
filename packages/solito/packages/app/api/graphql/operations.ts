@@ -266,3 +266,17 @@ export const EXTERNAL_AUDIO_URL = gql`
     externalAudioUrl(id: $id)
   }
 `
+
+// Mine and index external entry
+export const MINE_EXTERNAL_ENTRY = gql`
+  mutation MineExternalEntry($input: ExternalTrackInput!) {
+    mineExternalEntry(input: $input) {
+      imageUrl
+      videoUrl
+      description
+      title
+      id
+      artist
+    }
+  }
+`

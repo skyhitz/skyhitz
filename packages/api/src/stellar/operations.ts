@@ -201,6 +201,27 @@ class StellarClient {
 		console.log('\nSuccess! View the transaction at: ', transactionResult);
 		return transactionResult;
 	}
+
+	async userPay(address: string, amount: number, seed: string) {
+		const keys = Keypair.fromSecret(seed);
+		const accountPublicKey = keys.publicKey();
+
+		const transaction = (await this.buildTransactionWithFee(accountPublicKey))
+			.addOperation(
+				Operation.payment({
+					destination: address,
+					asset: XLM,
+					amount: amount.toFixed(6).toString(),
+				})
+			)
+			.setTimeout(0)
+			.build();
+
+		transaction.sign(keys);
+		const transactionResult = await this.submitTransaction(transaction);
+		console.log('\nSuccess! View the transaction at: ', transactionResult);
+		return transactionResult;
+	}
 }
 
 export default StellarClient;

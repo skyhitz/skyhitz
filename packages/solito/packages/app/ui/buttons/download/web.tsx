@@ -3,7 +3,11 @@
 import { Pressable } from 'react-native'
 import { Entry } from 'app/api/graphql/types'
 import { videoSrc } from 'app/utils/entry'
-import { useToast } from 'app/provider/toast'
+import { useRouter } from 'solito/navigation'
+import { useUserStore } from 'app/state/user'
+import { useMutation } from '@apollo/client'
+import { INVEST_ENTRY } from 'app/api/graphql/operations'
+import { lumensToStroops } from 'app/utils'
 import DownloadIcon from 'app/ui/icons/download'
 
 interface Props {
@@ -13,9 +17,29 @@ interface Props {
 }
 
 const DownloadBtn = ({ size = 24, className = '', entry }: Props) => {
-  const toast = useToast()
+  const user = useUserStore((s) => s.user)
+  const { push } = useRouter()
+  const [invest] = useMutation(INVEST_ENTRY)
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
+    if (!user) {
+      push('/sign-in')
+      return
+    }
+
+    // Invest 0.3 XLM before downloading
+    try {
+      const { data } = await invest({ variables: { id: entry.id, amount: lumensToStroops(0.3) } })
+      const ok = !!data?.investEntry?.success
+      if (!ok) {
+        console.error('Invest before download not successful')
+        return
+      }
+    } catch (e) {
+      console.error('Invest before download failed', e)
+      return
+    }
+
     // Create a download link for the video
     const a = document.createElement('a')
     a.href = videoSrc(entry.videoUrl)

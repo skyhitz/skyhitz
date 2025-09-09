@@ -16,6 +16,7 @@
     "api:dev": "yarn workspace @skyhitz/api dev",
     "ui:dev": "yarn workspace @skyhitz/ui dev",
     "deploy": "yarn workspace @skyhitz/api deploy",
+    "deploy-all": "yarn cf:deploy && yarn api:deploy",
     "dev:test": "concurrently \"yarn api:dev:test\" \"yarn ui:dev:test\"",
     "dev:local-prod": "concurrently \"yarn api:dev:prod\" \"yarn ui:dev:local-prod\"",
     "dev:prod": "yarn ui:dev:prod",

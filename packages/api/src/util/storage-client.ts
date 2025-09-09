@@ -148,6 +148,46 @@ class StorageClient {
 		this.env = env;
 	}
 
+	private detectContentType(content: Uint8Array, remoteType?: string): string {
+		const type = (remoteType || '').toLowerCase();
+		if (type && type !== 'application/octet-stream') return remoteType as string;
+
+		let head = '';
+		try {
+			head = new TextDecoder('utf-8', { fatal: false }).decode(content.slice(0, 16));
+		} catch {}
+
+		if (head.startsWith('ID3')) return 'audio/mpeg';
+		if (content.length > 2) {
+			const b0 = content[0];
+			const b1 = content[1];
+			if (b0 === 0xff && (b1 === 0xfb || b1 === 0xf3 || b1 === 0xf2)) return 'audio/mpeg';
+		}
+		if (content.length > 12) {
+			const sig = new TextDecoder('utf-8', { fatal: false }).decode(content.slice(4, 12));
+			if (sig.includes('ftyp')) return 'video/mp4';
+		}
+		if (content.length > 12) {
+			const riff = new TextDecoder('utf-8', { fatal: false }).decode(content.slice(0, 4));
+			const wave = new TextDecoder('utf-8', { fatal: false }).decode(content.slice(8, 12));
+			if (riff === 'RIFF' && wave === 'WAVE') return 'audio/wav';
+		}
+		if (head.startsWith('OggS')) return 'audio/ogg';
+		if (head.startsWith('fLaC')) return 'audio/flac';
+		if (head.startsWith('#EXTM3U')) return 'application/x-mpegURL';
+
+		if (content.length > 4) {
+			const s0 = content[0], s1 = content[1], s2 = content[2], s3 = content[3];
+			if (s0 === 0x89 && s1 === 0x50 && s2 === 0x4e && s3 === 0x47) return 'image/png';
+			if (s0 === 0xff && s1 === 0xd8 && s2 === 0xff) return 'image/jpeg';
+			const head12 = new TextDecoder('ascii').decode(content.slice(0, 12));
+			if (head12.startsWith('RIFF') && head12.slice(8, 12) === 'WEBP') return 'image/webp';
+			const head3 = new TextDecoder('ascii').decode(content.slice(0, 3));
+			if (head3 === 'GIF') return 'image/gif';
+		}
+		return remoteType || 'application/octet-stream';
+	}
+
 	private getS3() {
 		return new S3Client({
 			region: 'auto',
@@ -185,7 +225,7 @@ class StorageClient {
 			const response = await axios.get(url, { responseType: 'arraybuffer' });
 			const content = new Uint8Array(response.data);
 			const cid = await computeCID(content);
-			const contentType = response.headers['content-type'] || 'application/octet-stream';
+			const contentType = this.detectContentType(content, response.headers['content-type']);
 			return await this.uploadToR2(cid, content, contentType);
 		} catch (error) {
 			console.log(error);
@@ -214,7 +254,7 @@ class StorageClient {
 		const response = await axios.get(url, { responseType: 'arraybuffer' });
 		const content = new Uint8Array(response.data);
 		const cid = await computeCID(content);
-		const contentType = response.headers['content-type'] || 'application/octet-stream';
+		const contentType = this.detectContentType(content, response.headers['content-type']);
 		return this.uploadToR2(cid, content, contentType);
 	}
 

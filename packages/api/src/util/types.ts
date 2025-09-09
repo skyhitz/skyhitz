@@ -38,9 +38,11 @@ export type Entry = {
 	publishedAtTimestamp: number;
 	likeCount: number;
 	objectID: string;
-	contract: string;
-	tokenId: string;
-	network: string;
+	contract?: string;
+	tokenId?: string;
+	network?: string;
+	source?: string;
+	sourceId?: string;
 	tvl?: number;
 	apr?: number;
 	escrow?: number;

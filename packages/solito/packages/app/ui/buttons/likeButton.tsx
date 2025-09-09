@@ -3,7 +3,7 @@ import { Pressable } from 'react-native'
 import Like from 'app/ui/icons/like'
 import { Entry } from 'app/api/graphql/types'
 import { useUserStore } from 'app/state/user'
-import { useToast } from 'app/provider/toast'
+import { useRouter } from 'solito/navigation'
 import { useMutation, useQuery } from '@apollo/client'
 import useLikeCache from 'app/hooks/useLikeCache'
 import { lumensToStroops } from 'app/utils'
@@ -23,7 +23,7 @@ interface Props {
 
 function LikeButton({ size = 24, className, entry }: Props) {
   const user = useUserStore((state) => state.user)
-  const toast = useToast()
+  const { push } = useRouter()
 
   // Setup GraphQL operations
   const [likeEntry, { loading: likeLoading }] = useMutation(LIKE_ENTRY)
@@ -40,12 +40,7 @@ function LikeButton({ size = 24, className, entry }: Props) {
 
   // Handle press event
   const handlePress = async () => {
-    if (!user) {
-      toast.show('You need to be logged in to like this beat', {
-        type: 'error',
-      })
-      return
-    }
+    if (!user) return push('/sign-in')
 
     // Optimistically update the UI through cache manipulation
     isLiked ? removeLikeFromCache(entry) : addLikeToCache(entry)
@@ -70,7 +65,6 @@ function LikeButton({ size = 24, className, entry }: Props) {
       // Revert cache on error
       isLiked ? addLikeToCache(entry) : removeLikeFromCache(entry)
       console.error('Like error:', error)
-      toast.show('Error updating like status', { type: 'error' })
     }
   }
 

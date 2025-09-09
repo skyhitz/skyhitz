@@ -13,6 +13,14 @@ import { TextLink } from 'solito/link'
 import { UserAvatar } from 'app/ui/user-avatar'
 import { usePlayback } from 'app/hooks/usePlayback'
 import { SolitoImage } from 'app/design/solito-image'
+import { useMutation, useQuery } from '@apollo/client'
+import { MINE_EXTERNAL_ENTRY, USER_CREDITS } from 'app/api/graphql/operations'
+import { useRouter } from 'solito/navigation'
+import { Modal } from 'app/design/modal'
+import { H1 } from 'app/design/typography'
+import { Button } from 'app/design/button'
+import { useUserStore } from 'app/state/user'
+import { useToast } from 'app/provider/toast'
 
 // Define a union type for our search results
 type SearchResult = {
@@ -79,6 +87,9 @@ export function CombinedSearchResultList({
   const [loadExternal, { data: externalData }] = useLazyQuery(SEARCH_EXTERNAL_MUSIC)
   const [resolveAudioUrl] = useLazyQuery(EXTERNAL_AUDIO_URL)
   const { playEntry } = usePlayback()
+  const [mineExternal] = useMutation(MINE_EXTERNAL_ENTRY)
+  const { data: creditsData } = useQuery(USER_CREDITS, { fetchPolicy: 'network-only' })
+  const { push } = useRouter()
 
   // Debounce search phrase to avoid too many API calls
   useEffect(() => {
@@ -277,6 +288,14 @@ type ExternalTrack = {
 }
 
 function ExternalTrackRow({ track, onSelect }: { track: ExternalTrack; onSelect: () => void }) {
+  const { data: creditsData, refetch: refetchCredits } = useQuery(USER_CREDITS, { fetchPolicy: 'network-only' })
+  const [mineExternal] = useMutation(MINE_EXTERNAL_ENTRY)
+  const { push } = useRouter()
+  const [open, setOpen] = useState(false)
+  const user = useUserStore((s) => s.user)
+  const isAuthed = !!user
+  const [mining, setMining] = useState(false)
+  const toast = useToast()
   return (
     <Pressable onPress={onSelect} className="flex">
       <View
@@ -302,11 +321,63 @@ function ExternalTrackRow({ track, onSelect }: { track: ExternalTrack; onSelect:
           </P>
         </View>
         <View className="flex flex-row items-center">
-          <Pressable onPress={() => {}}>
-            <Pickaxe size={20} color="var(--text-color)" />
+          <Pressable
+            disabled={mining}
+            onPress={async () => {
+              if (!isAuthed) return push('/sign-in')
+              // Ensure user has >= 1 XLM available, or prompt top-up
+              const available = Number(creditsData?.userCredits ?? 0)
+              const required = 1.2 // 1 XLM + ~0.2 XLM fees; reserve already excluded in userCredits
+              if (!available || available < required) {
+                setOpen(true)
+                return
+              }
+              try {
+                const { __typename, ...input } = (track as any) || {}
+                setMining(true)
+                await mineExternal({ variables: { input } })
+                const refreshed = await refetchCredits()
+                const newBal = Number(refreshed?.data?.userCredits ?? 0).toFixed(2)
+                toast.show(`Mined successfully. Balance: ${newBal} XLM`, { type: 'success' })
+                // Optional: give quick feedback
+                // Re-play from our stored copy
+                // no-op here; search list will show indexed version later
+              } catch (e) {
+                console.error('Mine failed', e)
+                toast.show('Mining failed. Please try again.', { type: 'danger' })
+              } finally {
+                setMining(false)
+              }
+            }}
+          >
+            {mining ? (
+              <ActivityIndicator size="small" />
+            ) : (
+              <Pickaxe size={20} color="var(--text-color)" />
+            )}
           </Pressable>
         </View>
       </View>
+      <Modal visible={open} onClose={() => setOpen(false)}>
+        <View className="w-full max-w-[520px] rounded-xl border border-[--border-color] bg-[--bg-color] p-6">
+          <H1 className="text-lg font-unbounded">Top up required</H1>
+          <P className="mt-3 text-sm text-[--text-secondary-color]">
+            You need at least 1 XLM plus network fees available (excluding the minimum account reserve) to mine an entry.
+          </P>
+          <P className="mt-2 text-sm text-[--text-secondary-color]">
+            Available balance: {Number(creditsData?.userCredits ?? 0).toFixed(2)} XLM
+          </P>
+          <View className="mt-4">
+            <P className="text-sm">1) Buy XLM from our top up page.</P>
+            <P className="text-sm mt-2">2) Send XLM directly to your Stellar address:</P>
+            <P className="text-xs mt-1 break-all">{user?.publicKey}</P>
+          </View>
+          <View className="mt-6 flex-row gap-3">
+            <Button text="Go to Top Up" onPress={() => { setOpen(false); push('/top-up') }} />
+            <Button text="Close" onPress={() => setOpen(false)} variant="secondary" />
+          </View>
+        </View>
+      </Modal>
     </Pressable>
   )
 }

@@ -2,7 +2,7 @@
  * Unified Video Player Component for Web and Native
  * Uses the unified player store with adapter pattern
  */
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useRef, useState, useEffect } from 'react'
 import { View, Platform } from 'react-native'
 import { imageUrlMedium } from 'app/utils/entry'
 import { SolitoImage } from 'app/design/solito-image'
@@ -133,6 +133,38 @@ function WebVideoPlayer() {
   // Determine if current source is audio-only
   const isAudioOnly = !!playbackUri && !/m3u8/i.test(playbackUri)
 
+  // Build fallback URIs for R2 when HLS/MP4 are missing
+  const buildFallbackUri = useCallback(() => {
+    const { entry, playbackUri } = usePlayerStore.getState()
+    if (!entry?.videoUrl || !playbackUri) return null
+    if (!entry.videoUrl.startsWith('ipfs://')) return null
+
+    const hash = entry.videoUrl.replace('ipfs://', '')
+    // If HLS failed, try MP4
+    if (playbackUri.includes('/hls/')) return `https://r2.skyhitz.io/${hash}/mp4/index.mp4`
+    // If MP4 failed, try raw index (audio/mpeg)
+    if (playbackUri.includes('/mp4/')) return `https://r2.skyhitz.io/${hash}/index`
+    return null
+  }, [])
+
+  // Proactively prefer raw index on Android Chrome to avoid HLS CORS/compat issues
+  useEffect(() => {
+    if (!playbackUri) return
+    try {
+      const ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''
+      const isAndroid = /Android/i.test(ua)
+      const isChrome = /Chrome/i.test(ua) && !/Edge|OPR/i.test(ua)
+      const wantsRaw = isAndroid && isChrome && /\/hls\//.test(playbackUri)
+      if (wantsRaw) {
+        const { entry } = usePlayerStore.getState()
+        if (entry?.videoUrl?.startsWith('ipfs://')) {
+          const hash = entry.videoUrl.replace('ipfs://', '')
+          usePlayerStore.getState().setPlaybackUri(`https://r2.skyhitz.io/${hash}/index`)
+        }
+      }
+    } catch {}
+  }, [playbackUri])
+
   return (
     <>
       <View
@@ -143,6 +175,15 @@ function WebVideoPlayer() {
         {/* Always render poster behind for artwork, useful for audio-only */}
         <Poster />
         {!!playbackUri && (
+          // Detect if the engine supports native HLS (iOS Safari/Chrome on iOS)
+          // On those, do NOT force hls.js
+          (() => {
+            const ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''
+            const isIOSWebKit = /iPad|iPhone|iPod/i.test(ua) || /WebKit/i.test(ua) && /Mobile/i.test(ua)
+            const isHls = /m3u8/i.test(playbackUri) || /\/hls\//i.test(playbackUri)
+            const forceHlsJs = isHls && !isIOSWebKit
+            const forceAudio = /^https?:\/\//i.test(playbackUri) && !/m3u8/i.test(playbackUri)
+            return (
           <ReactPlayer
             ref={handleRef}
             url={playbackUri}
@@ -154,28 +195,40 @@ function WebVideoPlayer() {
             loop={loop}
             playbackRate={playbackRate}
             playsinline
+            controls={false}
             onLoadStart={handleLoadStart}
             onStart={handleOnStart}
             onReady={handleReady}
             onPlay={handlePlay}
             onPause={handlePause}
             onEnded={handleEnded}
-            onError={(e) => console.log(e)}
+            onError={() => {
+              // Attempt fallback sequence: HLS -> MP4 -> raw index
+              const next = buildFallbackUri()
+              if (next) {
+                usePlayerStore.getState().setPlaybackUri(next)
+                // keep state LOADING and let onReady resume
+              }
+            }}
             onDurationChange={handleDurationChange}
             onProgress={handleProgress}
             onTimeUpdate={handleTimeUpdate}
             onLoadedData={handleLoadedData}
             config={{
               file: {
-                // Allow both HLS and direct audio (e.g. MP3) previews
-                forceHLS: /m3u8/i.test(playbackUri) || /\/hls\//i.test(playbackUri),
-                forceAudio: /^https?:\/\//i.test(playbackUri) && !/m3u8/i.test(playbackUri),
+                // Use native HLS on iOS WebKit. Else, allow hls.js for HLS.
+                forceHLS: forceHlsJs,
+                forceAudio,
                 attributes: {
                   preload: 'metadata',
+                  // Allow CORS credentials-less fetches if needed
+                  crossOrigin: 'anonymous',
                 },
               },
             }}
           />
+            )
+          })()
         )}
       </View>
     </>

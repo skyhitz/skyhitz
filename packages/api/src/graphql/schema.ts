@@ -8,6 +8,7 @@ type Query {
   xlmPrice: String!
   searchExternalMusic(query: String!, limit: Int, offset: Int): [ExternalTrack!]!
   externalAudioUrl(id: String!): String
+  claimableEarningsPreview: ClaimEarningsResponse!
 }
 
 type Mutation {
@@ -44,6 +45,7 @@ type Mutation {
   initContract: InitContractResult!
   submitLink(link: String!, email: String!): SubmitLinkResponse!
   claimEarnings: ClaimEarningsResponse!
+  mineExternalEntry(input: ExternalTrackInput!): Entry!
 }
 
 type PaymentIntentResponse {
@@ -209,6 +211,16 @@ type ClaimedEntry {
 }
 
 type ExternalTrack {
+  id: String!
+  title: String!
+  artist: String
+  genre: String
+  source: String!
+  url: String
+  imageUrl: String
+}
+
+input ExternalTrackInput {
   id: String!
   title: String!
   artist: String

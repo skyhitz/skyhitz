@@ -84,7 +84,7 @@ export function BeatListEntry({
             {entry.tvl && entry.apr ? (
               <Pressable
                 className="flex flex-row items-center md:hidden"
-                onPress={() => push(`/beat/${entry.id}`)}
+                onPress={() => push(`/music/${entry.id}`)}
               >
                 <View className="mr-3 flex flex-row items-center">
                   <Stellar size={10} color="var(--primary-color)" />
@@ -101,7 +101,7 @@ export function BeatListEntry({
             {entry.tvl && entry.apr ? (
               <Pressable
                 className="hidden flex-row items-center md:flex"
-                onPress={() => push(`/beat/${entry.id}`)}
+                onPress={() => push(`/music/${entry.id}`)}
               >
                 <APRText apr={aprFormatted} />
               </Pressable>
@@ -113,7 +113,7 @@ export function BeatListEntry({
             <LikeButton size={20} entry={entry} />
 
             {/* More options dots */}
-            <Pressable onPress={() => push(`/beat/${entry.id}`)}>
+            <Pressable onPress={() => push(`/music/${entry.id}`)}>
               <VerticalDots size={24} className="stroke-[--text-color]" />
             </Pressable>
           </View>
