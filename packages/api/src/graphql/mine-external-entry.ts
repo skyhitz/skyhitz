@@ -91,9 +91,10 @@ export const mineExternalEntryResolver = async (_: any, { input }: { input: Exte
 
   // Escrow invest (no equity if <= 0.3 per contract rules)
   const userSeed = await encryption.decrypt(user.seed);
+  const toStroops = (lumens: number) => Math.round(lumens * 10_000_000);
   try {
-    console.log('mine: invest escrow', { amount: Math.round(investEscrow * 1_000_000) });
-    await contract.invest(userSeed, metaCid, Math.round(investEscrow * 1_000_000));
+    console.log('mine: invest escrow', { amount: toStroops(investEscrow) });
+    await contract.invest(userSeed, metaCid, toStroops(investEscrow));
   } catch (e: any) {
     try {
       const msg = (e && (e.message || e.toString())) || 'unknown';
@@ -118,8 +119,8 @@ export const mineExternalEntryResolver = async (_: any, { input }: { input: Exte
 
   // Invest for equity with remaining half
   try {
-    console.log('mine: invest equity', { amount: Math.round(half * 1_000_000) });
-    await contract.invest(userSeed, metaCid, Math.round(half * 1_000_000));
+    console.log('mine: invest equity', { amount: toStroops(half) });
+    await contract.invest(userSeed, metaCid, toStroops(half));
   } catch (e: any) {
     try {
       const msg = (e && (e.message || e.toString())) || 'unknown';
@@ -149,18 +150,20 @@ export const mineExternalEntryResolver = async (_: any, { input }: { input: Exte
   // Update Algolia shares for the user based on on-chain state
   try {
     const chainEntry = await contract.getEntry(metaCid);
-    let userShares = 0;
-    const rawShares: any = (chainEntry as any)?.shares;
-    if (Array.isArray(rawShares)) {
-      // Some SDK shapes return a tuple array [[pubkey, amount], ...]
-      const pair = rawShares.find((s: any) => s && s[0] === user.publicKey);
-      userShares = pair ? Number(pair[1] || 0) : 0;
-    } else if (rawShares && typeof rawShares.get === 'function') {
-      // Map-like structure
-      const val = rawShares.get(user.publicKey);
-      userShares = val ? Number(val) : 0;
+    try {
+      let userShares = 0;
+      const rawShares: any = (chainEntry as any)?.shares;
+      if (Array.isArray(rawShares)) {
+        const pair = rawShares.find((s: any) => s && s[0] === user.publicKey);
+        userShares = pair ? Number(pair[1] || 0) : 0;
+      } else if (rawShares && typeof rawShares.get === 'function') {
+        const val = rawShares.get(user.publicKey);
+        userShares = val ? Number(val) : 0;
+      }
+      await algolia.updateShares(metaCid, user.id, Number(userShares || 0));
+    } catch (e) {
+      console.log('update shares failed', e);
     }
-    await algolia.updateShares(metaCid, user.id, Number(userShares || 0));
     await algolia.partialUpdateEntry({
       objectID: metaCid,
       tvl: chainEntry.tvl,

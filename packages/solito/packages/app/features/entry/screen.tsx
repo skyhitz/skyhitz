@@ -7,7 +7,7 @@ import { ScrollView, View, Text } from 'react-native'
 import { EntryDetails } from './Details'
 import { imageUrlMedium } from 'app/utils/entry'
 import { EntrySummaryColumn } from './SummaryColumn'
-import { pinataGateway } from 'app/constants/constants'
+import { r2Gateway } from 'app/constants/constants'
 import { useGetEntry } from 'app/hooks/algolia/useGetEntry'
 import { SolitoImage } from 'app/design/solito-image'
 
@@ -70,7 +70,7 @@ export function EntryScreen({ entry: serverEntry, id: passedId }: Props) {
             />
           </View>
 
-          <EntryDetails id={entry.id} link={`${pinataGateway}/${entry.id}`} />
+          <EntryDetails id={entry.id} link={`${r2Gateway}/${entry.id}/index`} />
         </View>
 
         <EntrySummaryColumn entry={entry} />

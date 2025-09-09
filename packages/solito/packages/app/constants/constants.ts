@@ -6,6 +6,7 @@
 export const ipfsProtocol = 'ipfs://'
 export const pinataGateway = 'https://ipfs.io/ipfs'
 export const fallbackGateway = 'https://ipfs.io/ipfs'
+export const r2Gateway = 'https://r2.skyhitz.io'
 
 // Storage keys
 export const userDataKey = 'sk:user'
