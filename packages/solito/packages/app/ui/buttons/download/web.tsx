@@ -3,6 +3,7 @@
 import { Pressable } from 'react-native'
 import { Entry } from 'app/api/graphql/types'
 import { videoSrc } from 'app/utils/entry'
+import { MICRO_SPEND_DOWNLOAD_XLM } from 'app/constants/constants'
 import { useRouter } from 'solito/navigation'
 import { useUserStore } from 'app/state/user'
 import { useMutation } from '@apollo/client'
@@ -27,9 +28,9 @@ const DownloadBtn = ({ size = 24, className = '', entry }: Props) => {
       return
     }
 
-    // Invest 0.3 XLM before downloading
+    // Spend before downloading (no shares)
     try {
-      const { data } = await invest({ variables: { id: entry.id, amount: lumensToStroops(0.3) } })
+      const { data } = await invest({ variables: { id: entry.id, amount: lumensToStroops(MICRO_SPEND_DOWNLOAD_XLM) } })
       const ok = !!data?.investEntry?.success
       if (!ok) {
         console.error('Invest before download not successful')

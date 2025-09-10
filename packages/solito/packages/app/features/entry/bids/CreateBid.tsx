@@ -12,6 +12,7 @@ import { useMutation, useQuery } from '@apollo/client'
 import { useGetEntry } from 'app/hooks/algolia/useGetEntry'
 import { sharesIndex } from 'app/api/algolia'
 import { INVEST_ENTRY, USER_CREDITS } from 'app/api/graphql/operations'
+import { INVEST_MIN_XLM } from 'app/constants/constants'
 
 // Helper functions for XLM conversion
 const lumensToStroops = (lumens: number) => (lumens * 10000000).toString()
@@ -93,8 +94,8 @@ export function CreateBid({ entry }: Props) {
     setEquityToBuy(additionalPercentage.toFixed(4))
   }, [amountToInvest, entry.tvl, shares])
 
-  // Minimum investment in XLM
-  const MIN_INVESTMENT_XLM = 1
+  // Minimum investment in XLM (eligible for shares)
+  const MIN_INVESTMENT_XLM = INVEST_MIN_XLM
 
   const onSubmit = useCallback(async () => {
     if (!user) {
@@ -196,12 +197,12 @@ export function CreateBid({ entry }: Props) {
           icon={<Stellar size={18} />}
           value={amountToInvest}
           onChangeText={setAmountToInvest}
-          placeholder="Amount to invest (min 1 XLM)"
+          placeholder={`Amount to invest (min ${INVEST_MIN_XLM} XLM)`}
           keyboardType="numeric"
           className="my-4"
         />
         <P className="text-center text-xs text-[--text-secondary-color] italic mt-1 mb-3">
-          Minimum investment: 1 XLM
+          Minimum investment: {INVEST_MIN_XLM} XLM
         </P>
       </View>
 

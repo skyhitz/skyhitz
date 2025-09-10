@@ -7,6 +7,7 @@ import { useRouter } from 'solito/navigation'
 import { useMutation, useQuery } from '@apollo/client'
 import useLikeCache from 'app/hooks/useLikeCache'
 import { lumensToStroops } from 'app/utils'
+import { MICRO_SPEND_LIKE_XLM } from 'app/constants/constants'
 import {
   LIKE_ENTRY,
   INVEST_ENTRY,
@@ -54,11 +55,11 @@ function LikeButton({ size = 24, className, entry }: Props) {
         },
       })
 
-      // Also invest a small amount when liking (like in the legacy app)
+      // Also spend a small amount when liking (no shares)
       await invest({
         variables: {
           id: entry.id,
-          amount: lumensToStroops(0.2),
+          amount: lumensToStroops(MICRO_SPEND_LIKE_XLM),
         },
       })
     } catch (error) {

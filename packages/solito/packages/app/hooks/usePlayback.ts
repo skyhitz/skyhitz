@@ -5,6 +5,7 @@
 import { Entry } from 'app/api/graphql/types'
 
 import { lumensToStroops } from 'app/utils'
+import { MICRO_SPEND_PLAYBACK_COMPLETE_XLM } from 'app/constants/constants'
 import { last } from 'ramda'
 import { videoSrc } from 'app/utils/entry'
 import { useErrorReport } from 'app/hooks/useErrorReport'
@@ -112,7 +113,7 @@ export function usePlayback() {
     await invest({
       variables: {
         id: entry.id,
-        amount: lumensToStroops(0.1),
+        amount: lumensToStroops(MICRO_SPEND_PLAYBACK_COMPLETE_XLM),
       },
     });
   };
