@@ -1,0 +1,14 @@
+{
+  "version": "1",
+  "name": "Skyhitz",
+  "description": "Music discovery and investing. Public pages: /, /search, /chart, /music/{id}, /blog.",
+  "capabilities": {
+    "webhook": false,
+    "actions": false
+  },
+  "links": {
+    "sitemap": "/sitemap.xml",
+    "openapi": "/openapi.yaml"
+  }
+}
+

@@ -1,0 +1,51 @@
+openapi: 3.0.0
+info:
+  title: Skyhitz Public Content API (Discovery)
+  version: 1.0.0
+  description: |
+    Minimal public specification for content discovery pages to help LLMs understand site structure.
+servers:
+  - url: /
+paths:
+  /:
+    get:
+      summary: Home
+      responses:
+        '200':
+          description: OK
+  /search:
+    get:
+      summary: Search UI
+      responses:
+        '200': { description: OK }
+  /chart:
+    get:
+      summary: Top chart
+      responses:
+        '200': { description: OK }
+  /music/{id}:
+    get:
+      summary: Music detail page
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+  /blog:
+    get:
+      summary: Blog index
+      responses:
+        '200': { description: OK }
+  /terms:
+    get:
+      summary: Terms
+      responses:
+        '200': { description: OK }
+  /privacy:
+    get:
+      summary: Privacy
+      responses:
+        '200': { description: OK }
+

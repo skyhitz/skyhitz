@@ -1,0 +1,17 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "Skyhitz",
+  "name_for_model": "skyhitz",
+  "description_for_human": "Discover, invest, and stream music on Skyhitz.",
+  "description_for_model": "Skyhitz lets users discover music, invest small amounts in tracks to earn shares, and stream audio. Use the public pages for content discovery.",
+  "auth": { "type": "none" },
+  "api": {
+    "type": "openapi",
+    "url": "/openapi.yaml",
+    "is_user_authenticated": false
+  },
+  "logo_url": "/icon-128.png",
+  "contact_email": "support@skyhitz.io",
+  "legal_info_url": "/terms"
+}
+

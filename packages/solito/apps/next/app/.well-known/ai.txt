@@ -1,0 +1,16 @@
+Skyhitz is a music discovery and investing platform.
+
+Public pages:
+- /
+- /search
+- /chart
+- /music/{id}
+- /blog
+- /terms
+- /privacy
+
+Sitemap: /sitemap.xml
+OpenAPI: /openapi.yaml
+
+Bots welcomed: GPTBot, CCBot, ClaudeBot, Google-Extended, Applebot-Extended, PerplexityBot, Meta-ExternalCrawler, Grok, GrokBot, xai-crawler, xAIBot
+
