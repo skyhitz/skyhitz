@@ -16,7 +16,7 @@ import { SolitoImage } from 'app/design/solito-image'
 import { useMutation, useQuery } from '@apollo/client'
 import { MINE_EXTERNAL_ENTRY, USER_CREDITS } from 'app/api/graphql/operations'
 import { useRouter } from 'solito/navigation'
-import { Modal } from 'app/design/modal'
+import { useTopUpModalStore } from 'app/state/topup'
 import { H1 } from 'app/design/typography'
 import { Button } from 'app/design/button'
 import { useUserStore } from 'app/state/user'
@@ -291,7 +291,7 @@ function ExternalTrackRow({ track, onSelect }: { track: ExternalTrack; onSelect:
   const { data: creditsData, refetch: refetchCredits } = useQuery(USER_CREDITS, { fetchPolicy: 'network-only' })
   const [mineExternal] = useMutation(MINE_EXTERNAL_ENTRY)
   const { push } = useRouter()
-  const [open, setOpen] = useState(false)
+  const openTopUpModal = useTopUpModalStore((s) => s.openTopUpModal)
   const user = useUserStore((s) => s.user)
   const isAuthed = !!user
   const [mining, setMining] = useState(false)
@@ -322,6 +322,7 @@ function ExternalTrackRow({ track, onSelect }: { track: ExternalTrack; onSelect:
         </View>
         <View className="flex flex-row items-center">
           <Pressable
+            className="cursor-pointer"
             disabled={mining}
             onPress={async () => {
               if (!isAuthed) return push('/sign-in')
@@ -329,7 +330,7 @@ function ExternalTrackRow({ track, onSelect }: { track: ExternalTrack; onSelect:
               const available = Number(creditsData?.userCredits ?? 0)
               const required = 1.2 // 1 XLM + ~0.2 XLM fees; reserve already excluded in userCredits
               if (!available || available < required) {
-                setOpen(true)
+                openTopUpModal({ action: 'mine', requiredXLM: required, availableXLM: available })
                 return
               }
               try {
@@ -363,26 +364,7 @@ function ExternalTrackRow({ track, onSelect }: { track: ExternalTrack; onSelect:
           </Pressable>
         </View>
       </View>
-      <Modal visible={open} onClose={() => setOpen(false)}>
-        <View className="w-full max-w-[520px] rounded-xl border border-[--border-color] bg-[--bg-color] p-6">
-          <H1 className="text-lg font-unbounded">Top up required</H1>
-          <P className="mt-3 text-sm text-[--text-secondary-color]">
-            You need at least 1 XLM plus network fees available (excluding the minimum account reserve) to mine an entry.
-          </P>
-          <P className="mt-2 text-sm text-[--text-secondary-color]">
-            Available balance: {Number(creditsData?.userCredits ?? 0).toFixed(2)} XLM
-          </P>
-          <View className="mt-4">
-            <P className="text-sm">1) Buy XLM from our top up page.</P>
-            <P className="text-sm mt-2">2) Send XLM directly to your Stellar address:</P>
-            <P className="text-xs mt-1 break-all">{user?.publicKey}</P>
-          </View>
-          <View className="mt-6 flex-row gap-3">
-            <Button text="Go to Top Up" onPress={() => { setOpen(false); push('/top-up') }} />
-            <Button text="Close" onPress={() => setOpen(false)} variant="secondary" />
-          </View>
-        </View>
-      </Modal>
+      
     </Pressable>
   )
 }

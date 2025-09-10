@@ -4,6 +4,7 @@ import { SolitoImageProvider } from 'solito/image'
 import { ToastProvider } from './toast'
 import { AuthProvider } from './auth'
 import { GraphQLProvider } from './apollo'
+import TopUpRequiredModal from 'app/ui/topup/TopUpRequiredModal'
 
 interface Props {
   children: React.ReactNode
@@ -17,6 +18,7 @@ export function Provider({ children }: Props) {
           <ToastProvider>
             <SolitoImageProvider nextJsURL="https://skyhitz.io">
               {children}
+              <TopUpRequiredModal />
             </SolitoImageProvider>
           </ToastProvider>
         </AuthProvider>

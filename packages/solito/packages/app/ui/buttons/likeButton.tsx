@@ -8,11 +8,8 @@ import { useMutation, useQuery } from '@apollo/client'
 import useLikeCache from 'app/hooks/useLikeCache'
 import { lumensToStroops } from 'app/utils'
 import { MICRO_SPEND_LIKE_XLM } from 'app/constants/constants'
-import {
-  LIKE_ENTRY,
-  INVEST_ENTRY,
-  USER_LIKES,
-} from 'app/api/graphql/operations'
+import { LIKE_ENTRY, INVEST_ENTRY, USER_LIKES, USER_CREDITS } from 'app/api/graphql/operations'
+import { useTopUpModalStore } from 'app/state/topup'
 
 // Using imported GraphQL operations from operations.ts
 
@@ -29,6 +26,8 @@ function LikeButton({ size = 24, className, entry }: Props) {
   // Setup GraphQL operations
   const [likeEntry, { loading: likeLoading }] = useMutation(LIKE_ENTRY)
   const [invest] = useMutation(INVEST_ENTRY)
+  const { data: creditsData } = useQuery(USER_CREDITS, { skip: !user, fetchPolicy: 'network-only' })
+  const openTopUpModal = useTopUpModalStore((s) => s.openTopUpModal)
   const { data: userLikesData } = useQuery(USER_LIKES, { skip: !user })
 
   // Get cache manipulation helpers
@@ -56,6 +55,11 @@ function LikeButton({ size = 24, className, entry }: Props) {
       })
 
       // Also spend a small amount when liking (no shares)
+      const available = Number(creditsData?.userCredits ?? 0)
+      if (!available || available < MICRO_SPEND_LIKE_XLM) {
+        openTopUpModal({ action: 'like', requiredXLM: MICRO_SPEND_LIKE_XLM, availableXLM: available })
+        return
+      }
       await invest({
         variables: {
           id: entry.id,

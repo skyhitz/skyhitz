@@ -11,8 +11,9 @@ import { videoSrc } from 'app/utils/entry'
 import { useErrorReport } from 'app/hooks/useErrorReport'
 import { useUserStore } from 'app/state/user'
 import { PlaybackState, usePlayerStore } from 'app/state/player'
-import { INVEST_ENTRY, SET_LAST_PLAYED_ENTRY } from 'app/api/graphql/operations'
-import { useMutation } from '@apollo/client'
+import { INVEST_ENTRY, SET_LAST_PLAYED_ENTRY, USER_CREDITS } from 'app/api/graphql/operations'
+import { useMutation, useQuery } from '@apollo/client'
+import { useTopUpModalStore } from 'app/state/topup'
 import { useEffect } from 'react'
 
 export function usePlayback() {
@@ -35,6 +36,8 @@ export function usePlayback() {
   // GraphQL mutations
   const [setLastPlayedEntry] = useMutation(SET_LAST_PLAYED_ENTRY)
   const [invest, { loading: investLoading }] = useMutation(INVEST_ENTRY)
+  const { data: creditsData } = useQuery(USER_CREDITS, { skip: !user, fetchPolicy: 'network-only' })
+  const openTopUpModal = useTopUpModalStore((s) => s.openTopUpModal)
   const reportError = useErrorReport()
 
 
@@ -110,6 +113,11 @@ export function usePlayback() {
   const onDidJustFinish = async () => {
     if (!entry || !user) return;
 
+    const available = Number(creditsData?.userCredits ?? 0)
+    if (!available || available < MICRO_SPEND_PLAYBACK_COMPLETE_XLM) {
+      openTopUpModal({ action: 'playback', requiredXLM: MICRO_SPEND_PLAYBACK_COMPLETE_XLM, availableXLM: available })
+      return
+    }
     await invest({
       variables: {
         id: entry.id,

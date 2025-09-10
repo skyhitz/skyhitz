@@ -10,6 +10,9 @@ import { useMutation } from '@apollo/client'
 import { INVEST_ENTRY } from 'app/api/graphql/operations'
 import { lumensToStroops } from 'app/utils'
 import DownloadIcon from 'app/ui/icons/download'
+import { useQuery } from '@apollo/client'
+import { USER_CREDITS } from 'app/api/graphql/operations'
+import { useTopUpModalStore } from 'app/state/topup'
 
 interface Props {
   size?: number
@@ -21,6 +24,8 @@ const DownloadBtn = ({ size = 24, className = '', entry }: Props) => {
   const user = useUserStore((s) => s.user)
   const { push } = useRouter()
   const [invest] = useMutation(INVEST_ENTRY)
+  const { data: creditsData } = useQuery(USER_CREDITS, { fetchPolicy: 'network-only' })
+  const openTopUpModal = useTopUpModalStore((s) => s.openTopUpModal)
 
   const handleDownload = async () => {
     if (!user) {
@@ -30,6 +35,11 @@ const DownloadBtn = ({ size = 24, className = '', entry }: Props) => {
 
     // Spend before downloading (no shares)
     try {
+      const available = Number(creditsData?.userCredits ?? 0)
+      if (!available || available < MICRO_SPEND_DOWNLOAD_XLM) {
+        openTopUpModal({ action: 'download', requiredXLM: MICRO_SPEND_DOWNLOAD_XLM, availableXLM: available })
+        return
+      }
       const { data } = await invest({ variables: { id: entry.id, amount: lumensToStroops(MICRO_SPEND_DOWNLOAD_XLM) } })
       const ok = !!data?.investEntry?.success
       if (!ok) {
