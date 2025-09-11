@@ -38,6 +38,24 @@ All spend/invest actions ultimately call the same contract function `invest(user
   - Micro-spend (≤ 0.3 XLM) on track completion
   - Increases escrow only; no shares
 
+- Invest
+  - Any single invest amount strictly greater than 0.3 XLM grants shares and increases TVL.
+  - Shares are dilutive: ownership is `your_shares / tvl`. When others invest (> 0.3 XLM), `tvl` grows and your percentage may decrease unless you also invest. Your absolute shares (stroops) never decrease; only the fraction can change as TVL expands.
+
+- Creator Claim (not yet implemented in the app)
+  - After manual verification, the creator can claim ownership of an entry.
+  - Initial allocation: 25% of total shares at claim time.
+  - Promotional boost: If they promote post‑claim (criteria to be published), their allocation increases to 50%.
+
+- Creator Takedown (not yet implemented in the app)
+  - After verification and a diligent process, an entry can be removed if necessary.
+  - TVL (invested funds) will be returned to users pro‑rata; shares and APR for the removed entry cease to exist.
+
+- Internal Mine / Mint
+  - For exclusive collaborations initiated with Skyhitz. Creators can launch exclusives where the initial share split is agreed up‑front.
+  - The exact initial percentage for creators is case‑by‑case and defined during the agreement phase.
+  - To start the process, email ar@skyhitz.io (see landing page for more details).
+
 ## Claiming Earnings
 
 Earnings are the surplus lumens that accumulate in contract escrow beyond the equity TVL. Holders claim based on their ownership fraction.
