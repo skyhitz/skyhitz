@@ -119,6 +119,7 @@ export const footer = {
         { name: 'X', href: 'https://x.com/skyhitz' },
         { name: 'Instagram', href: 'https://instagram.com/skyhitz' },
         { name: 'Discord', href: 'https://discord.com/invite/2C3HzsPEuZ' },
+        { name: 'Dev Docs', href: 'https://docs.skyhitz.io' },
       ],
     },
   ],

@@ -24,7 +24,7 @@ type Props = {
   entry: Entry
 }
 
-export function CreateBid({ entry }: Props) {
+export function InvestSection({ entry }: Props) {
   const [amountToInvest, setAmountToInvest] = useState('')
   const [shares, setShares] = useState(0)
 
@@ -229,4 +229,4 @@ export function CreateBid({ entry }: Props) {
 }
 
 // Wrap the component with an authentication check if needed
-export default CreateBid
+export default InvestSection

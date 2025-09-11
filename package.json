@@ -16,7 +16,7 @@
     "api:dev": "yarn workspace @skyhitz/api dev",
     "ui:dev": "yarn workspace @skyhitz/ui dev",
     "deploy": "yarn workspace @skyhitz/api deploy",
-    "deploy-all": "yarn cf:deploy && yarn api:deploy",
+    "deploy-all": "yarn cf:deploy && yarn api:deploy && yarn docs:deploy",
     "dev:test": "concurrently \"yarn api:dev:test\" \"yarn ui:dev:test\"",
     "dev:local-prod": "concurrently \"yarn api:dev:prod\" \"yarn ui:dev:local-prod\"",
     "dev:prod": "yarn ui:dev:prod",
@@ -24,7 +24,11 @@
     "api:dev:prod": "yarn workspace @skyhitz/api dev:prod",
     "ui:dev:test": "NEXT_PUBLIC_EXPO_SKYHITZ_ENV=test yarn workspace @skyhitz/ui web",
     "ui:dev:local-prod": "NEXT_PUBLIC_EXPO_SKYHITZ_ENV=local-prod yarn workspace @skyhitz/ui web",
-    "ui:dev:prod": "NEXT_PUBLIC_EXPO_SKYHITZ_ENV=production yarn workspace @skyhitz/ui web"
+    "ui:dev:prod": "NEXT_PUBLIC_EXPO_SKYHITZ_ENV=production yarn workspace @skyhitz/ui web",
+    "docs:start": "yarn workspace @skyhitz/docs start",
+    "docs:build": "yarn workspace @skyhitz/docs build",
+    "docs:serve": "yarn workspace @skyhitz/docs serve",
+    "docs:deploy": "yarn docs:build && wrangler pages deploy packages/docs/build --project-name skyhitz-docs"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

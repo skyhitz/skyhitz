@@ -5,7 +5,7 @@ import InfoCircle from 'app/ui/icons/info-circle'
 import { H1, P } from 'app/design/typography'
 import { CollapsableView } from 'app/ui/CollapsableView'
 import { ActionButtons } from './ActionButtons'
-import CreateBid from './bids/CreateBid'
+import InvestSection from './InvestSection'
 import ClientLikesList from './ClientLikesList'
 
 type Props = {
@@ -28,7 +28,7 @@ export function EntrySummaryColumn({ entry }: Props) {
       </View>
 
       {/* Invest component */}
-      <CreateBid entry={entry} />
+      <InvestSection entry={entry} />
 
       <CollapsableView headerText="Description" icon={InfoCircle}>
         <P className="p-5 text-sm leading-6">{entry.description}</P>

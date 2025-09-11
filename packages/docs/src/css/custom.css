@@ -1,0 +1,27 @@
+:root {
+  --ifm-color-primary: #1dadff;
+  --ifm-code-font-size: 95%;
+}
+
+.docusaurus-highlight-code-line {
+  background-color: rgba(0, 0, 0, 0.1);
+  display: block;
+  margin: 0 -1rem;
+  padding: 0 1rem;
+}
+
+/* Ensure navbar logo renders left of title with consistent sizing/spacing */
+.navbar__logo img {
+  height: 26px;
+  width: auto;
+  margin-right: 8px;
+  border-radius: 6px;
+}
+
+/* Ensure the anchor wrapper is flex so image and title sit inline */
+.navbar__brand {
+  display: inline-flex;
+  align-items: center;
+}
+
+
