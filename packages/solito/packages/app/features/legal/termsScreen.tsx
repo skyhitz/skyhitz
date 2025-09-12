@@ -13,198 +13,79 @@ export default function TermsScreen() {
           <H1 className="my-4 text-base text-white">TERMS OF USE</H1>
           <P className="my-4 font-semibold text-white">OVERVIEW</P>
           <P className="text-white">
-            This website, the iOS and Android apps are operated by Skyhitz.
-            Throughout the apps, the terms "we", "us" and "our" refer to Skyhitz.
-            Skyhitz offers these apps, including all information, tools and
-            services available from these apps to you, the user, conditioned upon
-            your acceptance of all terms, conditions, policies and notices stated
-            here.
+            Skyhitz is a music platform that lets users discover and stream tracks, and optionally spend or invest lumens (XLM) against on‑chain entries to earn equity shares. Our backend runs on Cloudflare Workers; on‑chain logic is implemented with Stellar Soroban smart contracts. Media and metadata are stored on Cloudflare R2; search runs on Algolia.
           </P>
           <P className="text-white">
-            By visiting our apps and/ or purchasing something from us, you engage
-            in our "Service" and agree to be bound by the following terms and
-            conditions ("Terms of Service", "Terms"), including those additional
-            terms and conditions and policies referenced herein and/or available
-            by hyperlink. These Terms of Service apply to all users of the apps,
-            including without limitation users who are browsers, vendors,
-            customers, merchants, and/ or contributors of content.
+            By accessing the apps or using any feature (search, stream, like, download, mine, invest, claim earnings), you agree to these Terms. If you do not agree, do not use Skyhitz.
+          </P>
+
+          <P className="my-4 font-semibold text-white">1. ACCOUNTS & ELIGIBILITY</P>
+          <P className="text-white">
+            You must be at least the age of majority where you live. Signing in creates an in‑app Stellar account (keypair). We may refuse or suspend accounts at our discretion.
+          </P>
+
+          <P className="my-4 font-semibold text-white">2. NON‑CUSTODIAL & ON‑CHAIN FINALITY</P>
+          <P className="text-white">
+            Transactions are executed on Stellar. Submissions to the network are irreversible once confirmed. Values are shown in XLM; you are responsible for fees and taxes. We do not custody user funds beyond transactions in flight.
+          </P>
+
+          <P className="my-4 font-semibold text-white">3. ACTIONS & ECONOMICS</P>
+          <P className="text-white">
+            (a) Micro‑spends (≤ 0.3 XLM per call) — like, download, stream completion — increase contract escrow only; NO shares are granted.
           </P>
           <P className="text-white">
-            Please read these Terms of Service carefully before accessing or using
-            our apps. By accessing or using any part of the apps, you agree to be
-            bound by these Terms of Service. If you do not agree to all the terms
-            and conditions of this agreement, then you may not access the apps or
-            use any services. If these Terms of Service are considered an offer,
-            acceptance is expressly limited to these Terms of Service.
+            (b) Invest (> 0.3 XLM per call) — increases escrow and TVL; grants equity shares proportional to the stroops invested. Ownership is dilutive: your percentage = shares / tvl and may change as others invest.
           </P>
           <P className="text-white">
-            Any new features or tools which are added to the current store shall
-            also be subject to the Terms of Service. You can review the most
-            current version of the Terms of Service at any time on this page. We
-            reserve the right to update, change or replace any part of these Terms
-            of Service by posting updates and/or changes to our website. It is
-            your responsibility to check this page periodically for changes. Your
-            continued use of or access to the website following the posting of any
-            changes constitutes acceptance of those changes.
-          </P>
-          <P className="my-4 font-semibold text-white">SECTION 1 - ONLINE STORE TERMS</P>
-          <P className="text-white">
-            By agreeing to these Terms of Service, you represent that you are at
-            least the age of majority in your state or province of residence, or
-            that you are the age of majority in your state or province of
-            residence and you have given us your consent to allow any of your
-            minor dependents to use this site.
+            (c) Mine — a 1.0 XLM operation that pins media/metadata, then performs two contract invests (an escrow init and an equity invest) and a fee payment to the admin, per our APR partition logic.
           </P>
           <P className="text-white">
-            You may not use our products for any illegal or unauthorized purpose
-            nor may you, in the use of the Service, violate any laws in your
-            jurisdiction (including but not limited to copyright laws).
+            (d) Claim earnings — available when escrow exceeds tvl. The claim transfers your pro‑rata earnings and updates on‑chain accounting.
+          </P>
+
+          <P className="my-4 font-semibold text-white">4. CONTENT, RIGHTS & CREATOR WORKFLOWS</P>
+          <P className="text-white">
+            You must have rights to anything you upload or request us to pin. External search previews link to third‑party sources under their own licenses.
           </P>
           <P className="text-white">
-            You must not transmit any worms or viruses or any code of a
-            destructive nature.
+            Creator Claim (roadmap): after manual verification, creators may claim an entry and receive 25% initial shares, boosted to 50% upon post‑claim promotion that meets criteria. Creator Takedown (roadmap): following verification and due diligence, entries can be removed; TVL is returned to users pro‑rata.
           </P>
           <P className="text-white">
-            A breach or violation of any of the Terms will result in an immediate
-            termination of your Services.
+            Internal Mine/Mint: for exclusive releases with us, initial share split is agreed in writing. To propose, email ar@skyhitz.io.
           </P>
-          <P className="my-4 font-semibold text-white">SECTION 2 - GENERAL CONDITIONS</P>
+
+          <P className="my-4 font-semibold text-white">5. FEES & PRICING</P>
           <P className="text-white">
-            We reserve the right to refuse service to anyone for any reason at any
-            time.
+            Fees include network fees and Skyhitz commissions described in‑app (e.g., the fee paid during Mine). We may change fees prospectively.
           </P>
+
+          <P className="my-4 font-semibold text-white">6. ACCEPTABLE USE</P>
           <P className="text-white">
-            You understand that your content (not including credit card
-            information), may be transferred unencrypted and involve (a)
-            transmissions over various networks; and (b) changes to conform and
-            adapt to technical requirements of connecting networks or devices.
-            Credit card information is always encrypted during transfer over
-            networks.
+            Do not infringe IP; do not upload illegal content; do not attempt to attack, scrape, or disrupt the service; do not engage in market manipulation or deceptive behavior.
           </P>
+
+          <P className="my-4 font-semibold text-white">7. RISK DISCLOSURE & NO ADVICE</P>
           <P className="text-white">
-            You agree not to reproduce, duplicate, copy, sell, resell or exploit
-            any portion of the Service, use of the Service, or access to the
-            Service or any contact on the website through which the service is
-            provided, without express written permission by us.
+            Digital assets are volatile and risky. Nothing on Skyhitz is investment, legal, or tax advice. You are solely responsible for your decisions.
           </P>
+
+          <P className="my-4 font-semibold text-white">8. THIRD‑PARTY SERVICES</P>
           <P className="text-white">
-            The headings used in this agreement are included for convenience only
-            and will not limit or otherwise affect these Terms.
+            We integrate with Stellar, Cloudflare (Workers/R2/Pages), Algolia, Stripe, Postmark, and others. Each provider’s terms and privacy practices apply.
           </P>
-          <P className="my-4 font-semibold text-white">
-            SECTION 3 - ACCURACY, COMPLETENESS AND TIMELINESS OF INFORMATION
-          </P>
+
+          <P className="my-4 font-semibold text-white">9. DISCLAIMERS & LIMITATION OF LIABILITY</P>
           <P className="text-white">
-            We are not responsible if information made available on this site is
-            not accurate, complete or current. The material on this site is
-            provided for general information only and should not be relied upon or
-            used as the sole basis for making decisions without consulting
-            primary, more accurate, more complete or more timely sources of
-            information. Any reliance on the material on this site is at your own
-            risk.
+            The service is provided “as is”. To the fullest extent permitted by law, Skyhitz disclaims warranties and will not be liable for indirect, incidental, special, consequential, or exemplary damages. Our aggregate liability will not exceed the amounts you paid to us in the 12 months before the claim.
           </P>
+
+          <P className="my-4 font-semibold text-white">10. CHANGES</P>
           <P className="text-white">
-            This site may contain certain historical information. Historical
-            information, necessarily, is not current and is provided for your
-            reference only. We reserve the right to modify the contents of this
-            site at any time, but we have no obligation to update any information
-            on our site. You agree that it is your responsibility to monitor
-            changes to our site.
+            We may update these Terms from time to time. Material changes will be announced in‑app; continued use constitutes acceptance.
           </P>
-          <P className="my-4 font-semibold text-white">
-            SECTION 4 - MODIFICATIONS TO THE SERVICE AND PRICES
-          </P>
-          <P className="text-white">
-            Prices for our products are subject to change without notice.
-          </P>
-          <P className="text-white">
-            We reserve the right at any time to modify or discontinue the Service
-            (or any part or content thereof) without notice at any time.
-          </P>
-          <P className="text-white">
-            We shall not be liable to you or to any third-party for any
-            modification, price change, suspension or discontinuance of the
-            Service.
-          </P>
-          <P className="my-4 font-semibold text-white">
-            SECTION 5 - PRODUCTS OR SERVICES
-          </P>
-          <P className="text-white">
-            Certain products or services may be available exclusively online
-            through the website. These products or services may have limited
-            quantities and are subject to return or exchange only according to our
-            Return Policy.
-          </P>
-          <P className="text-white">
-            We have made every effort to display as accurately as possible the
-            colors and images of our products that appear at the store. We cannot
-            guarantee that your computer monitor's display of any color will be
-            accurate.
-          </P>
-          <P className="text-white">
-            We reserve the right, but are not obligated, to limit the sales of our
-            products or Services to any person, geographic region or jurisdiction.
-            We may exercise this right on a case-by-case basis. We reserve the
-            right to limit the quantities of any products or services that we
-            offer. All descriptions of products or product pricing are subject to
-            change at anytime without notice, at the sole discretion of us. We
-            reserve the right to discontinue any product at any time. Any offer
-            for any product or service made on this site is void where prohibited.
-          </P>
-          <P className="text-white">
-            We do not warrant that the quality of any products, services,
-            information, or other material purchased or obtained by you will meet
-            your expectations, or that any errors in the Service will be
-            corrected.
-          </P>
-          <P className="my-4 font-semibold text-white">
-            SECTION 6 - OPTIONAL TOOLS
-          </P>
-          <P className="text-white">
-            We may provide you with access to third-party tools over which we
-            neither monitor nor have any control nor input.
-          </P>
-          <P className="text-white">
-            You acknowledge and agree that we provide access to such tools "as is"
-            and "as available" without any warranties, representations or
-            conditions of any kind and without any endorsement. We shall have no
-            liability whatsoever arising from or relating to your use of optional
-            third-party tools.
-          </P>
-          <P className="text-white">
-            Any use by you of optional tools offered through the site is entirely
-            at your own risk and discretion and you should ensure that you are
-            familiar with and approve of the terms on which tools are provided by
-            the relevant third-party provider(s).
-          </P>
-          <P className="text-white">
-            We may also, in the future, offer new services and/or features through
-            the website (including, the release of new tools and resources). Such
-            new features and/or services shall also be subject to these Terms of
-            Service.
-          </P>
-          <P className="my-4 font-semibold text-white">SECTION 7 - THIRD-PARTY LINKS</P>
-          <P className="text-white">
-            Certain content, products and services available via our Service may
-            include materials from third-parties.
-          </P>
-          <P className="text-white">
-            Third-party links on this site may direct you to third-party websites
-            that are not affiliated with us. We are not responsible for examining
-            or evaluating the content or accuracy and we do not warrant and will
-            not have any liability or responsibility for any third-party materials
-            or websites, or for any other materials, products, or services of
-            third-parties.
-          </P>
-          <P className="text-white">
-            We are not liable for any harm or damages related to the purchase or
-            use of goods, services, resources, content, or any other transactions
-            made in connection with any third-party websites. Please review
-            carefully the third-party's policies and practices and make sure you
-            understand them before you engage in any transaction. Complaints,
-            claims, concerns, or questions regarding third-party products should
-            be directed to the third-party.
-          </P>
+
+          <P className="my-4 font-semibold text-white">11. CONTACT</P>
+          <P className="text-white">Questions: support@skyhitz.io</P>
           <P className="my-4 font-semibold text-white">
             SECTION 8 - USER COMMENTS, FEEDBACK AND OTHER SUBMISSIONS
           </P>
