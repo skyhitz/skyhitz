@@ -34,7 +34,7 @@ export default function TermsScreen() {
             (a) Micro‑spends (≤ 0.3 XLM per call) — like, download, stream completion — increase contract escrow only; NO shares are granted.
           </P>
           <P className="text-white">
-            (b) Invest (> 0.3 XLM per call) — increases escrow and TVL; grants equity shares proportional to the stroops invested. Ownership is dilutive: your percentage = shares / tvl and may change as others invest.
+            (b) Invest (&gt; 0.3 XLM per call) — increases escrow and TVL; grants equity shares proportional to the stroops invested. Ownership is dilutive: your percentage = shares / tvl and may change as others invest.
           </P>
           <P className="text-white">
             (c) Mine — a 1.0 XLM operation that pins media/metadata, then performs two contract invests (an escrow init and an equity invest) and a fee payment to the admin, per our APR partition logic.

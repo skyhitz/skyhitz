@@ -125,11 +125,12 @@ export function InvestSection({ entry }: Props) {
       })
 
       if (data?.investEntry?.success) {
-        toast.show('Investment successful!', { type: 'success' })
+        const credits = await refetchCredits()
+        const newBal = Number(credits?.data?.userCredits ?? 0).toFixed(2)
+        await refetch() // Refresh entry (tvl/apr)
+        await fetchShares() // Refresh your shares
+        toast.show(`Investment successful! Balance: ${newBal} XLM`, { type: 'success' })
         setAmountToInvest('')
-        refetchCredits()
-        refetch() // Refresh entry data after investment
-        fetchShares() // Update shares data after successful investment
       } else {
         const errorMessage =
           data?.investEntry?.message || 'Failed to process investment'
