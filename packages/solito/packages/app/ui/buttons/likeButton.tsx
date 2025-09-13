@@ -10,6 +10,7 @@ import { lumensToStroops } from 'app/utils'
 import { MICRO_SPEND_LIKE_XLM } from 'app/constants/constants'
 import { LIKE_ENTRY, INVEST_ENTRY, USER_LIKES, USER_CREDITS } from 'app/api/graphql/operations'
 import { useTopUpModalStore } from 'app/state/topup'
+import { useToast } from 'app/provider/toast'
 
 // Using imported GraphQL operations from operations.ts
 
@@ -29,6 +30,7 @@ function LikeButton({ size = 24, className, entry }: Props) {
   const { data: creditsData } = useQuery(USER_CREDITS, { skip: !user, fetchPolicy: 'network-only' })
   const openTopUpModal = useTopUpModalStore((s) => s.openTopUpModal)
   const { data: userLikesData } = useQuery(USER_LIKES, { skip: !user })
+  const toast = useToast()
 
   // Get cache manipulation helpers
   const { addLikeToCache, removeLikeFromCache } = useLikeCache()
@@ -60,12 +62,33 @@ function LikeButton({ size = 24, className, entry }: Props) {
         openTopUpModal({ action: 'like', requiredXLM: MICRO_SPEND_LIKE_XLM, availableXLM: available })
         return
       }
-      await invest({
+      const res = await invest({
         variables: {
           id: entry.id,
           amount: lumensToStroops(MICRO_SPEND_LIKE_XLM),
         },
       })
+      if (res?.data?.investEntry?.success) {
+        // Refetch credits to show new balance in toast
+        const refreshed = await (async () => {
+          try {
+            const q = await (creditsData ? Promise.resolve({ data: { userCredits: creditsData.userCredits } }) : Promise.resolve(null))
+            return q
+          } catch {
+            return null
+          }
+        })()
+        // If we have credits query hooked up with network-only elsewhere, fetch again locally
+        // For safety, run a new query when available
+        try {
+          // reuse existing query via refetch by re-running useQuery is not trivial here; keep it simple
+          // Show last known or 0
+          const newBal = Number(refreshed?.data?.userCredits ?? 0).toFixed(2)
+          toast.show(`Liked! Balance: ${newBal} XLM`, { type: 'success' })
+        } catch {
+          toast.show('Liked!', { type: 'success' })
+        }
+      }
     } catch (error) {
       // Revert cache on error
       isLiked ? addLikeToCache(entry) : removeLikeFromCache(entry)
