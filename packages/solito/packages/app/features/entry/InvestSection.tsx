@@ -7,6 +7,7 @@ import { FormInputWithIcon } from 'app/ui/inputs/FormInputWithIcon'
 import { useCallback, useState, useEffect } from 'react'
 import { useToast } from 'app/provider/toast'
 import { useUserStore } from 'app/state/user'
+import { useRouter } from 'solito/navigation'
 import { P } from 'app/design/typography'
 import { useMutation, useQuery } from '@apollo/client'
 import { useGetEntry } from 'app/hooks/algolia/useGetEntry'
@@ -35,6 +36,7 @@ export function InvestSection({ entry }: Props) {
   const toast = useToast()
   const [loading, setLoading] = useState<boolean>(false)
   const user = useUserStore((state) => state.user)
+  const { push } = useRouter()
   const { refetch } = useGetEntry({
     id: entry.id,
   })
@@ -75,7 +77,7 @@ export function InvestSection({ entry }: Props) {
     }
 
     const amountInStroops = parseInt(
-      lumensToStroops(parseInt(amountToInvest, 10)),
+      lumensToStroops(parseFloat(amountToInvest)),
       10
     )
     const entryTvl = Number(entry.tvl)
@@ -98,17 +100,14 @@ export function InvestSection({ entry }: Props) {
   const MIN_INVESTMENT_XLM = INVEST_MIN_XLM
 
   const onSubmit = useCallback(async () => {
-    if (!user) {
-      toast.show('You need to be logged in to invest', { type: 'error' })
-      return
-    }
+    if (!user) return push('/sign-in')
 
-    if (!amountToInvest || isNaN(parseInt(amountToInvest, 10))) {
+    if (!amountToInvest || isNaN(parseFloat(amountToInvest))) {
       toast.show('Please enter a valid amount', { type: 'error' })
       return
     }
 
-    const numAmount = parseInt(amountToInvest, 10)
+    const numAmount = parseFloat(amountToInvest)
     if (numAmount < MIN_INVESTMENT_XLM) {
       toast.show(`Minimum investment is ${MIN_INVESTMENT_XLM} XLM`, {
         type: 'error',
@@ -121,7 +120,7 @@ export function InvestSection({ entry }: Props) {
       const { data } = await invest({
         variables: {
           id: entry.id,
-          amount: parseFloat(lumensToStroops(parseInt(amountToInvest, 10))),
+          amount: parseFloat(lumensToStroops(parseFloat(amountToInvest))),
         },
       })
 
