@@ -211,7 +211,8 @@ export function InvestSection({ entry }: Props) {
         disabled={
           !user ||
           !amountToInvest ||
-          parseInt(amountToInvest, 10) < MIN_INVESTMENT_XLM ||
+          isNaN(parseFloat(amountToInvest)) ||
+          parseFloat(amountToInvest) < MIN_INVESTMENT_XLM ||
           loading ||
           investLoading
         }
