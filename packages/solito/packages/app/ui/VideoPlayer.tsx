@@ -147,23 +147,52 @@ function WebVideoPlayer() {
     return null
   }, [])
 
-  // Proactively prefer raw index on Android Chrome to avoid HLS CORS/compat issues
+  // Preflight HEAD the R2 candidates and pick first available (all platforms)
+  const preflightTunedUrlForIOS = useRef<string | null>(null)
   useEffect(() => {
-    if (!playbackUri) return
-    try {
-      const ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''
-      const isAndroid = /Android/i.test(ua)
-      const isChrome = /Chrome/i.test(ua) && !/Edge|OPR/i.test(ua)
-      const wantsRaw = isAndroid && isChrome && /\/hls\//.test(playbackUri)
-      if (wantsRaw) {
-        const { entry } = usePlayerStore.getState()
-        if (entry?.videoUrl?.startsWith('ipfs://')) {
-          const hash = entry.videoUrl.replace('ipfs://', '')
-          usePlayerStore.getState().setPlaybackUri(`https://r2.skyhitz.io/${hash}/index`)
+    const { entry } = usePlayerStore.getState()
+    if (!entry?.videoUrl) return
+    if (!entry.videoUrl.startsWith('ipfs://')) return
+    // Avoid re-running for the same entry
+    if (preflightTunedUrlForIOS.current === entry.id) return
+
+    const hash = entry.videoUrl.replace('ipfs://', '')
+    const candidates = [
+      `https://r2.skyhitz.io/${hash}/hls/index.m3u8`,
+      `https://r2.skyhitz.io/${hash}/mp4/index.mp4`,
+      `https://r2.skyhitz.io/${hash}/index`,
+    ]
+
+    const headOk = (url: string) => {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 1500)
+      return fetch(url, { method: 'HEAD', mode: 'cors', signal: controller.signal })
+        .then((res) => {
+          clearTimeout(timer)
+          if (res.ok) return url
+          throw new Error('not ok')
+        })
+    }
+
+    // Race the HEADs; pick the first that returns 200 quickly
+    const raceFirstOk = async () => {
+      const checks = candidates.map((u) => headOk(u).catch(() => null))
+      const results = await Promise.all(checks)
+      return results.find((u) => !!u) as string | null
+    }
+    raceFirstOk()
+      .then((best) => {
+        if (best && usePlayerStore.getState().playbackUri !== best) {
+          usePlayerStore.getState().setPlaybackUri(best)
         }
-      }
-    } catch {}
+        preflightTunedUrlForIOS.current = entry.id
+      })
+      .catch(() => {
+        preflightTunedUrlForIOS.current = entry.id
+      })
   }, [playbackUri])
+
+  // (Removed Android-specific raw preference; unified preflight handles all platforms.)
 
   return (
     <>
