@@ -4,12 +4,13 @@ import { Button } from 'app/design/button'
 import { Formik, FormikProps } from 'formik'
 import { useEffect } from 'react'
 import StyledTextInput from 'app/features/accounts/styledTextInput'
-import { useCreateUserWithEmailMutation } from 'app/api/graphql/mutations'
+import { useCreateUserWithEmailMutation, useRequestTokenMutation } from 'app/api/graphql/mutations'
 import { signUpFormSchema } from 'app/validation'
 import { A, P } from 'app/design/typography'
 import { SignUpForm as FormData } from 'app/types'
 import { useRouter } from 'solito/navigation'
 import { useUserState } from 'app/state/user/hooks'
+import { useToast } from 'app/provider/toast'
 
 type SignUpFormProps = {
   signedXDR?: string
@@ -18,9 +19,11 @@ type SignUpFormProps = {
 export function SignUpForm({ signedXDR }: SignUpFormProps = {}) {
   const router = useRouter()
   const { updateUser } = useUserState()
+  const toast = useToast()
   
   // Use the hook without passing options
   const [createUserWithEmail, { loading, error, called, data }] = useCreateUserWithEmailMutation()
+  const [requestToken] = useRequestTokenMutation()
   
   // Effect to handle navigation and user update after successful signup
   useEffect(() => {
@@ -37,7 +40,7 @@ export function SignUpForm({ signedXDR }: SignUpFormProps = {}) {
     if (loading) return
     
     try {
-      await createUserWithEmail({
+      const res = await createUserWithEmail({
         variables: {
           username: formData.username,
           displayName: formData.displayedName,
@@ -45,6 +48,17 @@ export function SignUpForm({ signedXDR }: SignUpFormProps = {}) {
           signedXDR: signedXDR,
         },
       })
+      const createdUser = res?.data?.createUserWithEmail?.user
+      if (!createdUser) {
+        // Auto-start email sign-in: send magic link
+        try {
+          await requestToken({ variables: { usernameOrEmail: formData.email } })
+          toast.show('Check your email for the sign-in link to complete setup.', { type: 'success' })
+          router.replace('/sign-in')
+        } catch (e) {
+          console.error('Request token failed', e)
+        }
+      }
     } catch (err) {
       console.error('Sign up error:', err)
     }
