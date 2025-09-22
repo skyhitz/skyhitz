@@ -7,6 +7,7 @@ import { View, Platform } from 'react-native'
 import { imageUrlMedium } from 'app/utils/entry'
 import { SolitoImage } from 'app/design/solito-image'
 import { PlaybackState, usePlayerStore } from 'app/state/player'
+import { logPlayerError as logPlayerErrorUtil } from 'app/utils/player-logging'
 
 // Web-specific imports
 import dynamic from 'next/dynamic'
@@ -129,6 +130,14 @@ function WebVideoPlayer() {
     // console.log('ReactPlayer onStart')
     // setPlaybackState(PlaybackState.PLAYING)
   }, [])
+
+  // Structured error logging helper
+  const logPlayerError = useCallback((...args: any[]) => {
+    const internal = (playerRef.current && playerRef.current.getInternalPlayer)
+      ? playerRef.current.getInternalPlayer()
+      : null
+    logPlayerErrorUtil(args && args.length ? args[0] : null, internal, playbackUri)
+  }, [playbackUri])
 
   // Determine if current source is audio-only (our raw audio endpoint)
   const isAudioOnly = /\/index$/i.test(playbackUri || '')
@@ -262,7 +271,7 @@ function WebVideoPlayer() {
             onPause={handlePause}
             onEnded={handleEnded}
             onError={(e?: any) => {
-              console.error('ReactPlayer onError', e)
+              logPlayerError(e)
               // Attempt fallback sequence: HLS -> MP4 -> raw index
               const next = buildFallbackUri()
               if (next) {
