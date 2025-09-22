@@ -307,13 +307,13 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     set({ playerRef: player, playerAdapter: adapter })
 
-    // If we were playing before the ref was set, resume playback
-    const { playbackState, playbackUri } = get()
-    if (playbackState === PlaybackState.PLAYING && playbackUri) {
+    // If we intended to play (user initiated), attempt resume as soon as ref exists
+    const { shouldPlay, playbackUri } = get()
+    if (shouldPlay && playbackUri) {
       // Small delay to ensure player is ready
       setTimeout(() => {
         get().resume()
-      }, 100)
+      }, 0)
     }
   },
 

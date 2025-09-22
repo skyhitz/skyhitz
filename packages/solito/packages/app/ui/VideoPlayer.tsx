@@ -232,7 +232,9 @@ function WebVideoPlayer() {
           // On those, do NOT force hls.js
           (() => {
             const ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''
-            const isIOSWebKit = /iPad|iPhone|iPod/i.test(ua) || (/WebKit/i.test(ua) && /Mobile/i.test(ua))
+            // Detect iOS devices reliably; do not treat Android Chrome as iOS
+            const isIOSDevice = /iPad|iPhone|iPod/i.test(ua) || (/Macintosh/i.test(ua) && /Mobile/i.test(ua))
+            const isIOSWebKit = isIOSDevice
             const isHls = /m3u8/i.test(playbackUri) || /\/hls\//i.test(playbackUri)
             const isMp4 = /\.mp4($|\?)/i.test(playbackUri)
             const isRawAudio = /\/index$/i.test(playbackUri)
@@ -245,6 +247,7 @@ function WebVideoPlayer() {
             url={playbackUri}
             width="100%"
             height="100%"
+            playing={shouldPlay}
             style={isAudioOnly ? { opacity: 0, position: 'absolute' } : undefined}
             volume={muted ? 0 : volume}
             muted={muted}
@@ -258,7 +261,8 @@ function WebVideoPlayer() {
             onPlay={handlePlay}
             onPause={handlePause}
             onEnded={handleEnded}
-            onError={() => {
+            onError={(e?: any) => {
+              console.error('ReactPlayer onError', e)
               // Attempt fallback sequence: HLS -> MP4 -> raw index
               const next = buildFallbackUri()
               if (next) {
@@ -279,6 +283,8 @@ function WebVideoPlayer() {
                   preload: 'metadata',
                   // Allow CORS credentials-less fetches if needed
                   crossOrigin: 'anonymous',
+                  // iOS inline playback hint
+                  'webkit-playsinline': 'true',
                   // Hint MIME to iOS when using extensionless raw object
                   ...( /\/index$/i.test(playbackUri)
                       ? { type: 'audio/mpeg' }
