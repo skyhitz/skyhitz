@@ -149,80 +149,90 @@ function WebVideoPlayer() {
     if (!entry.videoUrl.startsWith('ipfs://')) return null
 
     const hash = entry.videoUrl.replace('ipfs://', '')
-    // If HLS failed, try MP4
-    if (playbackUri.includes('/hls/')) return `https://r2.skyhitz.io/${hash}/mp4/index.mp4`
-    // If MP4 failed, try raw index (audio/mpeg)
-    if (playbackUri.includes('/mp4/')) return `https://r2.skyhitz.io/${hash}/index`
+    // Desired order: HLS -> raw -> MP4
+    if (playbackUri.includes('/hls/')) return `https://r2.skyhitz.io/${hash}/index`
+    if (/\/index$/i.test(playbackUri)) return `https://r2.skyhitz.io/${hash}/mp4/index.mp4`
+    if (playbackUri.includes('/mp4/')) return null
     return null
   }, [])
 
-  // Preflight HEAD the R2 candidates and pick first available (all platforms)
+  // Initial source selection per entry: set HLS first and rely on onError fallback
   const preflightTunedUrlForIOS = useRef<string | null>(null)
   useEffect(() => {
     const { entry } = usePlayerStore.getState()
     if (!entry?.videoUrl) return
     if (!entry.videoUrl.startsWith('ipfs://')) return
-    // Avoid re-running for the same entry
     if (preflightTunedUrlForIOS.current === entry.id) return
 
     const hash = entry.videoUrl.replace('ipfs://', '')
-    // Prefer fastest-to-start sources first, but validate content-type:
-    // raw audio (mp3) → mp4 → hls
-    const candidates = [
-      {
-        url: `https://r2.skyhitz.io/${hash}/index`,
-        test: (ct: string | null) => !!ct && /(^|\s|;)audio\//i.test(ct),
-      },
-      {
-        url: `https://r2.skyhitz.io/${hash}/mp4/index.mp4`,
-        test: (ct: string | null) => !!ct && /(^|\s|;)video\/mp4/i.test(ct),
-      },
-      {
-        url: `https://r2.skyhitz.io/${hash}/hls/index.m3u8`,
-        test: (ct: string | null) =>
-          !!ct && /(application\/vnd\.apple\.mpegurl|application\/x-mpegURL)/i.test(ct),
-      },
-    ] as const
+    // iOS WebKit: run HEAD preflight (HLS → raw → MP4). Desktop: set HLS directly.
+    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''
+    const isIOSDevice = /iPad|iPhone|iPod/i.test(ua) || (/Macintosh/i.test(ua) && /Mobile/i.test(ua))
+    const isIOSWebKit = isIOSDevice
 
-    const headOk = (url: string, test: (ct: string | null) => boolean) => {
-      const controller = new AbortController()
-      const timer = setTimeout(() => controller.abort(), 2000)
-      return fetch(url, {
-        method: 'HEAD',
-        mode: 'cors',
-        signal: controller.signal,
-        headers: {
-          // Hint preferred type; some CDNs vary
-          Accept: 'audio/*,video/mp4,application/x-mpegURL;q=0.9,application/vnd.apple.mpegurl;q=0.9,*/*;q=0.1',
+    if (isIOSWebKit) {
+      const candidates = [
+        {
+          url: `https://r2.skyhitz.io/${hash}/hls/index.m3u8`,
+          test: (ct: string | null) =>
+            !!ct && /(application\/vnd\.apple\.mpegurl|application\/x-mpegURL)/i.test(ct),
         },
-      }).then((res) => {
-        clearTimeout(timer)
-        if (!res.ok) throw new Error('not ok')
-        const ct = res.headers.get('content-type')
-        if (test(ct)) return url
-        throw new Error('wrong content-type')
-      })
+        {
+          url: `https://r2.skyhitz.io/${hash}/index`,
+          test: (ct: string | null) => !!ct && /(^|\s|;)audio\//i.test(ct),
+        },
+        {
+          url: `https://r2.skyhitz.io/${hash}/mp4/index.mp4`,
+          test: (ct: string | null) => !!ct && /(^|\s|;)video\/mp4/i.test(ct),
+        },
+      ] as const
+
+      const headOk = (url: string, test: (ct: string | null) => boolean) => {
+        const controller = new AbortController()
+        const timer = setTimeout(() => controller.abort(), 2000)
+        return fetch(url, {
+          method: 'HEAD',
+          mode: 'cors',
+          signal: controller.signal,
+          headers: {
+            Accept: 'application/x-mpegURL,application/vnd.apple.mpegurl,audio/*,video/mp4,*/*;q=0.1',
+          },
+        }).then((res) => {
+          clearTimeout(timer)
+          if (!res.ok) throw new Error('not ok')
+          const ct = res.headers.get('content-type')
+          if (test(ct)) return url
+          throw new Error('wrong content-type')
+        })
+      }
+
+      const selectBest = async () => {
+        const checks = candidates.map((c) => headOk(c.url, c.test).catch(() => null))
+        const results = await Promise.all(checks)
+        for (let i = 0; i < results.length; i++) {
+          if (results[i]) return results[i] as string
+        }
+        return null
+      }
+
+      selectBest()
+        .then((best) => {
+          if (best && usePlayerStore.getState().playbackUri !== best) {
+            usePlayerStore.getState().setPlaybackUri(best)
+          }
+          preflightTunedUrlForIOS.current = entry.id
+        })
+        .catch(() => {
+          preflightTunedUrlForIOS.current = entry.id
+        })
+      return
     }
 
-    const selectBest = async () => {
-      const checks = candidates.map((c) => headOk(c.url, c.test).catch(() => null))
-      const results = await Promise.all(checks)
-      // preserve candidate order
-      for (let i = 0; i < results.length; i++) {
-        if (results[i]) return results[i] as string
-      }
-      return null
+    const hls = `https://r2.skyhitz.io/${hash}/hls/index.m3u8`
+    if (usePlayerStore.getState().playbackUri !== hls) {
+      usePlayerStore.getState().setPlaybackUri(hls)
     }
-    selectBest()
-      .then((best) => {
-        if (best && usePlayerStore.getState().playbackUri !== best) {
-          usePlayerStore.getState().setPlaybackUri(best)
-        }
-        preflightTunedUrlForIOS.current = entry.id
-      })
-      .catch(() => {
-        preflightTunedUrlForIOS.current = entry.id
-      })
+    preflightTunedUrlForIOS.current = entry.id
   }, [playbackUri])
 
   // (Removed Android-specific raw preference; unified preflight handles all platforms.)
@@ -271,7 +281,20 @@ function WebVideoPlayer() {
             onPause={handlePause}
             onEnded={handleEnded}
             onError={(e?: any) => {
+              const msg = (e && (e.message || e.reason || '')) || ''
+              if (typeof msg === 'string' && msg.includes('interrupted by a new load request')) {
+                return
+              }
               logPlayerError(e)
+              // Ensure fallback only for the current active entry and URI
+              const state = usePlayerStore.getState()
+              const currentEntryId = state.entry?.id
+              if (currentEntryId !== preflightTunedUrlForIOS.current) {
+                return
+              }
+              if (state.playbackUri !== playbackUri) {
+                return
+              }
               // Attempt fallback sequence: HLS -> MP4 -> raw index
               const next = buildFallbackUri()
               if (next) {

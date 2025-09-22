@@ -54,23 +54,37 @@ export function logPlayerError(
     if (playbackUri && typeof fetch !== 'undefined') {
       fetch(playbackUri, { method: 'HEAD', mode: 'cors' })
         .then((res) => {
-          console.error('ReactPlayer onError (HEAD)', {
+          const headInfo = {
             url: playbackUri,
             ok: res.ok,
             status: res.status,
             contentType: res.headers.get('content-type'),
             acao: res.headers.get('access-control-allow-origin'),
-          })
+          }
+          try {
+            console.error('ReactPlayer onError (HEAD)', JSON.stringify(headInfo))
+          } catch {
+            console.error('ReactPlayer onError (HEAD)', headInfo)
+          }
         })
         .catch((err) => {
-          console.error('ReactPlayer onError (HEAD failed)', {
+          const headFail = {
             url: playbackUri,
             error: (err && ((err as any).message || String(err))) || 'unknown',
-          })
+          }
+          try {
+            console.error('ReactPlayer onError (HEAD failed)', JSON.stringify(headFail))
+          } catch {
+            console.error('ReactPlayer onError (HEAD failed)', headFail)
+          }
         })
     }
 
-    console.error('ReactPlayer onError', info)
+    try {
+      console.error('ReactPlayer onError', JSON.stringify(info))
+    } catch {
+      console.error('ReactPlayer onError', info)
+    }
   } catch (err) {
     console.error('ReactPlayer onError (logger failed)', err)
   }
