@@ -130,8 +130,8 @@ function WebVideoPlayer() {
     // setPlaybackState(PlaybackState.PLAYING)
   }, [])
 
-  // Determine if current source is audio-only
-  const isAudioOnly = !!playbackUri && !/m3u8/i.test(playbackUri)
+  // Determine if current source is audio-only (our raw audio endpoint)
+  const isAudioOnly = /\/index$/i.test(playbackUri || '')
 
   // Build fallback URIs for R2 when HLS/MP4 are missing
   const buildFallbackUri = useCallback(() => {
@@ -157,30 +157,54 @@ function WebVideoPlayer() {
     if (preflightTunedUrlForIOS.current === entry.id) return
 
     const hash = entry.videoUrl.replace('ipfs://', '')
+    // Prefer fastest-to-start sources first, but validate content-type:
+    // raw audio (mp3) → mp4 → hls
     const candidates = [
-      `https://r2.skyhitz.io/${hash}/hls/index.m3u8`,
-      `https://r2.skyhitz.io/${hash}/mp4/index.mp4`,
-      `https://r2.skyhitz.io/${hash}/index`,
-    ]
+      {
+        url: `https://r2.skyhitz.io/${hash}/index`,
+        test: (ct: string | null) => !!ct && /(^|\s|;)audio\//i.test(ct),
+      },
+      {
+        url: `https://r2.skyhitz.io/${hash}/mp4/index.mp4`,
+        test: (ct: string | null) => !!ct && /(^|\s|;)video\/mp4/i.test(ct),
+      },
+      {
+        url: `https://r2.skyhitz.io/${hash}/hls/index.m3u8`,
+        test: (ct: string | null) =>
+          !!ct && /(application\/vnd\.apple\.mpegurl|application\/x-mpegURL)/i.test(ct),
+      },
+    ] as const
 
-    const headOk = (url: string) => {
+    const headOk = (url: string, test: (ct: string | null) => boolean) => {
       const controller = new AbortController()
-      const timer = setTimeout(() => controller.abort(), 1500)
-      return fetch(url, { method: 'HEAD', mode: 'cors', signal: controller.signal })
-        .then((res) => {
-          clearTimeout(timer)
-          if (res.ok) return url
-          throw new Error('not ok')
-        })
+      const timer = setTimeout(() => controller.abort(), 2000)
+      return fetch(url, {
+        method: 'HEAD',
+        mode: 'cors',
+        signal: controller.signal,
+        headers: {
+          // Hint preferred type; some CDNs vary
+          Accept: 'audio/*,video/mp4,application/x-mpegURL;q=0.9,application/vnd.apple.mpegurl;q=0.9,*/*;q=0.1',
+        },
+      }).then((res) => {
+        clearTimeout(timer)
+        if (!res.ok) throw new Error('not ok')
+        const ct = res.headers.get('content-type')
+        if (test(ct)) return url
+        throw new Error('wrong content-type')
+      })
     }
 
-    // Race the HEADs; pick the first that returns 200 quickly
-    const raceFirstOk = async () => {
-      const checks = candidates.map((u) => headOk(u).catch(() => null))
+    const selectBest = async () => {
+      const checks = candidates.map((c) => headOk(c.url, c.test).catch(() => null))
       const results = await Promise.all(checks)
-      return results.find((u) => !!u) as string | null
+      // preserve candidate order
+      for (let i = 0; i < results.length; i++) {
+        if (results[i]) return results[i] as string
+      }
+      return null
     }
-    raceFirstOk()
+    selectBest()
       .then((best) => {
         if (best && usePlayerStore.getState().playbackUri !== best) {
           usePlayerStore.getState().setPlaybackUri(best)
@@ -208,10 +232,13 @@ function WebVideoPlayer() {
           // On those, do NOT force hls.js
           (() => {
             const ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''
-            const isIOSWebKit = /iPad|iPhone|iPod/i.test(ua) || /WebKit/i.test(ua) && /Mobile/i.test(ua)
+            const isIOSWebKit = /iPad|iPhone|iPod/i.test(ua) || (/WebKit/i.test(ua) && /Mobile/i.test(ua))
             const isHls = /m3u8/i.test(playbackUri) || /\/hls\//i.test(playbackUri)
+            const isMp4 = /\.mp4($|\?)/i.test(playbackUri)
+            const isRawAudio = /\/index$/i.test(playbackUri)
             const forceHlsJs = isHls && !isIOSWebKit
-            const forceAudio = /^https?:\/\//i.test(playbackUri) && !/m3u8/i.test(playbackUri)
+            // Only force audio element for the raw audio endpoint, not for MP4
+            const forceAudio = isRawAudio
             return (
           <ReactPlayer
             ref={handleRef}
@@ -252,6 +279,14 @@ function WebVideoPlayer() {
                   preload: 'metadata',
                   // Allow CORS credentials-less fetches if needed
                   crossOrigin: 'anonymous',
+                  // Hint MIME to iOS when using extensionless raw object
+                  ...( /\/index$/i.test(playbackUri)
+                      ? { type: 'audio/mpeg' }
+                      : /\.mp4($|\?)/i.test(playbackUri)
+                      ? { type: 'video/mp4' }
+                      : (/m3u8/i.test(playbackUri) || /\/hls\//i.test(playbackUri))
+                      ? { type: 'application/x-mpegURL' }
+                      : {}),
                 },
               },
             }}
