@@ -31,7 +31,7 @@ export const themes = {
   }),
   dark: vars({
     // Base colors
-    '--bg-color': '#000000',
+    '--bg-color': '#161616',
     '--surface-color': '#000000',
     '--text-color': 'rgb(179, 186, 197)',
     '--text-secondary-color': 'rgb(217, 220, 226)',
