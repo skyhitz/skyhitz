@@ -16,6 +16,7 @@ import { MotiView } from 'moti'
 // Player components
 import { MiniPlayerBar } from 'app/features/player/miniPlayerBar'
 import { FullScreenPlayer } from 'app/features/player/fullScreenPlayer'
+import { PlaybackState, usePlayerStore } from 'app/state/player'
 
 const fullAnimationDuration = 400
 
@@ -25,9 +26,12 @@ export function MobileTabBarWrapper() {
   const currentTabName = getCurrentSegment()
   const insets = useSafeArea()
   const { height } = useWindowDimensions()
+  const { entry, playbackState } = usePlayerStore()
 
-  // Adding +40 for the mini player
-  const tabBarHeight = 54 + insets.bottom + 40 // 54 for tab bar height + 40 for mini player + bottom inset
+  const shouldShowPlayer = !!entry && playbackState !== PlaybackState.IDLE
+
+  // Base tab bar height + optional +40 for the mini player when visible
+  const tabBarHeight = 54 + insets.bottom + (shouldShowPlayer ? 40 : 0)
 
   const maxHeight = useMemo(() => height + insets.top, [insets, height])
 
@@ -109,14 +113,18 @@ export function MobileTabBarWrapper() {
       className="absolute bottom-0 left-0 right-0 z-10 flex border-t-2 border-[--border-color] bg-[--bg-color]"
     >
       <View className="flex-1">
-        <MiniPlayerBar
-          onTogglePress={onExpand}
-          animatedStyle={playerBarStyle}
-        />
-        <FullScreenPlayer
-          onTogglePress={onHide}
-          animatedStyle={fullScreenPlayerStyle}
-        />
+        {shouldShowPlayer ? (
+          <>
+            <MiniPlayerBar
+              onTogglePress={onExpand}
+              animatedStyle={playerBarStyle}
+            />
+            <FullScreenPlayer
+              onTogglePress={onHide}
+              animatedStyle={fullScreenPlayerStyle}
+            />
+          </>
+        ) : null}
       </View>
 
       <MotiView className="md:hidden" style={[{ zIndex: 10 }, tabBarStyle]}>
