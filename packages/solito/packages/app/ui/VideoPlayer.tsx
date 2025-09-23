@@ -244,8 +244,8 @@ function WebVideoPlayer() {
           isReady ? 'opacity-100' : 'opacity-0'
         }`}
       >
-        {/* Always render poster behind for artwork, useful for audio-only */}
-        <Poster />
+        {/* Render poster only for audio-only sources to avoid covering video */}
+        {isAudioOnly ? <Poster /> : null}
         {!!playbackUri && (
           // Detect if the engine supports native HLS (iOS Safari/Chrome on iOS)
           // On those, do NOT force hls.js
