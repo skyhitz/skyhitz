@@ -107,7 +107,7 @@ export function MobileTabBarWrapper() {
   return (
     <MotiView
       style={[
-        { justifyContent: 'space-between', display: 'flex' },
+        { justifyContent: 'space-between', display: shouldShowPlayer ? 'flex':'none' },
         draggableStyle,
       ]}
       className="absolute bottom-0 left-0 right-0 z-10 flex border-t-2 border-[--border-color] bg-[--bg-color]"
