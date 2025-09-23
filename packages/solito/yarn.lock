@@ -4943,6 +4943,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@skyhitz/solito@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "@skyhitz/solito@workspace:."
+  dependencies:
+    "@types/ramda": "npm:^0"
+    "@types/react": "npm:~19.0.10"
+    "@types/react-native": "npm:^0.73.0"
+    eslint: "npm:^8.21.0"
+    turbo: "npm:^2.4.4"
+    typescript: "npm:~5.8.3"
+  languageName: unknown
+  linkType: soft
+
 "@smithy/abort-controller@npm:^2.2.0":
   version: 2.2.0
   resolution: "@smithy/abort-controller@npm:2.2.0"
@@ -14760,19 +14773,6 @@ __metadata:
   checksum: 10/d19366c95908c19db154f329bbe94c2317d315dc933a7c2b5101e73f32a555c84fb199b62174e1490082a593a4933d8d5a9b297bde7d1419c14a11a965f51356
   languageName: node
   linkType: hard
-
-"solito-blank@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "solito-blank@workspace:."
-  dependencies:
-    "@types/ramda": "npm:^0"
-    "@types/react": "npm:~19.0.10"
-    "@types/react-native": "npm:^0.73.0"
-    eslint: "npm:^8.21.0"
-    turbo: "npm:^2.4.4"
-    typescript: "npm:~5.8.3"
-  languageName: unknown
-  linkType: soft
 
 "solito@npm:4.4.1":
   version: 4.4.1
