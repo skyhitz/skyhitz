@@ -291,3 +291,36 @@ export const CLAIMABLE_EARNINGS_PREVIEW = gql`
     }
   }
 `
+
+// Stripe Issuing
+export const ISSUE_CARD = gql`
+  mutation IssueCard($input: IssueCardInput!) {
+    issueCard(input: $input) {
+      id
+      brand
+      last4
+      expMonth
+      expYear
+      status
+    }
+  }
+`
+
+export const MY_CARD = gql`
+  query MyCard {
+    myCard {
+      id
+      brand
+      last4
+      expMonth
+      expYear
+      status
+    }
+  }
+`
+
+export const ISSUING_ELEMENTS_CLIENT_SECRET = gql`
+  query IssuingElementsClientSecret {
+    issuingElementsClientSecret
+  }
+`

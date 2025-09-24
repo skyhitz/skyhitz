@@ -21,6 +21,7 @@ import { checkPendingWithdrawalsResolver } from './check-pending-withdrawals';
 import { claimEarningsResolver } from './claim-earnings';
 import { searchExternalMusicResolver, externalAudioUrlResolver } from './search-external-music';
 import { claimEarningsPreviewResolver } from './xlm-price';
+import { issueCardResolver, myCardResolver, issuingElementsClientSecretResolver } from 'src/graphql/stripe-issuing';
 import { mineExternalEntryResolver } from './mine-external-entry';
 
 const Query = {
@@ -33,6 +34,8 @@ const Query = {
 	searchExternalMusic: searchExternalMusicResolver,
 	externalAudioUrl: externalAudioUrlResolver,
 	claimableEarningsPreview: claimEarningsPreviewResolver,
+	myCard: myCardResolver,
+	issuingElementsClientSecret: issuingElementsClientSecretResolver,
 };
 
 const Mutation = {
@@ -50,6 +53,7 @@ const Mutation = {
 	submitLink: submitLinkResolver,
 	claimEarnings: claimEarningsResolver,
 	mineExternalEntry: mineExternalEntryResolver,
+	issueCard: issueCardResolver,
 	updateUser: updateUserResolver,
 	withdrawToExternalWallet: withdrawToExternalAddressResolver,
 };

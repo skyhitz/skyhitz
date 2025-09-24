@@ -9,6 +9,8 @@ type Query {
   searchExternalMusic(query: String!, limit: Int, offset: Int): [ExternalTrack!]!
   externalAudioUrl(id: String!): String
   claimableEarningsPreview: ClaimEarningsResponse!
+  myCard: CardInfo
+  issuingElementsClientSecret: String!
 }
 
 type Mutation {
@@ -46,6 +48,7 @@ type Mutation {
   submitLink(link: String!, email: String!): SubmitLinkResponse!
   claimEarnings: ClaimEarningsResponse!
   mineExternalEntry(input: ExternalTrackInput!): Entry!
+  issueCard(input: IssueCardInput!): CardInfo!
 }
 
 type PaymentIntentResponse {
@@ -218,6 +221,25 @@ type ExternalTrack {
   source: String!
   url: String
   imageUrl: String
+}
+
+type CardInfo {
+  id: String!
+  brand: String
+  last4: String
+  expMonth: Int
+  expYear: Int
+  status: String
+}
+
+input IssueCardInput {
+  name: String!
+  addressLine1: String!
+  addressLine2: String
+  city: String!
+  state: String
+  postalCode: String!
+  country: String!
 }
 
 input ExternalTrackInput {

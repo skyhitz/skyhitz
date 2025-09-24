@@ -185,6 +185,15 @@ export function ProfileScreen({ user }: { user: User }) {
                 }
               />
             </TextLink>
+
+            <TextLink href="/profile/spend">
+              <ProfileRow
+                title="Spend"
+                icon={
+                  <TopUp className="h-5 w-5 fill-none stroke-current stroke-2 text-[--text-color] rotate-180" />
+                }
+              />
+            </TextLink>
           </View>
         </View>
       </View>

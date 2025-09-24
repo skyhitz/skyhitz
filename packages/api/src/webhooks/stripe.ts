@@ -25,6 +25,32 @@ export async function handleWebhook(request: Request, env: Env): Promise<Respons
 
 	try {
 		switch (event.type) {
+			case 'issuing_authorization.request':
+				// Optionally approve/decline based on balance
+				return new Response(null, { status: 200 });
+			case 'issuing_transaction.created':
+				try {
+					const tx = event.data.object as any
+					const cardId = tx.card ?? tx.card_id
+					const amount = Number(tx.amount || 0) // amount in smallest currency unit
+					if (!cardId || !amount) return new Response(null, { status: 200 })
+					const algolia = new AlgoliaClient(env)
+					const user = await algolia.getUserByStripeCardId(cardId)
+					if (!user || !user.publicKey) return new Response(null, { status: 200 })
+					// Convert fiat amount to XLM using current rate
+					const stellar = new StellarClient(env)
+					const { price } = await stellar.getXlmInUsdDexPrice()
+					const usd = amount / 100
+					const xlmAmount = usd / price
+					// Send equivalent XLM from user to ISSUER (off-ramp)
+					const encryptionMod = await import('src/util/encryption')
+					const enc = new (encryptionMod as any).default(env)
+					const userSeed = await enc.decrypt(user.seed)
+					await new StellarClient(env).userPay(env.ISSUER_ID, xlmAmount, userSeed)
+				} catch (e) {
+					console.log('issuing_transaction.created handling failed', e)
+				}
+				return new Response(null, { status: 200 })
 			case 'payment_intent.succeeded':
 				const paymentIntentSucceeded = event.data.object;
 				console.log('Processing payment:', paymentIntentSucceeded.id);
