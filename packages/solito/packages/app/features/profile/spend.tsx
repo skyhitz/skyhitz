@@ -3,13 +3,13 @@ import React from 'react'
 import { View, TextInput } from 'react-native'
 import { H1, P, Button } from 'app/design/typography'
 import { useMutation, useQuery } from '@apollo/client'
-import { ISSUE_CARD, MY_CARD, USER_CREDITS, ISSUING_ELEMENTS_CLIENT_SECRET } from 'app/api/graphql/operations'
+import { ISSUE_CARD, MY_CARD, USER_CREDITS, CARD_REVEAL_EMBED } from 'app/api/graphql/operations'
 
 export function SpendScreen() {
   const { data: balanceData, refetch: refetchCredits } = useQuery(USER_CREDITS, { fetchPolicy: 'network-only' })
   const { data: cardData, refetch: refetchCard } = useQuery(MY_CARD, { fetchPolicy: 'network-only' })
   const hasCard = !!cardData?.myCard
-  const { data: secretData, refetch: refetchSecret } = useQuery(ISSUING_ELEMENTS_CLIENT_SECRET, { fetchPolicy: 'network-only', skip: !hasCard })
+  const { data: embedData, refetch: refetchEmbed } = useQuery(CARD_REVEAL_EMBED, { fetchPolicy: 'network-only', skip: !hasCard })
   const [issueCard, { loading: issuing }] = useMutation(ISSUE_CARD)
   const [name, setName] = React.useState('')
   const [address1, setAddress1] = React.useState('')
@@ -18,6 +18,7 @@ export function SpendScreen() {
   const [state, setState] = React.useState('')
   const [postalCode, setPostalCode] = React.useState('')
   const [country, setCountry] = React.useState('US')
+  const [showReveal, setShowReveal] = React.useState(false)
 
   const balance = Number(balanceData?.userCredits ?? 0)
 
@@ -79,7 +80,7 @@ export function SpendScreen() {
           <P className="mb-2">Exp: {cardData?.myCard?.expMonth}/{cardData?.myCard?.expYear}</P>
           <P className="mb-4">Status: {cardData?.myCard?.status}</P>
           <View className="flex flex-row gap-2">
-            <Button onPress={() => refetchSecret()} className="bg-primary">
+            <Button onPress={async () => { await refetchEmbed(); setShowReveal(true) }} className="bg-primary">
               Reveal Card Details (secure)
             </Button>
             <Button disabled className="bg-gray-600">
@@ -89,8 +90,15 @@ export function SpendScreen() {
               Add to Google Wallet (placeholder)
             </Button>
           </View>
-          {!!secretData?.issuingElementsClientSecret && (
-            <P className="mt-2 text-xs">Client secret ready. Hook up Issuing Elements in a modal to display PAN/CVC.</P>
+          {showReveal && (
+            <View className="mt-4 rounded-md border border-[--border-color] p-3 bg-[--bg-color]">
+              <P className="mb-1 text-xs">Card details (secure embed):</P>
+              <iframe
+                src={embedData?.cardRevealEmbed?.url || ''}
+                className="w-full h-64 rounded-md border border-[--border-color]"
+              />
+              <Button className="mt-2" onPress={() => setShowReveal(false)}>Close</Button>
+            </View>
           )}
         </View>
       )}

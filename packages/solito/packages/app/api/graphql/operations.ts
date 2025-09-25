@@ -292,7 +292,7 @@ export const CLAIMABLE_EARNINGS_PREVIEW = gql`
   }
 `
 
-// Stripe Issuing
+// Card issuing (Lithic)
 export const ISSUE_CARD = gql`
   mutation IssueCard($input: IssueCardInput!) {
     issueCard(input: $input) {
@@ -319,8 +319,18 @@ export const MY_CARD = gql`
   }
 `
 
-export const ISSUING_ELEMENTS_CLIENT_SECRET = gql`
-  query IssuingElementsClientSecret {
-    issuingElementsClientSecret
+export const CARD_REVEAL_TOKEN = gql`
+  query CardRevealToken {
+    cardRevealToken
+  }
+`
+
+export const CARD_REVEAL_EMBED = gql`
+  query CardRevealEmbed {
+    cardRevealEmbed {
+      url
+      embedRequest
+      hmac
+    }
   }
 `

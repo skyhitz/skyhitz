@@ -10,7 +10,8 @@ type Query {
   externalAudioUrl(id: String!): String
   claimableEarningsPreview: ClaimEarningsResponse!
   myCard: CardInfo
-  issuingElementsClientSecret: String!
+  cardRevealToken: String!
+  cardRevealEmbed: CardRevealEmbed!
 }
 
 type Mutation {
@@ -230,6 +231,12 @@ type CardInfo {
   expMonth: Int
   expYear: Int
   status: String
+}
+
+type CardRevealEmbed {
+  url: String!
+  embedRequest: String!
+  hmac: String!
 }
 
 input IssueCardInput {
