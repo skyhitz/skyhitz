@@ -268,6 +268,32 @@ export class AlgoliaClient {
 		});
 	}
 
+	async getSharesByEntry(entryId: string) {
+		const res = await this.indices.sharesIndex.search<Share>('', {
+			filters: `entryId:${entryId}`,
+			hitsPerPage: 1000,
+		});
+		return res.hits as Share[];
+	}
+
+	async deleteSharesByEntry(entryId: string) {
+		const shares = await this.getSharesByEntry(entryId);
+		if (shares.length === 0) return;
+		await this.indices.sharesIndex.deleteObjects(shares.map((s) => s.objectID as any)).wait();
+	}
+
+	async bulkUpdateShares(updates: Array<{ entryId: string; userId: string; shares: number }>) {
+		if (updates.length === 0) return;
+		await this.indices.sharesIndex
+			.saveObjects(
+				updates.map((u) => ({
+					objectID: `entry${u.entryId}user${u.userId}`,
+					...u,
+				}))
+			)
+			.wait();
+	}
+
 	async addToSubmitIndex(email: string, link: string) {
 		return this.indices.submitIndex.saveObject({ objectID: `${email}-${link}`, email: email, link: link });
 	}

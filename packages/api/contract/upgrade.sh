@@ -42,11 +42,36 @@ stellar network add \
 
 ARGS="--network $NETWORK --source $ISSUER_SEED"
 
+# Tunables (can be overridden by env)
+TIMEOUT=${TIMEOUT:-180}
+FEE=${FEE:-500000}
+
+# Simple retry helper
+retry() {
+  local attempt=1
+  local max=3
+  local delay=5
+  while true; do
+    "$@" && break
+    if (( attempt >= max )); then
+      echo "Command failed after $attempt attempts: $*" >&2
+      return 1
+    fi
+    echo "Attempt $attempt failed. Retrying in ${delay}s..."
+    sleep $delay
+    attempt=$((attempt+1))
+  done
+}
+
 stellar contract build 
 
+WASM_PATH=./target/wasm32-unknown-unknown/release/skyhitz.wasm
+
+# Install with higher timeout/fee and retry
 WASM_ID="$(
-    stellar contract install --ignore-checks $ARGS \
-      --wasm ./target/wasm32-unknown-unknown/release/skyhitz.wasm
+  retry stellar contract install --ignore-checks $ARGS \
+    --wasm "$WASM_PATH" \
+  | grep -Eo '[0-9a-f]{64}' | tail -n1
 )"
 
 echo -n "$WASM_ID" > .vars/wasm-id
@@ -65,13 +90,17 @@ cp ./client/src/index.ts ./client.ts
 
 rm -rf ./client
 
-stellar contract invoke $ARGS \
-  --id $(cat ./.vars/$CTR) \
+CTR_ID=$(cat ./.vars/$CTR)
+
+# Upgrade with higher timeout/fee and retry
+retry stellar contract invoke $ARGS \
+  --id "$CTR_ID" \
   -- \
   upgrade \
-  --new_wasm_hash $WASM_ID
+  --new_wasm_hash "$WASM_ID"
 
-stellar contract invoke $ARGS \
-  --id $(cat ./.vars/$CTR) \
+# Verify version with higher timeout/fee (non-fatal if it fails once)
+retry stellar contract invoke $ARGS \
+  --id "$CTR_ID" \
   -- \
   version

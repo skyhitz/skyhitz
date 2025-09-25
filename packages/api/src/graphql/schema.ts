@@ -46,6 +46,8 @@ type Mutation {
   submitLink(link: String!, email: String!): SubmitLinkResponse!
   claimEarnings: ClaimEarningsResponse!
   mineExternalEntry(input: ExternalTrackInput!): Entry!
+  sellShares(id: String!, amount: Float!): Boolean!
+  mergeEntries(fromId: String!, toId: String!): Boolean!
 }
 
 type PaymentIntentResponse {

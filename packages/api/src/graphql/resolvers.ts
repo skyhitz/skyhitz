@@ -22,6 +22,8 @@ import { claimEarningsResolver } from './claim-earnings';
 import { searchExternalMusicResolver, externalAudioUrlResolver } from './search-external-music';
 import { claimEarningsPreviewResolver } from './xlm-price';
 import { mineExternalEntryResolver } from './mine-external-entry';
+import { sellSharesResolver } from './sell-shares';
+import { mergeEntriesResolver } from './merge-entries';
 
 const Query = {
 	entry: entryByIdResolver,
@@ -50,6 +52,8 @@ const Mutation = {
 	submitLink: submitLinkResolver,
 	claimEarnings: claimEarningsResolver,
 	mineExternalEntry: mineExternalEntryResolver,
+	sellShares: sellSharesResolver,
+	mergeEntries: mergeEntriesResolver,
 	updateUser: updateUserResolver,
 	withdrawToExternalWallet: withdrawToExternalAddressResolver,
 };

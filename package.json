@@ -22,7 +22,11 @@
     "docs:start": "yarn workspace @skyhitz/docs start",
     "docs:build": "yarn workspace @skyhitz/docs build",
     "docs:serve": "yarn workspace @skyhitz/docs serve",
-    "docs:deploy": "yarn docs:build && wrangler pages deploy packages/docs/build --project-name skyhitz-docs"
+    "docs:deploy": "yarn docs:build && wrangler pages deploy packages/docs/build --project-name skyhitz-docs",
+    "contract:init:testnet": "cd packages/api && bash ./contract/init.sh testnet",
+    "contract:init:mainnet": "cd packages/api && bash ./contract/init.sh mainnet",
+    "contract:upgrade:testnet": "cd packages/api && bash ./contract/upgrade.sh testnet",
+    "contract:upgrade:mainnet": "cd packages/api && bash ./contract/upgrade.sh mainnet"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

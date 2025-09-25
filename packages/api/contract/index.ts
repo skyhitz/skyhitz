@@ -148,6 +148,46 @@ class ContractClient {
 		}
 	};
 
+	public sellShares = async (secret: string, id: string, amount: number) => {
+		const userKeys = Keypair.fromSecret(secret);
+		const tx = await this.contract.sell_shares(
+			{
+				user: userKeys.publicKey(),
+				id,
+				amount: BigInt(amount),
+			},
+			this.defaultOptions
+		);
+
+		const jsonFromRoot = tx.toJSON();
+		const userClient = this.getClientForKeypair(userKeys);
+		const txUser = userClient.fromJSON['sell_shares'](jsonFromRoot);
+		const ledger = (await this.fetchCurrentLedger()) + 100;
+		await txUser.signAuthEntries({ expiration: ledger });
+		const jsonFromUser = txUser.toJSON();
+		const txRoot = this.contract.fromJSON['sell_shares'](jsonFromUser);
+		const result = await txRoot.signAndSend();
+		return Number(result.result);
+	};
+
+	public mergeEntries = async (fromId: string, toId: string) => {
+		const tx = await this.contract.merge_entries({ from_id: fromId, to_id: toId }, this.defaultOptions);
+		const res = await tx.signAndSend();
+		return res;
+	};
+
+	public cleanEmptyEntries = async () => {
+		const tx = await this.contract.clean_empty_entries(this.defaultOptions);
+		const res = await tx.signAndSend();
+		return Number(res.result) || 0;
+	};
+
+	public cleanEmptyEntriesBatch = async (limit: number) => {
+		const tx = await this.contract.clean_empty_entries_batch({ limit: limit as any }, this.defaultOptions);
+		const res = await tx.signAndSend();
+		return Number(res.result) || 0;
+	};
+
 	public init = async (ids: string[]) => {
 		console.log('init', ids);
 		const tx = await this.contract.init({ admin: this.sourceKeys.publicKey(), network: this.network, ids: ids }, this.defaultOptions);
