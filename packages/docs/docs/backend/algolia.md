@@ -15,4 +15,13 @@ Update flows:
   - `partialUpdateEntry` with tvl, apr, escrow
   - `updateShares(entryId, userId, userShares)`
 
+- After sellShares:
+  - Update sold entry’s `tvl`, `escrow`, `apr`
+  - Update seller’s shares document in `sharesIndex`
+  - Refresh APR/escrow for entries impacted by commission distribution (current implementation refreshes all entries; can be narrowed by parsing on-chain events)
+
+- Admin helpers for merges/removals:
+  - `getSharesByEntry(entryId)` / `deleteSharesByEntry(entryId)`
+  - `bulkUpdateShares(updates)` to sync on-chain shares → Algolia documents
+
 

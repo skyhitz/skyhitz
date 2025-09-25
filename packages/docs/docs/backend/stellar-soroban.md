@@ -15,6 +15,7 @@ Contract state per entry:
 - `apr: i128` (percent integer)
 - `shares: Map<address, i128>` (stroops)
 - `withdrawn_earnings: Map<address, i128>`
+- `share_since: Map<address, i128>` earliest timestamp a holder acquired shares
 
 Global keys (`DataKey`):
 
@@ -32,12 +33,17 @@ Precision constants:
 
 - `invest(user, id, amount i128)`: amount in stroops (1 XLM = 10,000,000)
 - `claim_earnings(user, id) -> i128`: returns claimed amount (stroops)
+- `sell_shares(user, id, amount) -> i128`: returns payout after commission
 
 Administration and helpers:
 
 - `set_entry(entry)`: Admin only. Upserts an entry and appends to index
 - `remove_entry(id)`: Admin only. Removes entry and prunes index
 - `get_entry(id) -> Entry`: Read the current on-chain entry
+- `merge_entries(from_id, to_id)`: Admin only. Merge source into destination
+- `clean_empty_entries() -> u32`: Admin only. Best-effort legacy cleanup
+- `clean_empty_entries_batch(limit) -> u32`: Admin only. Batched cleanup
+- `clean_empty_entries_page(start, limit) -> u32`: Admin only. Paged cleanup
 - `version() -> u32`: Contract version marker
 - `init(admin, network, ids[])`: One-time initializer (admin/network/index)
 - `upgrade(new_wasm_hash)`: Admin only. Code upgrade
@@ -85,6 +91,7 @@ Administration and helpers:
   1) `user.require_auth()`
   2) Load or lazily create `Entry` for `id`
   3) If `amount > 3_000_000`, user receives equity shares and `tvl += amount`
+     - Also sets/keeps `share_since[user]` to earliest known timestamp
   4) Always `escrow += amount`
   5) Recompute `apr` with `get_apr(entry)`
   6) Persist and call `transfer(user -> contract, amount)` using the native token client
@@ -112,6 +119,25 @@ Implications:
   6) Recompute `apr`
   7) `transfer(contract -> user, claimable)`
   8) Return `claimable`
+
+### `sell_shares(user: Address, id: String, amount: i128) -> i128`
+- Auth: `user`
+- Commission tiers by holding duration (based on `share_since[user]`):
+  - < 6 months: 10%
+  - 6–12 months: 7%
+  - 1–3 years: 5%
+  - > 3 years: 0%
+- Flow:
+  1) Verify `shares[user] >= amount`
+  2) Compute commission and payout; reduce `shares[user]` and `tvl -= amount`
+  3) Keep this entry’s `escrow` unchanged; recompute its APR
+  4) Distribute commission proportionally to all other entries with `tvl > 0` by their tvl; recompute recipients’ APR
+  5) `transfer(contract -> user, payout)`
+  6) Return `payout`
+
+Notes:
+- Commission distribution increases other entries’ `escrow`, benefiting holders system‑wide.
+- The sold entry’s `escrow` remains intact; only its tvl and user shares drop.
 
 ---
 
