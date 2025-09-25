@@ -156,6 +156,39 @@ export class AlgoliaClient {
 		return user as User;
 	}
 
+	async getUserByStripeCardId(cardId: string) {
+		const res = await this.indices.usersIndex.search('', {
+			filters: `stripeCardId:${cardId}`,
+		});
+		const [user] = res.hits;
+		return (user as unknown) as User;
+	}
+
+	async getUserByStripeCardholderId(cardholderId: string) {
+		const res = await this.indices.usersIndex.search('', {
+			filters: `stripeCardholderId:${cardholderId}`,
+		});
+		const [user] = res.hits;
+		return (user as unknown) as User;
+	}
+
+	// New generic lookups (keep old ones for compatibility during migration)
+	async getUserByCardId(cardId: string) {
+		const res = await this.indices.usersIndex.search('', {
+			filters: `cardId:${cardId}`,
+		});
+		const [user] = res.hits;
+		return (user as unknown) as User;
+	}
+
+	async getUserByCardholderId(cardholderId: string) {
+		const res = await this.indices.usersIndex.search('', {
+			filters: `cardholderId:${cardholderId}`,
+		});
+		const [user] = res.hits;
+		return (user as unknown) as User;
+	}
+
 	async saveUser(user: User) {
 		return this.indices.usersIndex.saveObject(user).wait();
 	}

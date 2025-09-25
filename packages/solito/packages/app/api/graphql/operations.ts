@@ -291,3 +291,46 @@ export const CLAIMABLE_EARNINGS_PREVIEW = gql`
     }
   }
 `
+
+// Card issuing (Lithic)
+export const ISSUE_CARD = gql`
+  mutation IssueCard($input: IssueCardInput!) {
+    issueCard(input: $input) {
+      id
+      brand
+      last4
+      expMonth
+      expYear
+      status
+    }
+  }
+`
+
+export const MY_CARD = gql`
+  query MyCard {
+    myCard {
+      id
+      brand
+      last4
+      expMonth
+      expYear
+      status
+    }
+  }
+`
+
+export const CARD_REVEAL_TOKEN = gql`
+  query CardRevealToken {
+    cardRevealToken
+  }
+`
+
+export const CARD_REVEAL_EMBED = gql`
+  query CardRevealEmbed {
+    cardRevealEmbed {
+      url
+      embedRequest
+      hmac
+    }
+  }
+`
