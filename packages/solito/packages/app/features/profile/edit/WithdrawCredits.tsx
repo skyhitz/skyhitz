@@ -41,9 +41,15 @@ export function WithdrawCredits() {
     try {
       setWithdrawing(true)
 
+      const available = Number(credits?.userCredits || 0)
+      // Withdraw almost all available balance from this legacy screen
+      // keep a tiny buffer to avoid rounding or fee edge cases
+      const amount = Math.max(0, available - 0.01)
+
       const { data } = await withdrawToExternalWallet({
         variables: {
           address: form.address,
+          amount,
         },
       })
 

@@ -41,7 +41,7 @@ type Mutation {
     twitter: String
     instagram: String
   ): User!
-  withdrawToExternalWallet(address: String!, amount: Int!): Boolean!
+  withdrawToExternalWallet(address: String!, amount: Float!): Boolean!
   initContract: InitContractResult!
   submitLink(link: String!, email: String!): SubmitLinkResponse!
   claimEarnings: ClaimEarningsResponse!

@@ -152,8 +152,8 @@ export const UPDATE_USER = gql`
 `
 
 export const WITHDRAW_TO_EXTERNAL_WALLET = gql`
-  mutation WithdrawToExternalWallet($address: String!) {
-    withdrawToExternalWallet(address: $address)
+  mutation WithdrawToExternalWallet($address: String!, $amount: Float!) {
+    withdrawToExternalWallet(address: $address, amount: $amount)
   }
 `
 

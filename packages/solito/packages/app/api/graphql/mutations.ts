@@ -55,6 +55,7 @@ export type UpdateUserMutationVariables = {
 
 export type WithdrawToExternalWalletMutationVariables = {
   address: string
+  amount: number
 }
 
 export type CreatePaymentIntentMutationVariables = {
