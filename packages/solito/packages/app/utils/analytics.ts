@@ -17,6 +17,7 @@ export type AnalyticsEvent =
   | 'invest'
   | 'mine'
   | 'top_up'
+  | 'copy_wallet'
 
 // Define event parameters interface
 export interface AnalyticsEventParams {
@@ -99,6 +100,7 @@ function mapEventName(eventName: AnalyticsEvent): string {
     invest: 'invest',
     mine: 'mine',
     top_up: 'top_up',
+    copy_wallet: 'copy_wallet',
   }
   
   return eventMap[eventName] || eventName
@@ -206,5 +208,16 @@ export function trackMine(entryId: string, entryTitle?: string, entryArtist?: st
     entry_id: entryId,
     entry_title: entryTitle,
     entry_artist: entryArtist,
+  })
+}
+
+/**
+ * Track wallet copy event
+ */
+export function trackCopyWallet(userId?: string, source?: string): void {
+  trackEvent({
+    event_name: 'copy_wallet',
+    user_id: userId,
+    source: source, // e.g., 'profile', 'modal', 'settings'
   })
 }

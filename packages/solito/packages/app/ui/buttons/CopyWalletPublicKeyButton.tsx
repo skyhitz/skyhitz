@@ -4,6 +4,8 @@ import { useCallback, useMemo, useState } from 'react'
 import Copy from 'app/ui/icons/copy'
 import Check from 'app/ui/icons/check'
 import { P } from 'app/design/typography'
+import { trackCopyWallet } from 'app/utils/analytics'
+import { useUserStore } from 'app/state/user'
 
 type Props = {
   walletPublicKey: string
@@ -11,6 +13,7 @@ type Props = {
 
 export function CopyWalletPublicKeyButton({ walletPublicKey }: Props) {
   const [copied, changeCopied] = useState(false)
+  const user = useUserStore((s) => s.user)
 
   // Render a shortened version to avoid overflow on all platforms
   const displayKey = useMemo(() => {
@@ -25,17 +28,27 @@ export function CopyWalletPublicKeyButton({ walletPublicKey }: Props) {
       if (Platform.OS === 'web') {
         navigator.clipboard.writeText(walletPublicKey)
         changeCopied(true)
+        // Track wallet copy event
+        trackCopyWallet(user?.id, 'profile')
       } else if (Platform.OS === 'ios') {
         await Share.share({
           url: walletPublicKey,
         }).then(({ action }) => {
-          if (action !== Share.dismissedAction) changeCopied(true)
+          if (action !== Share.dismissedAction) {
+            changeCopied(true)
+            // Track wallet copy event
+            trackCopyWallet(user?.id, 'profile')
+          }
         })
       } else {
         await Share.share({
           message: walletPublicKey,
         }).then(({ action }) => {
-          if (action === Share.sharedAction) changeCopied(true)
+          if (action === Share.sharedAction) {
+            changeCopied(true)
+            // Track wallet copy event
+            trackCopyWallet(user?.id, 'profile')
+          }
         })
       }
     } catch (error) {

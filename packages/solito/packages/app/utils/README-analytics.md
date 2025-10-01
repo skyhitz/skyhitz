@@ -45,6 +45,7 @@ The following events are automatically tracked:
 - **invest**: When a user invests in a track
 - **mine**: When a user mines an external track
 - **top_up**: When a user completes a top-up purchase
+- **copy_wallet**: When a user copies their wallet public key
 
 ## Event Data
 
@@ -74,6 +75,7 @@ Events are automatically tracked when users perform actions:
 - **Invest**: Tracked in `InvestSection` component when investing
 - **Mine**: Tracked in search results when mining external tracks
 - **Top Up**: Tracked in checkout form when payment is confirmed
+- **Copy Wallet**: Tracked in `CopyWalletPublicKeyButton` when user copies their wallet address
 - **Sign In/Out**: Tracked in authentication flows
 - **Sign Up**: Tracked in sign-up form when account creation succeeds
 
@@ -95,6 +97,7 @@ trackStream('entry-id', 'Track Title', 'Artist Name')
 trackInvest('entry-id', 10.5, 'XLM', 'Track Title', 'Artist Name')
 trackSignUp('user-id')
 trackTopUp('user-id', 'checkout', 50.00) // amount in USD
+trackCopyWallet('user-id', 'profile')
 ```
 
 ## Platform Support
