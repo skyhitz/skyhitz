@@ -1,8 +1,9 @@
 'use client'
-import { cssInterop } from 'nativewind'
 import Svg, { Path } from 'react-native-svg'
+import { cssInterop } from 'nativewind'
 
 cssInterop(Svg, { className: 'style' })
+
 
 function Icon({ size = 24 }) {
   return (

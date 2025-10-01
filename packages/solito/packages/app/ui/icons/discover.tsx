@@ -4,6 +4,7 @@ import { cssInterop } from 'nativewind'
 
 cssInterop(Svg, { className: 'style' })
 
+
 function Icon({ size = 24 }) {
   return (
     <Svg

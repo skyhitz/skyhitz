@@ -36,6 +36,7 @@ module.exports = {
     'react-native-safe-area-context',
     'nativewind',
     'react-native-css-interop',
+    'react-native-css',
     'app',
     // SVG needs special handling
     'react-native-svg',

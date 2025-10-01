@@ -1,4 +1,9 @@
-const { platformSelect } = require('nativewind/theme')
+// Platform select helper for cross-platform font configuration
+const platformSelect = (config: { ios?: string; android?: string; default: string; web?: string }) => {
+  // For Tailwind config, we just use the default (web) value
+  // The native platforms will use their respective fonts through React Native
+  return config.web || config.default
+}
 
 /** @type {import('tailwindcss').Config['theme']} */
 export const theme = {

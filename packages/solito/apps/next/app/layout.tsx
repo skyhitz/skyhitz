@@ -73,14 +73,46 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${inter.variable} ${raleway.variable} ${unbounded.variable} font-sans`}
-      style={{ visibility: 'visible' }}
       suppressHydrationWarning
     >
-      <ThemeProvider>
-        <Provider>
-          <MainLayout>{children}</MainLayout>
-        </Provider>
-      </ThemeProvider>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                // Apply theme class synchronously before first paint
+                try {
+                  var theme = localStorage.getItem('user-preferences:theme');
+                  var isDark = theme ? JSON.parse(theme).state.isDark : true;
+                  var html = document.documentElement;
+                  
+                  if (isDark) {
+                    html.classList.add('dark');
+                  } else {
+                    html.classList.remove('dark');
+                  }
+                  html.dataset.theme = isDark ? 'dark' : 'light';
+                  
+                  // Apply background color immediately to prevent flash
+                  html.style.backgroundColor = isDark ? '#161616' : '#FFFFFF';
+                  document.body.style.backgroundColor = isDark ? '#161616' : '#FFFFFF';
+                } catch (e) {
+                  document.documentElement.classList.add('dark');
+                  document.documentElement.dataset.theme = 'dark';
+                  document.documentElement.style.backgroundColor = '#161616';
+                }
+              })();
+            `,
+          }}
+        />
+      </head>
+      <body suppressHydrationWarning>
+        <ThemeProvider>
+          <Provider>
+            <MainLayout>{children}</MainLayout>
+          </Provider>
+        </ThemeProvider>
+      </body>
     </html>
   )
 }
