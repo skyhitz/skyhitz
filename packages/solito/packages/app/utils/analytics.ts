@@ -44,27 +44,28 @@ export function trackEvent(params: AnalyticsEventParams): void {
 
   try {
     if (Platform.OS === 'web') {
-      // Web implementation using gtag
-      if (typeof window !== 'undefined' && (window as any).gtag) {
+      if (typeof window !== 'undefined') {
         const { event_name, ...eventParams } = params
         
         // Map our event names to GA4 event names
         const gaEventName = mapEventName(event_name)
         
-        // Send to Google Analytics
-        ;(window as any).gtag('event', gaEventName, {
-          ...eventParams,
-          // Add custom parameters for better tracking
-          custom_parameter_1: event_name,
-          custom_parameter_2: params.entry_id || '',
-          custom_parameter_3: params.entry_title || '',
-        })
-        
-        if (GA_CONFIG.DEBUG) {
-          console.log(`[Analytics] Tracked ${event_name}:`, eventParams)
+        // Use Zaraz (Cloudflare's analytics proxy)
+        if ((window as any).zaraz?.track) {
+          ;(window as any).zaraz.track(gaEventName, {
+            ...eventParams,
+            // Add custom parameters for better tracking
+            custom_parameter_1: event_name,
+            custom_parameter_2: params.entry_id || '',
+            custom_parameter_3: params.entry_title || '',
+          })
+          
+          if (GA_CONFIG.DEBUG) {
+            console.log(`[Analytics Zaraz] Tracked ${event_name}:`, eventParams)
+          }
+        } else {
+          console.warn('[Analytics] Zaraz not available on web')
         }
-      } else {
-        console.warn('[Analytics] gtag not available on web')
       }
     } else {
       // Mobile implementation - for now just log
@@ -85,9 +86,12 @@ export function trackEvent(params: AnalyticsEventParams): void {
  */
 function mapEventName(eventName: AnalyticsEvent): string {
   const eventMap: Record<AnalyticsEvent, string> = {
-    signed_in: 'signed_in',
-    signed_out: 'signed_out',
+    // GA4 Standard Authentication Events
+    signed_in: 'login',
+    signed_out: 'logout', 
     sign_up: 'sign_up',
+    
+    // Custom Events (keep as-is)
     stream: 'stream',
     like: 'like',
     download: 'download',
