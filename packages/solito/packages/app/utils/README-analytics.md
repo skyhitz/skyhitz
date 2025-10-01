@@ -44,6 +44,7 @@ The following events are automatically tracked:
 - **download**: When a user downloads a track
 - **invest**: When a user invests in a track
 - **mine**: When a user mines an external track
+- **top_up**: When a user completes a top-up purchase
 
 ## Event Data
 
@@ -72,6 +73,7 @@ Events are automatically tracked when users perform actions:
 - **Download**: Tracked in `DownloadBtn` component when downloading
 - **Invest**: Tracked in `InvestSection` component when investing
 - **Mine**: Tracked in search results when mining external tracks
+- **Top Up**: Tracked in checkout form when payment is confirmed
 - **Sign In/Out**: Tracked in authentication flows
 - **Sign Up**: Tracked in sign-up form when account creation succeeds
 
@@ -92,6 +94,7 @@ trackEvent({
 trackStream('entry-id', 'Track Title', 'Artist Name')
 trackInvest('entry-id', 10.5, 'XLM', 'Track Title', 'Artist Name')
 trackSignUp('user-id')
+trackTopUp('user-id', 'checkout', 50.00) // amount in USD
 ```
 
 ## Platform Support

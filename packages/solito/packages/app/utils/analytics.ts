@@ -16,6 +16,7 @@ export type AnalyticsEvent =
   | 'download'
   | 'invest'
   | 'mine'
+  | 'top_up'
 
 // Define event parameters interface
 export interface AnalyticsEventParams {
@@ -97,6 +98,7 @@ function mapEventName(eventName: AnalyticsEvent): string {
     download: 'download',
     invest: 'invest',
     mine: 'mine',
+    top_up: 'top_up',
   }
   
   return eventMap[eventName] || eventName
@@ -179,6 +181,19 @@ export function trackInvest(entryId: string, amount: number, currency: string = 
     entry_artist: entryArtist,
     amount: amount,
     currency: currency,
+  })
+}
+
+/**
+ * Track top-up event
+ */
+export function trackTopUp(userId?: string, source?: string, amount?: number): void {
+  trackEvent({
+    event_name: 'top_up',
+    user_id: userId,
+    source: source, // e.g., 'checkout', 'modal', 'profile'
+    amount: amount, // Amount in USD
+    currency: 'USD',
   })
 }
 

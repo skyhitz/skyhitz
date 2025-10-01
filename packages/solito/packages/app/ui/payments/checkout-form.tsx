@@ -20,6 +20,8 @@ import { Formik, FormikProps } from 'formik'
 import { topUpFormSchema } from 'app/validation'
 import { useCreatePaymentIntentMutation } from 'app/api/graphql/mutations'
 import CompletePage from './complete-page'
+import { trackTopUp } from 'app/utils/analytics'
+import { useUserStore } from 'app/state/user'
 
 type FormFields = {
   email: string
@@ -82,6 +84,7 @@ const InnerCheckoutForm = ({
 }) => {
   const stripe = useStripe()
   const elements = useElements()
+  const user = useUserStore((s) => s.user)
 
   const emailInputRef = useRef<TextInput>(null)
   const amountInputRef = useRef<TextInput>(null)
@@ -144,6 +147,11 @@ const InnerCheckoutForm = ({
           receipt_email: values.email,
         },
       })
+
+      // Track successful top-up event
+      if (!error) {
+        trackTopUp(user?.id, 'checkout', values.amount)
+      }
 
       // This point will only be reached if there is an immediate error when
       // confirming the payment. Otherwise, your customer will be redirected to
