@@ -1,0 +1,22 @@
+export declare const INVEST_ENTRY: import("@apollo/client").DocumentNode;
+export declare const REQUEST_TOKEN: import("@apollo/client").DocumentNode;
+export declare const SIGN_IN_WITH_TOKEN: import("@apollo/client").DocumentNode;
+export declare const CREATE_USER_WITH_EMAIL: import("@apollo/client").DocumentNode;
+export declare const USER_CREDITS: import("@apollo/client").DocumentNode;
+export declare const USER_COLLECTION: import("@apollo/client").DocumentNode;
+export declare const USER_LIKES: import("@apollo/client").DocumentNode;
+export declare const UPDATE_USER: import("@apollo/client").DocumentNode;
+export declare const WITHDRAW_TO_EXTERNAL_WALLET: import("@apollo/client").DocumentNode;
+export declare const CREATE_PAYMENT_INTENT: import("@apollo/client").DocumentNode;
+export declare const ENTRIES_SEARCH: import("@apollo/client").DocumentNode;
+export declare const USERS_SEARCH: import("@apollo/client").DocumentNode;
+export declare const RECENTLY_ADDED_ENTRIES: import("@apollo/client").DocumentNode;
+export declare const CLAIM_EARNINGS: import("@apollo/client").DocumentNode;
+export declare const LIKE_ENTRY: import("@apollo/client").DocumentNode;
+export declare const ENTRY_LIKES: import("@apollo/client").DocumentNode;
+export declare const SET_LAST_PLAYED_ENTRY: import("@apollo/client").DocumentNode;
+export declare const SEARCH_EXTERNAL_MUSIC: import("@apollo/client").DocumentNode;
+export declare const EXTERNAL_AUDIO_URL: import("@apollo/client").DocumentNode;
+export declare const MINE_EXTERNAL_ENTRY: import("@apollo/client").DocumentNode;
+export declare const CLAIMABLE_EARNINGS_PREVIEW: import("@apollo/client").DocumentNode;
+//# sourceMappingURL=operations.d.ts.map

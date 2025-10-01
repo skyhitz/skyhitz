@@ -1,0 +1,47 @@
+{
+  "name": "app",
+  "version": "0.0.0",
+  "main": "index.ts",
+  "types": "index.ts",
+  "private": true,
+  "scripts": {
+    "build": "echo 'Skipping build for development'",
+    "watch": "echo 'Skipping watch for development'"
+  },
+  "sideEffects": [
+    "*.css"
+  ],
+  "dependencies": {
+    "@algolia/client-search": "^5.23.4",
+    "@algolia/requester-fetch": "^5.23.4",
+    "@algolia/transporter": "^4.24.0",
+    "@apollo/client": "^3.13.8",
+    "@my/ui": "0.0.1",
+    "@react-navigation/native": "^6.1.17",
+    "@stripe/react-stripe-js": "^3.1.1",
+    "@stripe/stripe-js": "^5.5.0",
+    "@tamagui/animations-react-native": "^1.135.0",
+    "@tamagui/colors": "^1.135.0",
+    "@tamagui/font-inter": "^1.135.0",
+    "@tamagui/lucide-icons": "^1.135.0",
+    "@tamagui/shorthands": "^1.135.0",
+    "@tamagui/themes": "^1.135.0",
+    "algoliasearch": "^5.23.4",
+    "expo-constants": "~17.1.6",
+    "expo-linear-gradient": "~14.0.1",
+    "expo-linking": "~7.1.4",
+    "formik": "^2.4.5",
+    "graphql": "^16.11.0",
+    "ramda": "^0.30.1",
+    "react-native-safe-area-context": "5.4.0",
+    "solito": "^4.2.2",
+    "swr": "^2.3.3",
+    "yup": "^1.4.0",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@tamagui/build": "^1.135.0",
+    "@types/react": "~19.0.10",
+    "@types/react-native": "^0.73.0"
+  }
+}
