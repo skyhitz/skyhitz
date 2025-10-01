@@ -85,14 +85,14 @@ export function trackEvent(params: AnalyticsEventParams): void {
  */
 function mapEventName(eventName: AnalyticsEvent): string {
   const eventMap: Record<AnalyticsEvent, string> = {
-    signed_in: 'login',
-    signed_out: 'logout',
+    signed_in: 'signed_in',
+    signed_out: 'signed_out',
     sign_up: 'sign_up',
-    stream: 'video_play',
+    stream: 'stream',
     like: 'like',
-    download: 'file_download',
-    invest: 'purchase',
-    mine: 'custom_mine',
+    download: 'download',
+    invest: 'invest',
+    mine: 'mine',
   }
   
   return eventMap[eventName] || eventName

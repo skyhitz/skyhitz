@@ -1,14 +1,18 @@
 /**
  * Google Analytics Configuration
- * Replace GA_MEASUREMENT_ID with your actual Google Analytics 4 measurement ID
+ * 
+ * Note: Google Analytics is managed by Cloudflare Zaraz
+ * The measurement ID and script loading are handled automatically
+ * by Cloudflare's dashboard configuration.
  */
 
 export const GA_CONFIG = {
-  // Replace with your actual Google Analytics 4 measurement ID
-  // Format: G-XXXXXXXXXX
+  // Measurement ID is configured in Cloudflare Zaraz dashboard
+  // This is kept for reference and potential future use
   MEASUREMENT_ID: 'G-SN8H79EHDJ',
   
   // Enable/disable analytics tracking
+  // Zaraz handles script loading, this controls our event tracking
   ENABLED: process.env.NEXT_PUBLIC_DISABLE_GA !== 'true',
   
   // Debug mode for development

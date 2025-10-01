@@ -4,24 +4,13 @@ This implementation provides comprehensive Google Analytics event tracking for S
 
 ## Setup
 
-### 1. Configure Google Analytics
+### 1. Cloudflare Zaraz Configuration
 
-1. Create a Google Analytics 4 property for your application
-2. Get your Measurement ID (format: G-XXXXXXXXXX)
-3. Update the configuration in `packages/solito/packages/app/config/analytics.ts`:
+Google Analytics is managed by **Cloudflare Zaraz** on skyhitz.io:
 
-```typescript
-export const GA_CONFIG = {
-  // Replace with your actual Google Analytics 4 measurement ID
-  MEASUREMENT_ID: 'G-XXXXXXXXXX',
-  
-  // Enable/disable analytics tracking
-  ENABLED: process.env.NODE_ENV === 'production',
-  
-  // Debug mode for development
-  DEBUG: process.env.NODE_ENV === 'development',
-}
-```
+1. **Zaraz Dashboard**: GA4 is already configured in Cloudflare dashboard
+2. **Automatic Script Loading**: Zaraz handles loading the Google Analytics script
+3. **No Manual Setup Required**: The GA script is automatically injected by Cloudflare
 
 ### 2. Environment Variables
 
@@ -108,8 +97,8 @@ trackSignUp('user-id')
 ## Platform Support
 
 ### Web (Next.js)
-- Uses Google Analytics 4 (gtag)
-- Automatically loads GA script in layout
+- Uses Google Analytics 4 (gtag) via Cloudflare Zaraz
+- GA script automatically loaded by Cloudflare
 - Events sent directly to Google Analytics
 
 ### Mobile (React Native)
