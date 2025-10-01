@@ -15,6 +15,7 @@ import { INVEST_ENTRY, SET_LAST_PLAYED_ENTRY, USER_CREDITS } from 'app/api/graph
 import { useMutation, useQuery } from '@apollo/client'
 import { useTopUpModalStore } from 'app/state/topup'
 import { useEffect } from 'react'
+import { trackStream } from 'app/utils/analytics'
 
 export function usePlayback() {
   // Get user data
@@ -51,6 +52,8 @@ export function usePlayback() {
 
     if (user) {
       setLastPlayedEntry({ variables: { entryId: entry.id } });
+      // Track stream event
+      trackStream(entry.id, entry.title, entry.artist)
     }
 
     // Call play with the URL, which will handle playing

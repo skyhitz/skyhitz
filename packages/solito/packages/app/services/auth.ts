@@ -2,6 +2,7 @@ import { client } from 'app/api/graphql/client'
 import { SecureStorage } from 'app/utils/secure-storage'
 import { User } from 'app/api/graphql/types'
 import { secureStorage, STORAGE_KEYS } from 'app/services/storage'
+import { trackSignOut } from 'app/utils/analytics'
 
 export const AuthService = {
   /**
@@ -16,9 +17,25 @@ export const AuthService = {
    * Logs the user out by clearing their auth token
    */
   logout: async (): Promise<void> => {
+    // Get user data before clearing to track sign-out
+    const userData = await secureStorage.getItem(STORAGE_KEYS.USER_DATA)
+    let userId: string | undefined
+    
+    if (userData) {
+      try {
+        const user = JSON.parse(userData) as User
+        userId = user.id
+      } catch (parseError) {
+        console.error('Error parsing user data for logout tracking:', parseError)
+      }
+    }
+    
     await SecureStorage.clear(STORAGE_KEYS.AUTH_TOKEN)
     // Force reset of Apollo cache to clear any user data
     client.resetStore()
+    
+    // Track sign-out event
+    trackSignOut(userId)
   },
 
   /**

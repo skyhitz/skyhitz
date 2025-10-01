@@ -11,6 +11,7 @@ import { SignUpForm as FormData } from 'app/types'
 import { useRouter } from 'solito/navigation'
 import { useUserState } from 'app/state/user/hooks'
 import { useToast } from 'app/provider/toast'
+import { trackSignUp } from 'app/utils/analytics'
 
 type SignUpFormProps = {
   signedXDR?: string
@@ -28,6 +29,9 @@ export function SignUpForm({ signedXDR }: SignUpFormProps = {}) {
   // Effect to handle navigation and user update after successful signup
   useEffect(() => {
     if (data?.createUserWithEmail?.user) {
+      // Track sign-up event
+      trackSignUp(data.createUserWithEmail.user.id)
+      
       // Update user state with returned user data
       updateUser(data.createUserWithEmail.user)
       

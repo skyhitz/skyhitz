@@ -13,6 +13,7 @@ import DownloadIcon from 'app/ui/icons/download'
 import { useQuery } from '@apollo/client'
 import { USER_CREDITS } from 'app/api/graphql/operations'
 import { useTopUpModalStore } from 'app/state/topup'
+import { trackDownload } from 'app/utils/analytics'
 
 interface Props {
   size?: number
@@ -50,6 +51,9 @@ const DownloadBtn = ({ size = 24, className = '', entry }: Props) => {
       console.error('Invest before download failed', e)
       return
     }
+
+    // Track download event
+    trackDownload(entry.id, entry.title, entry.artist)
 
     // Create a download link for the video
     const a = document.createElement('a')

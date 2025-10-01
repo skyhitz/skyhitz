@@ -6,6 +6,7 @@ import { MainLayout } from 'app/ui/shared-layouts/MainLayout'
 import type { Metadata } from 'next'
 import { Config } from 'app/config'
 import { siteTitle, socialDesc, keywords, orgName } from 'app/constants/content'
+import { GA_CONFIG } from 'app/config/analytics'
 
 export const metadata: Metadata = {
   metadataBase: new URL(Config.APP_URL),
@@ -76,6 +77,30 @@ export default function RootLayout({
       style={{ visibility: 'visible' }}
       suppressHydrationWarning
     >
+      <head>
+        {/* Google Analytics */}
+        {GA_CONFIG.ENABLED && (
+          <>
+            <script
+              async
+              src={`https://www.googletagmanager.com/gtag/js?id=${GA_CONFIG.MEASUREMENT_ID}`}
+            />
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `
+                  window.dataLayer = window.dataLayer || [];
+                  function gtag(){dataLayer.push(arguments);}
+                  gtag('js', new Date());
+                  gtag('config', '${GA_CONFIG.MEASUREMENT_ID}', {
+                    page_title: document.title,
+                    page_location: window.location.href
+                  });
+                `,
+              }}
+            />
+          </>
+        )}
+      </head>
       <ThemeProvider>
         <Provider>
           <MainLayout>{children}</MainLayout>

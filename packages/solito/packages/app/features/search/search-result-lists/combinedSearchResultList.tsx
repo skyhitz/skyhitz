@@ -21,6 +21,7 @@ import { H1 } from 'app/design/typography'
 import { Button } from 'app/design/button'
 import { useUserStore } from 'app/state/user'
 import { useToast } from 'app/provider/toast'
+import { trackMine } from 'app/utils/analytics'
 
 // Define a union type for our search results
 type SearchResult = {
@@ -342,6 +343,10 @@ function ExternalTrackRow({ track, onSelect }: { track: ExternalTrack; onSelect:
                   toast.show('Transaction failed. Please try again later.', { type: 'danger' })
                   return
                 }
+                
+                // Track mine event
+                trackMine(track.id, track.title, track.artist)
+                
                 const refreshed = await refetchCredits()
                 const newBal = Number(refreshed?.data?.userCredits ?? 0).toFixed(2)
                 toast.show(`Mined successfully. Balance: ${newBal} XLM`, { type: 'success' })

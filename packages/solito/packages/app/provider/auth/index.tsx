@@ -6,6 +6,7 @@ import { AuthService } from 'app/services/auth'
 import { ActivityIndicator } from 'app/design/typography'
 import { View } from 'react-native'
 import { useRouter } from 'solito/navigation'
+import { trackSignIn, trackSignOut } from 'app/utils/analytics'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { setUser, setLoading } = useUserStore()
@@ -23,6 +24,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (user) {
           // User data found, set auth state
           setUser(user)
+          // Track sign-in event
+          trackSignIn(user.id)
         }
       } catch (error) {
         console.error('Auth restore error:', error)

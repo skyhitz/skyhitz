@@ -11,6 +11,7 @@ import { MICRO_SPEND_LIKE_XLM } from 'app/constants/constants'
 import { LIKE_ENTRY, INVEST_ENTRY, USER_LIKES, USER_CREDITS } from 'app/api/graphql/operations'
 import { useTopUpModalStore } from 'app/state/topup'
 import { useToast } from 'app/provider/toast'
+import { trackLike } from 'app/utils/analytics'
 
 // Using imported GraphQL operations from operations.ts
 
@@ -55,6 +56,11 @@ function LikeButton({ size = 24, className, entry }: Props) {
           like: !isLiked, // Pass the new like state
         },
       })
+
+      // Track like event only when actually liking (not unliking)
+      if (!isLiked) {
+        trackLike(entry.id, entry.title, entry.artist)
+      }
 
       // Also spend a small amount when liking (no shares)
       const available = Number(creditsData?.userCredits ?? 0)

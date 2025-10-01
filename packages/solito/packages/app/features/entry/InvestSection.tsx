@@ -14,6 +14,7 @@ import { useGetEntry } from 'app/hooks/algolia/useGetEntry'
 import { sharesIndex } from 'app/api/algolia'
 import { INVEST_ENTRY, USER_CREDITS } from 'app/api/graphql/operations'
 import { INVEST_MIN_XLM } from 'app/constants/constants'
+import { trackInvest } from 'app/utils/analytics'
 
 // Helper functions for XLM conversion
 const lumensToStroops = (lumens: number) => (lumens * 10000000).toString()
@@ -125,6 +126,9 @@ export function InvestSection({ entry }: Props) {
       })
 
       if (data?.investEntry?.success) {
+        // Track invest event
+        trackInvest(entry.id, numAmount, 'XLM', entry.title, entry.artist)
+        
         const credits = await refetchCredits()
         const newBal = Number(credits?.data?.userCredits ?? 0).toFixed(2)
         await refetch() // Refresh entry (tvl/apr)
