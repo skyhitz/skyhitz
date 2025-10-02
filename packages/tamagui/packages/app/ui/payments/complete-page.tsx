@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useStripe } from '@stripe/react-stripe-js'
-import { View, Text } from 'react-native'
+import { YStack, XStack } from 'tamagui'
+import { P } from 'app/design/typography'
 
 const SuccessIcon = (
   <svg
@@ -130,42 +131,46 @@ export default function CompletePage() {
   }, [stripe])
 
   return (
-    <View 
-      style={{ padding: 20 }}
-      className="bg-white rounded-lg p-5 max-w-md mx-auto my-8"
+    <YStack 
+      padding="$5"
+      backgroundColor="$white1"
+      borderRadius="$3"
+      maxWidth={448}
+      marginHorizontal="auto"
+      marginVertical="$8"
     >
-      <View 
-        style={{ 
-          width: 48, 
-          height: 48, 
-          borderRadius: 24,
-          justifyContent: 'center',
-          alignItems: 'center',
-          marginBottom: 16,
-          backgroundColor: STATUS_CONTENT_MAP[status].iconColor
-        }}
-        className="mx-auto flex items-center justify-center"
+      <YStack 
+        width={48}
+        height={48}
+        borderRadius={24}
+        justifyContent="center"
+        alignItems="center"
+        marginBottom="$4"
+        marginHorizontal="auto"
+        backgroundColor={STATUS_CONTENT_MAP[status].iconColor}
       >
         {STATUS_CONTENT_MAP[status].icon}
-      </View>
-      <Text 
-        style={{ textAlign: 'center', marginBottom: 20, fontWeight: 'bold', fontSize: 18 }}
-        className="text-center font-bold text-lg mb-5"
+      </YStack>
+      <P 
+        textAlign="center"
+        marginBottom="$5"
+        fontWeight="bold"
+        fontSize="$4"
       >
         {STATUS_CONTENT_MAP[status].text}
-      </Text>
+      </P>
       {intentId && (
-        <View style={{ marginTop: 20 }} className="mt-5 border-t border-gray-200 pt-4">
-          <View style={{ flexDirection: 'row', marginBottom: 8 }} className="flex flex-row mb-2">
-            <Text style={{ fontWeight: 'bold', width: 80 }} className="font-bold w-20">ID:</Text>
-            <Text style={{ flex: 1 }} className="flex-1">{intentId}</Text>
-          </View>
-          <View style={{ flexDirection: 'row' }} className="flex flex-row">
-            <Text style={{ fontWeight: 'bold', width: 80 }} className="font-bold w-20">Status:</Text>
-            <Text style={{ flex: 1 }} className="flex-1">{status}</Text>
-          </View>
-        </View>
+        <YStack marginTop="$5" borderTopWidth={1} borderTopColor="$gray5" paddingTop="$4">
+          <XStack flexDirection="row" marginBottom="$2">
+            <P fontWeight="bold" width={80}>ID:</P>
+            <P flex={1}>{intentId}</P>
+          </XStack>
+          <XStack flexDirection="row">
+            <P fontWeight="bold" width={80}>Status:</P>
+            <P flex={1}>{status}</P>
+          </XStack>
+        </YStack>
       )}
-    </View>
+    </YStack>
   )
 }

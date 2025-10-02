@@ -1,7 +1,6 @@
 'use client'
 import { ReactNode, useState } from 'react'
-import ChevronDown from 'app/ui/icons/chevron-down'
-import ChevronUp from 'app/ui/icons/chevron-up'
+import { ChevronDown, ChevronUp } from '@tamagui/lucide-icons'
 import { AnimateHeight } from './animate-height'
 import { YStack, XStack, Text } from 'tamagui'
 
@@ -10,7 +9,6 @@ type Props = {
   children?: ReactNode
   icon?: React.ComponentType<any>
   headerText: string
-  className?: string
 }
 
 export const CollapsableView = ({
@@ -18,7 +16,6 @@ export const CollapsableView = ({
   initCollapsed = false,
   headerText,
   icon: Icon,
-  className,
 }: Props) => {
   const [collapsed, setCollapsed] = useState<boolean>(initCollapsed)
 
@@ -30,7 +27,6 @@ export const CollapsableView = ({
       borderRadius="$3"
       borderWidth={1}
       borderColor="$borderColor"
-      className={className}
     >
       <XStack
         flexDirection="row"

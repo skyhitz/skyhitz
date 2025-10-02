@@ -33,7 +33,6 @@ type UserAvatarProps = {
   userId?: string | null
   email?: string | null
   size?: Size
-  className?: string
 }
 
 export function UserAvatar({
@@ -42,7 +41,6 @@ export function UserAvatar({
   userId,
   email,
   size = 'medium',
-  className = '',
 }: UserAvatarProps) {
   // State to track if the image failed to load
   const [imageError, setImageError] = React.useState(false)
@@ -109,7 +107,6 @@ export function UserAvatar({
       borderRadius="$10"
       height={sizeValue}
       width={sizeValue}
-      className={className}
     >
       {processedAvatarUrl && !imageError ? (
         <Image

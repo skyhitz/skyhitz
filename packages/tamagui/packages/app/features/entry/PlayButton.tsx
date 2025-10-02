@@ -1,8 +1,7 @@
 'use client'
 import { Entry } from 'app/api/graphql/types'
-import { Pressable } from 'react-native'
-import PlayIcon from 'app/ui/icons/play'
-import PauseIcon from 'app/ui/icons/pause'
+import { Button } from 'tamagui'
+import { Play, Pause } from '@tamagui/lucide-icons'
 import { usePlayback } from 'app/hooks/usePlayback';
 import { PlaybackState } from 'app/state/player';
 
@@ -20,12 +19,12 @@ export function PlayButton({ entry, playlist = [entry] }: PlayButtonProps) {
   };
 
   return (
-    <Pressable onPress={toggle}>
+    <Button onPress={toggle} backgroundColor="transparent" padding="$0">
       {isThisPlaying ? (
-        <PauseIcon className="text-gray-600" size={24} stroke="var(--text-color)" />
+        <Pause size={24} color="$color" />
       ) : (
-        <PlayIcon className="text-gray-600" size={24} stroke="var(--text-color)" />
+        <Play size={24} color="$color" />
       )}
-    </Pressable>
+    </Button>
   );
 }

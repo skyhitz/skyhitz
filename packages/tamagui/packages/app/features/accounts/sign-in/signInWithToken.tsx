@@ -1,10 +1,9 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { View } from 'react-native'
-import { P, H3 } from 'app/design/typography'
+import { YStack } from 'tamagui'
+import { P, H3, ActivityIndicator } from 'app/design/typography'
 import { useSignInWithTokenMutation } from 'app/api/graphql/mutations'
 import { useRouter } from 'solito/navigation'
-import { ActivityIndicator } from 'react-native'
 
 interface SignInWithTokenProps {
   uid: string
@@ -65,10 +64,10 @@ export function SignInWithToken({ uid, token }: SignInWithTokenProps) {
   }, [uid, token, signInWithToken, called, loading])
 
   return (
-    <View className="items-center justify-center py-12">
-      <H3 className="mb-8 text-center">Verifying your login...</H3>
-      {loading && <ActivityIndicator size="large" color="#0000ff" />}
-      {error && <P className="mt-4 text-center text-red">{error}</P>}
-    </View>
+    <YStack alignItems="center" justifyContent="center" paddingVertical="$12">
+      <H3 marginBottom="$8" textAlign="center">Verifying your login...</H3>
+      {loading && <ActivityIndicator size="large" />}
+      {error && <P marginTop="$4" textAlign="center" color="$red9">{error}</P>}
+    </YStack>
   )
 }

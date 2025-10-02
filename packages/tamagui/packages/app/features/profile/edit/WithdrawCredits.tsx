@@ -1,19 +1,19 @@
 'use client'
-import { View, TextInput, Text } from 'react-native'
 import { useState } from 'react'
 import { Formik, FormikProps } from 'formik'
 import * as Yup from 'yup'
 import { useRouter } from 'solito/navigation'
 import { useToast } from 'app/provider/toast'
 import { Button } from 'app/design/button'
-import { P, H2 } from 'app/design/typography'
+import { P, H2, Text } from 'app/design/typography'
 import { SafeAreaView } from 'app/design/safe-area-view'
 import { FormInputWithIcon } from 'app/ui/inputs/FormInputWithIcon'
-import CreditCard from 'app/ui/icons/credit-card'
+import { CreditCard } from '@tamagui/lucide-icons'
 import {
   useUserCreditsQuery,
   useWithdrawToExternalWalletMutation,
 } from 'app/api/graphql/mutations'
+import { YStack, XStack, Input } from 'tamagui'
 
 type WithdrawForm = {
   address: string
@@ -73,18 +73,18 @@ export function WithdrawCredits() {
   }
 
   return (
-    <SafeAreaView className="bg-black">
-      <View className="mb-20 min-h-screen w-full bg-black pb-10">
-        <View className="mx-auto mt-8 w-full max-w-lg px-4">
-          <H2 className="mb-4 text-xl font-bold text-white">
+    <SafeAreaView backgroundColor="$black">
+      <YStack marginBottom="$20" minHeight="100vh" width="100%" backgroundColor="$black" paddingBottom="$10">
+        <YStack marginHorizontal="auto" marginTop="$8" width="100%" maxWidth={512} paddingHorizontal="$4">
+          <H2 marginBottom="$4" fontSize="$5" fontWeight="bold" color="$white1">
             Withdraw Credits
           </H2>
 
-          <P className="mb-4 text-white">
+          <P marginBottom="$4" color="$white1">
             Available balance: {credits?.userCredits || 0} XLM
           </P>
 
-          <P className="mb-6 text-gray-400">
+          <P marginBottom="$6" color="$gray9">
             Enter a Stellar address to withdraw your XLM credits. The entire
             balance will be sent to this address. Make sure you have entered the
             correct address as transactions cannot be reversed.
@@ -107,52 +107,61 @@ export function WithdrawCredits() {
               isValid,
               handleSubmit,
             }: FormikProps<WithdrawForm>) => (
-              <View className="w-full">
-                <View className="mb-4">
-                  <View className="relative flex flex-row items-center rounded-lg border bg-gray-900 focus-within:border-blue-500">
-                    <View className="absolute left-3 z-10">
-                      <CreditCard className="h-5 w-5 text-white" />
-                    </View>
+              <YStack width="100%">
+                <YStack marginBottom="$4">
+                  <XStack position="relative" flexDirection="row" alignItems="center" borderRadius="$3" borderWidth={1} backgroundColor="$gray2" borderColor="$borderColor" focusWithinStyle={{ borderColor: '$blue9' }}>
+                    <YStack position="absolute" left="$3" zIndex={10}>
+                      <CreditCard size={20} color="$white1" />
+                    </YStack>
 
-                    <TextInput
+                    <Input
                       placeholder="Stellar Address"
-                      placeholderTextColor="#6b7280"
+                      placeholderTextColor="$gray9"
                       value={values.address}
                       onChangeText={handleChange('address')}
                       onBlur={handleBlur('address')}
                       editable={!withdrawing}
                       autoCapitalize="none"
-                      className="flex-1 rounded-lg py-3 px-3 text-white pl-10"
+                      flex={1}
+                      borderRadius="$3"
+                      paddingVertical="$3"
+                      paddingHorizontal="$3"
+                      color="$white1"
+                      paddingLeft="$10"
+                      backgroundColor="transparent"
+                      borderWidth={0}
                     />
-                  </View>
+                  </XStack>
 
                   {touched.address && errors.address && (
-                    <Text className="mt-1 text-sm text-red">
+                    <Text marginTop="$1" fontSize="$3" color="$red9">
                       {errors.address}
                     </Text>
                   )}
-                </View>
+                </YStack>
 
-                <View className="mt-6 flex flex-row justify-between">
+                <XStack marginTop="$6" flexDirection="row" justifyContent="space-between">
                   <Button
                     onPress={back}
                     text="Cancel"
                     variant="secondary"
-                    className="mr-2 flex-1"
+                    marginRight="$2"
+                    flex={1}
                   />
                   <Button
                     onPress={() => handleSubmit()}
                     text="Withdraw"
                     loading={withdrawing}
-                    className="ml-2 flex-1"
+                    marginLeft="$2"
+                    flex={1}
                     disabled={!isValid || withdrawing || !credits?.userCredits}
                   />
-                </View>
-              </View>
+                </XStack>
+              </YStack>
             )}
           </Formik>
-        </View>
-      </View>
+        </YStack>
+      </YStack>
     </SafeAreaView>
   )
 }

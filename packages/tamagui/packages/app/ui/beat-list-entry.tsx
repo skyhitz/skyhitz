@@ -4,7 +4,7 @@ import { P } from 'app/design/typography'
 import { imageUrlSmall } from 'app/utils/entry'
 import { useRouter } from 'solito/navigation'
 import { SolitoImage } from 'app/design/solito-image'
-import VerticalDots from 'app/ui/icons/verticalDots'
+import { MoreVertical } from '@tamagui/lucide-icons'
 import LikeButton from 'app/ui/buttons/likeButton'
 // import DownloadBtn from 'app/ui/buttons/download'
 import Stellar from 'app/ui/icons/stellar'
@@ -143,7 +143,7 @@ export function BeatListEntry({
           </Button>
         ) : null}
 
-        {/* <DownloadBtn size={14} className="mr-3" entry={entry} /> */}
+        {/* <DownloadBtn size={14} marginRight="$3" entry={entry} /> */}
 
         {/* Like button */}
         <LikeButton size={20} entry={entry} />
@@ -154,7 +154,7 @@ export function BeatListEntry({
           padding="$0"
           onPress={() => push(`/music/${entry.id}`)}
         >
-          <VerticalDots size={24} color="$color12" />
+          <MoreVertical size={24} color="$color12" />
         </Button>
       </XStack>
     </Button>

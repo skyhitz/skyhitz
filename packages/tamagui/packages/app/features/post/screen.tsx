@@ -1,10 +1,11 @@
 'use client'
-import { H1, H2, H3, P, A } from 'app/design/typography'
+import { H1, H2, H3, P, A, Text } from 'app/design/typography'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
 import Footer from 'app/ui/footer'
 import { Navbar } from 'app/ui/navbar/Navbar'
 import { formattedDate } from 'app/utils'
-import { View, ScrollView, Text } from 'react-native'
+import { ScrollView } from 'react-native'
+import { YStack, XStack } from 'tamagui'
 import { SolitoImage } from 'app/design/solito-image'
 import * as React from 'react'
 import { imageSrc } from 'app/utils/entry'
@@ -103,7 +104,7 @@ function parseHtmlContent(html: string): React.ReactNode[] {
       const cleaned = text.trim()
       if (!cleaned) return
       result.push(
-        <P key={`text-${globalKeyCounter++}`} className="mb-4 text-[--text-color]">
+        <P key={`text-${globalKeyCounter++}`} marginBottom="$4" color="$color">
           {formatInlineNodes(cleaned)}
         </P>
       )
@@ -122,7 +123,7 @@ function parseHtmlContent(html: string): React.ReactNode[] {
 
       if (tag === 'p') {
         result.push(
-          <P key={`p-${globalKeyCounter++}`} className="mb-4 text-[--text-color]">
+          <P key={`p-${globalKeyCounter++}`} marginBottom="$4" color="$color">
             {formatInlineNodes(inner)}
           </P>
         )
@@ -131,7 +132,7 @@ function parseHtmlContent(html: string): React.ReactNode[] {
 
       if (tag === 'h1') {
         result.push(
-          <H1 key={`h1-${globalKeyCounter++}`} className="mb-4 mt-6 text-[--text-color]">
+          <H1 key={`h1-${globalKeyCounter++}`} marginBottom="$4" marginTop="$6" color="$color">
             {formatInlineNodes(inner)}
           </H1>
         )
@@ -140,7 +141,7 @@ function parseHtmlContent(html: string): React.ReactNode[] {
 
       if (tag === 'h2') {
         result.push(
-          <H2 key={`h2-${globalKeyCounter++}`} className="mb-3 mt-5 text-[--text-color]">
+          <H2 key={`h2-${globalKeyCounter++}`} marginBottom="$3" marginTop="$5" color="$color">
             {formatInlineNodes(inner)}
           </H2>
         )
@@ -149,7 +150,7 @@ function parseHtmlContent(html: string): React.ReactNode[] {
 
       if (tag === 'h3') {
         result.push(
-          <H3 key={`h3-${globalKeyCounter++}`} className="mb-2 mt-4 text-[--text-color]">
+          <H3 key={`h3-${globalKeyCounter++}`} marginBottom="$2" marginTop="$4" color="$color">
             {formatInlineNodes(inner)}
           </H3>
         )
@@ -159,15 +160,15 @@ function parseHtmlContent(html: string): React.ReactNode[] {
       if (tag === 'ul') {
         const items = extractContent(inner, 'li')
         const listItems = items.map((item, itemIndex) => (
-          <View key={`ul-li-${globalKeyCounter++}-${itemIndex}`} className="flex-row mb-2">
-            <Text className="text-[--text-color] mr-2">•</Text>
-            <P className="flex-1 text-[--text-color]">{formatInlineNodes(item)}</P>
-          </View>
+          <XStack key={`ul-li-${globalKeyCounter++}-${itemIndex}`} flexDirection="row" marginBottom="$2">
+            <P color="$color" marginRight="$2">•</P>
+            <P flex={1} color="$color">{formatInlineNodes(item)}</P>
+          </XStack>
         ))
         result.push(
-          <View key={`ul-${globalKeyCounter++}`} className="mb-4 ml-4">
+          <YStack key={`ul-${globalKeyCounter++}`} marginBottom="$4" marginLeft="$4">
             {listItems}
-          </View>
+          </YStack>
         )
         return
       }
@@ -175,15 +176,15 @@ function parseHtmlContent(html: string): React.ReactNode[] {
       if (tag === 'ol') {
         const items = extractContent(inner, 'li')
         const listItems = items.map((item, itemIndex) => (
-          <View key={`ol-li-${globalKeyCounter++}-${itemIndex}`} className="flex-row mb-2">
-            <Text className="text-[--text-color] mr-2">{itemIndex + 1}.</Text>
-            <P className="flex-1 text-[--text-color]">{formatInlineNodes(item)}</P>
-          </View>
+          <XStack key={`ol-li-${globalKeyCounter++}-${itemIndex}`} flexDirection="row" marginBottom="$2">
+            <P color="$color" marginRight="$2">{itemIndex + 1}.</P>
+            <P flex={1} color="$color">{formatInlineNodes(item)}</P>
+          </XStack>
         ))
         result.push(
-          <View key={`ol-${globalKeyCounter++}`} className="mb-4 ml-4">
+          <YStack key={`ol-${globalKeyCounter++}`} marginBottom="$4" marginLeft="$4">
             {listItems}
-          </View>
+          </YStack>
         )
         return
       }
@@ -221,45 +222,44 @@ export function PostScreen({ post }: { post: any }) {
   const { title, imageUrl, content, publishedAtTimestamp } = post
 
   return (
-    <View
-      className="flex h-full w-full"
-      style={{
-        paddingTop: insets.top,
-        paddingBottom: insets.bottom,
-        backgroundColor: 'var(--bg-color)',
-      }}
+    <YStack
+      height="100%"
+      width="100%"
+      paddingTop={insets.top}
+      paddingBottom={insets.bottom}
+      backgroundColor="$background"
     >
       <Navbar />
-      <ScrollView className="mx-auto w-full max-w-4xl px-6 lg:px-8 blog lg:mt-12 gap-8">
-        <H1 className="mb-4 mt-10 text-4xl lg:text-6xl text-[--text-color]">
-          {title}
-        </H1>
-        <P className="mt-4 text-left text-[--secondary-color]">
-          {formattedDate(publishedAtTimestamp)}
-        </P>
-        <View
-          style={{
-            borderBottomWidth: 1,
-            borderBottomColor: 'var(--border-color)',
-            marginVertical: 32,
-          }}
-        />
+      <ScrollView style={{ marginHorizontal: 'auto', width: '100%', maxWidth: 896, paddingHorizontal: 24 }}>
+        <YStack lg={{ marginTop: '$12' }} gap="$8">
+          <H1 marginBottom="$4" marginTop="$10" fontSize={{ xs: '$9', lg: '$11' }} color="$color">
+            {title}
+          </H1>
+          <P marginTop="$4" textAlign="left" color="$color11">
+            {formattedDate(publishedAtTimestamp)}
+          </P>
+          <YStack
+            borderBottomWidth={1}
+            borderBottomColor="$borderColor"
+            marginVertical="$8"
+          />
 
-        <View className="aspect-[3/2] w-full object-cover mb-8">
-          <View className="relative h-full w-full overflow-hidden rounded-2xl">
-            <SolitoImage
-              src={imageSrc(imageUrl)}
-              alt={title || 'Blog post image'}
-              fill
-              contentFit="cover"
-              sizes="(max-width: 768px) 100vw, 50vw"
-            />
-          </View>
-        </View>
+          <YStack aspectRatio={3/2} width="100%" marginBottom="$8">
+            <YStack position="relative" height="100%" width="100%" overflow="hidden" borderRadius="$4">
+              <SolitoImage
+                src={imageSrc(imageUrl)}
+                alt={title || 'Blog post image'}
+                fill
+                contentFit="cover"
+                sizes="(max-width: 768px) 100vw, 50vw"
+              />
+            </YStack>
+          </YStack>
 
-        {parseHtmlContent(content)}
-        <Footer className="mt-32" />
+          {parseHtmlContent(content)}
+          <Footer marginTop="$16" />
+        </YStack>
       </ScrollView>
-    </View>
+    </YStack>
   )
 }

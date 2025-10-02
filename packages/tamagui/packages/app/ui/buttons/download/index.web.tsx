@@ -4,7 +4,7 @@ import { useToast } from 'app/provider/toast'
 import { DownloadButtonProps } from './types'
 import { BaseDownloadButton } from './base'
 
-const DownloadBtn = ({ size = 24, className = '', entry }: DownloadButtonProps) => {
+const DownloadBtn = ({ size = 24, marginBottom, entry }: DownloadButtonProps) => {
   const toast = useToast()
 
   const handleDownload = () => {
@@ -20,7 +20,7 @@ const DownloadBtn = ({ size = 24, className = '', entry }: DownloadButtonProps) 
   return (
     <BaseDownloadButton 
       size={size} 
-      className={className} 
+      marginBottom={marginBottom} 
       entry={entry} 
       onPress={handleDownload}
     />

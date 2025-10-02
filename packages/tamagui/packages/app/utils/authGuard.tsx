@@ -3,7 +3,7 @@ import { PropsWithChildren, useEffect } from 'react'
 import { useRouter } from 'solito/navigation'
 import { useUserState, useIsAuthenticated } from 'app/state/user/hooks'
 import { ActivityIndicator } from 'app/design/typography'
-import { View } from 'react-native'
+import { YStack } from 'tamagui'
 
 /**
  * Higher-order component to guard routes that require authentication
@@ -22,9 +22,9 @@ export function ComponentAuthGuard({ children }: PropsWithChildren) {
 
   if (loading) {
     return (
-      <View className="flex h-screen items-center justify-center">
+      <YStack height="100vh" alignItems="center" justifyContent="center">
         <ActivityIndicator size="large" />
-      </View>
+      </YStack>
     )
   }
 

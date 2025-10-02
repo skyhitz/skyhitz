@@ -1,17 +1,17 @@
 'use client'
-import { View, ScrollView } from 'react-native'
+import { ScrollView, YStack } from 'tamagui'
 import { H1 } from 'app/design/typography'
 import { SafeAreaView } from 'app/design/safe-area-view'
 import CheckoutForm from 'app/ui/payments/checkout-form'
 
 export function TopUpScreen() {
   return (
-    <SafeAreaView className="bg-[--bg-color] w-full">
+    <SafeAreaView backgroundColor="$background" width="100%">
       <ScrollView>
-        <View className="mx-auto flex min-h-screen w-full items-center justify-center px-4 py-8">
-          <H1 className="text-center text-lg">Top Up</H1>
+        <YStack marginHorizontal="auto" minHeight="100vh" width="100%" alignItems="center" justifyContent="center" paddingHorizontal="$4" paddingVertical="$8">
+          <H1 textAlign="center" fontSize="$5">Top Up</H1>
           <CheckoutForm />
-        </View>
+        </YStack>
       </ScrollView>
     </SafeAreaView>
   )

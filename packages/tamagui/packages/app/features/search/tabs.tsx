@@ -1,5 +1,5 @@
 'use client'
-import { View, Pressable } from 'react-native'
+import { XStack, Button } from 'tamagui'
 import { P } from 'app/design/typography'
 
 export type Tabs = 'MFTs' | 'Collectors'
@@ -11,7 +11,7 @@ type TabBarProps = {
 
 export function TabBar({ selected, onTabClick }: TabBarProps) {
   return (
-    <View className="mb-4 mt-4 flex flex-row">
+    <XStack marginBottom="$4" marginTop="$4" flexDirection="row">
       <Tab
         text="MFTs"
         isSelected={selected === 'MFTs'}
@@ -22,7 +22,7 @@ export function TabBar({ selected, onTabClick }: TabBarProps) {
         isSelected={selected === 'Collectors'}
         onPress={() => onTabClick('Collectors')}
       />
-    </View>
+    </XStack>
   )
 }
 
@@ -34,19 +34,21 @@ type TabProps = {
 
 function Tab({ text, isSelected, onPress }: TabProps) {
   return (
-    <Pressable
-      className={`mr-4 rounded-full py-1 pl-3 pr-3 ${
-        isSelected ? 'bg-primary' : 'bg-gray-600'
-      }`}
+    <Button
+      marginRight="$4"
+      borderRadius="$10"
+      paddingVertical="$1"
+      paddingHorizontal="$3"
+      backgroundColor={isSelected ? '$blue9' : '$gray8'}
       onPress={onPress}
     >
       <P
-        className={`text-md font-medium ${
-          isSelected ? 'text-white' : 'text-gray-300'
-        }`}
+        fontSize="$4"
+        fontWeight="500"
+        color={isSelected ? '$white1' : '$gray11'}
       >
         {text}
       </P>
-    </Pressable>
+    </Button>
   )
 }

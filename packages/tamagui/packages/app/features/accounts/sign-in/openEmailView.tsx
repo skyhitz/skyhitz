@@ -1,20 +1,31 @@
 'use client'
-import { View } from 'react-native'
+import { YStack } from 'tamagui'
 import { openEmail } from 'app/utils/email'
 import { P } from 'app/design/typography'
 import { Button } from 'app/design/button'
 
 export function OpenEmailView() {
   return (
-    <View className="flex items-center">
-      <P className="flex h-12 w-full flex-row items-center rounded-lg bg-gray-700/20 p-2 text-sm text-white">
+    <YStack alignItems="center">
+      <P 
+        height={48} 
+        width="100%" 
+        flexDirection="row" 
+        alignItems="center" 
+        borderRadius="$3" 
+        backgroundColor="$gray7" 
+        opacity={0.2}
+        padding="$2" 
+        fontSize="$3" 
+        color="$white1"
+      >
         We sent you an email to access your account!
       </P>
       <Button
         text="Open Email"
         onPress={() => openEmail()}
-        className="btn mt-4"
+        marginTop="$4"
       />
-    </View>
+    </YStack>
   )
 }

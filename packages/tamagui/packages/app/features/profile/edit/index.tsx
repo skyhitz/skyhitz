@@ -1,10 +1,7 @@
 'use client'
-import { View, ScrollView, Pressable } from 'react-native'
-import InfoCircle from 'app/ui/icons/info-circle'
-import PersonOutline from 'app/ui/icons/person-outline'
-import MailOutline from 'app/ui/icons/mail-outline'
+import { ScrollView } from 'react-native'
+import { Info, User as UserIcon, Mail, Instagram } from '@tamagui/lucide-icons'
 import XLogo from 'app/ui/icons/x-logo'
-import Instagram from 'app/ui/icons/instagram'
 import { useEffect, useState } from 'react'
 import { useUpdateUserMutation } from 'app/api/graphql/mutations'
 import { User } from 'app/api/graphql/types'
@@ -25,6 +22,7 @@ import { SafeAreaView } from 'app/design/safe-area-view'
 import { WithdrawCredits } from './WithdrawCredits'
 import { useTheme } from 'app/state/theme/useTheme'
 import { P } from 'app/design/typography'
+import { YStack, XStack, Button as TamaguiButton } from 'tamagui'
 
 export default function EditProfileScreen({ user }: { user: User }) {
   if (!user) return null
@@ -110,8 +108,8 @@ export default function EditProfileScreen({ user }: { user: User }) {
   }
 
   return (
-    <SafeAreaView className="bg-black">
-      <ScrollView className="w-full bg-black">
+    <SafeAreaView backgroundColor="$black">
+      <ScrollView style={{ width: '100%', backgroundColor: '#000' }}>
         <ProfileHeader
           user={{
             ...user,
@@ -120,7 +118,7 @@ export default function EditProfileScreen({ user }: { user: User }) {
           }}
         />
 
-        <View className="mt-6 w-full items-center justify-center">
+        <YStack marginTop="$6" width="100%" alignItems="center" justifyContent="center">
           <ChangeImages
             avatar={avatar}
             setAvatar={setAvatar}
@@ -128,10 +126,10 @@ export default function EditProfileScreen({ user }: { user: User }) {
             setBackground={setBackground}
             progress={progress}
           />
-        </View>
+        </YStack>
 
-        <View className="mt-4 flex w-full items-center justify-center px-4">
-          <View className="w-full max-w-lg">
+        <YStack marginTop="$4" width="100%" alignItems="center" justifyContent="center" paddingHorizontal="$4">
+          <YStack width="100%" maxWidth={512}>
             <Formik
               validateOnMount
               initialValues={{
@@ -153,11 +151,12 @@ export default function EditProfileScreen({ user }: { user: User }) {
                 isValid,
                 handleSubmit,
               }: FormikProps<EditProfileForm>) => (
-                <View className="mb-4 mt-4 flex flex-col">
+                <YStack marginBottom="$4" marginTop="$4" flexDirection="column">
                   <FormInputWithIcon
                     icon={
-                      <PersonOutline
-                        className={`h-5 w-5 ${isDark ? 'text-white' : 'text-gray-800'}`}
+                      <UserIcon
+                        size={20}
+                        color={isDark ? '$white1' : '$gray11'}
                       />
                     }
                     placeholder="Display Name"
@@ -169,8 +168,9 @@ export default function EditProfileScreen({ user }: { user: User }) {
                   />
                   <FormInputWithIcon
                     icon={
-                      <InfoCircle
-                        className={`h-5 w-5 ${isDark ? 'text-white' : 'text-gray-800'}`}
+                      <Info
+                        size={20}
+                        color={isDark ? '$white1' : '$gray11'}
                       />
                     }
                     placeholder="Username"
@@ -182,8 +182,9 @@ export default function EditProfileScreen({ user }: { user: User }) {
                   />
                   <FormInputWithIcon
                     icon={
-                      <MailOutline
-                        className={`h-5 w-5 ${isDark ? 'text-white' : 'text-gray-800'}`}
+                      <Mail
+                        size={20}
+                        color={isDark ? '$white1' : '$gray11'}
                       />
                     }
                     placeholder="Email"
@@ -198,7 +199,8 @@ export default function EditProfileScreen({ user }: { user: User }) {
                   <FormInputWithIcon
                     icon={
                       <XLogo
-                        className={`h-5 w-5 ${isDark ? 'text-white' : 'text-gray-800'}`}
+                        size={20}
+                        color={isDark ? '$white1' : '$gray11'}
                       />
                     }
                     placeholder="X username"
@@ -212,7 +214,8 @@ export default function EditProfileScreen({ user }: { user: User }) {
                   <FormInputWithIcon
                     icon={
                       <Instagram
-                        className={`h-5 w-5 ${isDark ? 'text-white' : 'text-gray-800'}`}
+                        size={20}
+                        color={isDark ? '$white1' : '$gray11'}
                       />
                     }
                     placeholder="Instagram username"
@@ -224,35 +227,43 @@ export default function EditProfileScreen({ user }: { user: User }) {
                     autoCapitalize="none"
                   />
 
-                  <View className="mt-4 flex flex-row justify-between space-x-4">
-                    <Pressable
+                  <XStack marginTop="$4" flexDirection="row" justifyContent="space-between" gap="$4">
+                    <TamaguiButton
                       onPress={() => back()}
-                      className={`flex-1 items-center justify-center rounded-md px-3.5 py-2.5 ${isDark ? 'bg-gray-800' : 'bg-gray-200'}`}
+                      flex={1}
+                      alignItems="center"
+                      justifyContent="center"
+                      borderRadius="$2"
+                      paddingHorizontal="$3.5"
+                      paddingVertical="$2.5"
+                      backgroundColor={isDark ? '$gray8' : '$gray5'}
                       disabled={loading}
+                      borderWidth={0}
                     >
                       <P
-                        className={`font-semibold ${isDark ? 'text-white' : 'text-gray-800'}`}
+                        fontWeight="600"
+                        color={isDark ? '$white1' : '$gray11'}
                       >
                         Cancel
                       </P>
-                    </Pressable>
+                    </TamaguiButton>
                     <Button
                       onPress={() => handleSubmit()}
                       text="Update Profile"
                       loading={loading}
-                      className="flex-1"
+                      flex={1}
                       disabled={!isValid || loading}
                     />
-                  </View>
-                </View>
+                  </XStack>
+                </YStack>
               )}
             </Formik>
-          </View>
+          </YStack>
 
-          <View className="mb-20 w-full max-w-lg">
+          <YStack marginBottom="$20" width="100%" maxWidth={512}>
             <LogOutBtn />
-          </View>
-        </View>
+          </YStack>
+        </YStack>
       </ScrollView>
     </SafeAreaView>
   )

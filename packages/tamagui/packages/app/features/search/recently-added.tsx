@@ -1,5 +1,6 @@
 'use client'
-import { FlatList, View } from 'react-native'
+import { FlatList } from 'react-native'
+import { YStack } from 'tamagui'
 import { BeatListEntry } from 'app/ui/beat-list-entry'
 import { P, ActivityIndicator } from 'app/design/typography'
 import { algoliaClient, indexNames } from 'app/api/algolia'
@@ -91,18 +92,18 @@ export default function RecentlyAddedList() {
   // Loading state
   if (loading) {
     return (
-      <View className="flex h-40 items-center justify-center">
+      <YStack height={160} alignItems="center" justifyContent="center">
         <ActivityIndicator size="large" />
-      </View>
+      </YStack>
     )
   }
 
   // Empty state
   if (!entries.length) {
     return (
-      <View className="flex items-center justify-center py-8">
-        <P className="text-[--text-secondary-color]">No recently added MFTs</P>
-      </View>
+      <YStack alignItems="center" justifyContent="center" paddingVertical="$8">
+        <P color="$color11">No recently added MFTs</P>
+      </YStack>
     )
   }
 
@@ -111,14 +112,14 @@ export default function RecentlyAddedList() {
     if (!loadingMore) return null
 
     return (
-      <View className="py-4 items-center">
+      <YStack paddingVertical="$4" alignItems="center">
         <ActivityIndicator size="small" />
-      </View>
+      </YStack>
     )
   }
 
   return (
-    <View className="flex-1">
+    <YStack flex={1}>
       <FlatList
         data={entries}
         keyExtractor={(item) => item.id!}
@@ -131,6 +132,6 @@ export default function RecentlyAddedList() {
         onEndReachedThreshold={0.3}
         ListFooterComponent={renderFooter}
       />
-    </View>
+    </YStack>
   )
 }

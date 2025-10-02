@@ -1,18 +1,21 @@
 'use client'
 import Svg, { Path, G } from 'react-native-svg'
 
+type Props = {
+  size?: number
+  color?: string
+}
 
-function Icon({ size = 24 }) {
+function Icon({ size = 24, color = 'currentColor' }: Props) {
   return (
     <Svg
       viewBox="0 0 24 24"
       width={size}
       height={size}
-      className="text-[--text-color]"
     >
       <G
         fill="none"
-        stroke="currentColor"
+        stroke={color}
         strokeLinecap="round"
         strokeLinejoin="round"
       >

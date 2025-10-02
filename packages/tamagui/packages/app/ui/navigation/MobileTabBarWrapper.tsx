@@ -1,7 +1,8 @@
 'use client'
 import MainTabBar from './MainTabBar'
 import { useCallback, useEffect, useMemo } from 'react'
-import { View, useWindowDimensions } from 'react-native'
+import { useWindowDimensions } from 'react-native'
+import { YStack } from 'tamagui'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
 import { useAppNavigation } from 'app/hooks/navigation'
 import Animated, {
@@ -107,12 +108,20 @@ export function MobileTabBarWrapper() {
   return (
     <MotiView
       style={[
-        { justifyContent: 'space-between', display: 'flex' },
+        { 
+          justifyContent: 'space-between', 
+          display: 'flex',
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          zIndex: 10,
+          borderTopWidth: 2,
+        },
         draggableStyle,
       ]}
-      className={`absolute bottom-0 left-0 right-0 z-10 flex border-t-2 border-[--border-color] bg-[--bg-color] ${shouldShowPlayer ? 'flex':'md:!hidden'}`}
     >
-      <View className="flex-1">
+      <YStack flex={1}>
         {shouldShowPlayer ? (
           <>
             <MiniPlayerBar
@@ -125,10 +134,10 @@ export function MobileTabBarWrapper() {
             />
           </>
         ) : null}
-      </View>
+      </YStack>
 
-      <MotiView className="md:hidden" style={[{ zIndex: 10 }, tabBarStyle]}>
-        <MainTabBar currentTabName={currentTabName} />
+      <MotiView style={[{ zIndex: 10 }]}>
+        <MainTabBar currentTabName={currentTabName} display={{ md: 'none' }} />
       </MotiView>
     </MotiView>
   )

@@ -1,19 +1,23 @@
 import * as React from 'react'
 import Svg, { Circle, Path } from 'react-native-svg'
 
-function SvgComponent(props) {
+type Props = {
+  size?: number
+  color?: string
+}
+
+function SvgComponent({ size = 24, color = 'currentColor', ...props }: Props) {
   return (
     <Svg
       xmlns="http://www.w3.org/2000/svg"
-      width={24}
-      height={24}
+      width={size}
+      height={size}
       viewBox="0 0 24 24"
       fill="none"
-      stroke="currentColor"
+      stroke={color}
       strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="feather feather-arrow-up-circle"
       {...props}
     >
       <Circle cx={12} cy={12} r={10} />

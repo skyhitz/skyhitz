@@ -1,9 +1,14 @@
 'use client'
 import Svg, { Path } from 'react-native-svg'
 
-function Check({ className = '', size = 24, color = 'currentColor' }) {
+type Props = {
+  size?: number
+  color?: string
+}
+
+function Check({ size = 24, color = 'currentColor' }: Props) {
   return (
-    <Svg viewBox="0 0 24 24" width={size} height={size} className={className}>
+    <Svg viewBox="0 0 24 24" width={size} height={size}>
       <Path
         d="M5 13L9 17L19 7"
         stroke={color}

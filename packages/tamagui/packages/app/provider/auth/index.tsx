@@ -4,7 +4,7 @@ import { ReactNode, useEffect, useState } from 'react'
 import { useUserStore } from 'app/state/user'
 import { AuthService } from 'app/services/auth'
 import { ActivityIndicator } from 'app/design/typography'
-import { View } from 'react-native'
+import { YStack } from 'tamagui'
 import { useRouter } from 'solito/navigation'
 import { trackSignIn, trackSignOut } from 'app/utils/analytics'
 
@@ -82,9 +82,9 @@ export function withAuth<P extends object>(Component: React.ComponentType<P>) {
     
     if (isLoading) {
       return (
-        <View className="flex-1 items-center justify-center">
+        <YStack flex={1} alignItems="center" justifyContent="center">
           <ActivityIndicator size="large" />
-        </View>
+        </YStack>
       )
     }
     

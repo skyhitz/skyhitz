@@ -3,11 +3,12 @@
  * Uses the unified player store with adapter pattern
  */
 import { useCallback, useRef, useState, useEffect } from 'react'
-import { View, Platform } from 'react-native'
+import { Platform } from 'react-native'
 import { imageUrlMedium } from 'app/utils/entry'
 import { SolitoImage } from 'app/design/solito-image'
 import { PlaybackState, usePlayerStore } from 'app/state/player'
 import { logPlayerError as logPlayerErrorUtil } from 'app/utils/player-logging'
+import { YStack } from 'tamagui'
 
 // Web-specific imports
 import dynamic from 'next/dynamic'
@@ -25,18 +26,26 @@ function Poster() {
   const posterUri = imageUrlMedium(entry?.imageUrl || '')
 
   return (
-    <View className="absolute aspect-square max-h-[50vh] w-screen items-center justify-center md:max-w-[3.5rem] md:rounded-md md:mx-4">
+    <YStack 
+      position="absolute"
+      aspectRatio={1}
+      maxHeight="50vh"
+      width="100vw"
+      alignItems="center"
+      justifyContent="center"
+      md={{ maxWidth: 56, borderRadius: '$2', marginHorizontal: '$4' }}
+    >
       {!!entry?.imageUrl && (
         <SolitoImage
           fill
           src={posterUri}
-          className="aspect-square md:rounded-md"
           alt="player"
           contentFit="cover"
           sizes="(max-width: 768px) 100vw"
+          style={{ aspectRatio: 1 }}
         />
       )}
-    </View>
+    </YStack>
   )
 }
 
@@ -239,10 +248,14 @@ function WebVideoPlayer() {
 
   return (
     <>
-      <View
-        className={`aspect-square max-h-[50vh] w-screen items-center justify-center md:max-w-[3.5rem] md:rounded-md md:mx-4 ${
-          isReady ? 'opacity-100' : 'opacity-0'
-        }`}
+      <YStack
+        aspectRatio={1}
+        maxHeight="50vh"
+        width="100vw"
+        alignItems="center"
+        justifyContent="center"
+        opacity={isReady ? 1 : 0}
+        md={{ maxWidth: 56, borderRadius: '$2', marginHorizontal: '$4' }}
       >
         {/* Render poster only for audio-only sources to avoid covering video */}
         {isAudioOnly ? <Poster /> : null}
@@ -332,7 +345,7 @@ function WebVideoPlayer() {
             )
           })()
         )}
-      </View>
+      </YStack>
     </>
   )
 }
@@ -379,7 +392,14 @@ function NativeVideoPlayer() {
 
   // Placeholder implementation
   return (
-    <View className="aspect-square max-h-[50vh] w-screen items-center justify-center md:max-w-[3.5rem] md:rounded-md">
+    <YStack 
+      aspectRatio={1}
+      maxHeight="50vh"
+      width="100vw"
+      alignItems="center"
+      justifyContent="center"
+      md={{ maxWidth: 56, borderRadius: '$2' }}
+    >
       <Poster />
       {/* 
       <Video
@@ -392,7 +412,7 @@ function NativeVideoPlayer() {
         style={{ width: '100%', height: '100%' }}
       />
       */}
-    </View>
+    </YStack>
   )
 }
 

@@ -1,34 +1,33 @@
 'use client'
-import { View, StyleProp, ViewStyle, Pressable } from 'react-native'
+import { YStack, XStack, Button, Circle, GetProps } from 'tamagui'
 import { useCallback } from 'react'
-import Search from 'app/ui/icons/search'
+import { Search, User } from '@tamagui/lucide-icons'
 import { useUserStore } from 'app/state/user'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
-import User from 'app/ui/icons/user'
 import { SkyhitzLogo } from 'app/ui/logo'
 import {
   useContentNavigation,
   useProfileNavigation,
 } from 'app/hooks/navigation'
 
-const LinkStyle: StyleProp<ViewStyle> = {
+const linkProps = {
   flex: 1,
   flexBasis: 0,
-  padding: 10,
-  alignItems: 'center',
-  justifyContent: 'center',
+  padding: '$2.5',
+  alignItems: 'center' as const,
+  justifyContent: 'center' as const,
   maxHeight: 64,
+  backgroundColor: 'transparent',
 }
 
 export default function MainTabBar({
   column,
   currentTabName,
-  className,
+  ...props
 }: {
   column?: boolean
   currentTabName: string
-  className?: string
-}) {
+} & GetProps<typeof XStack>) {
   const isActive = useCallback(
     (tabName: string): boolean => {
       return currentTabName === tabName
@@ -38,64 +37,47 @@ export default function MainTabBar({
 
   const insets = useSafeArea()
   const { user } = useUserStore()
-  const rootViewStyle = column ? 'flex-col' : 'flex-row border-t-2 border-white'
+  const Container = column ? YStack : XStack
 
   // Get our navigation hooks
   const { goToSearch, goToChart } = useContentNavigation()
   const { goToMyProfile } = useProfileNavigation()
 
   return (
-    <View
-      className={`flex ${rootViewStyle} ${className}`}
-      style={{
-        paddingBottom: insets.bottom,
-        backgroundColor: 'var(--bg-color)',
-      }}
+    <Container
+      paddingBottom={insets.bottom}
+      backgroundColor="$background"
+      borderTopWidth={column ? 0 : 2}
+      borderColor="$white1"
+      {...props}
     >
-      <Pressable style={LinkStyle} onPress={goToSearch}>
+      <Button {...linkProps} onPress={goToSearch}>
         <Search
           size={28}
-          className={`${
-            isActive('search')
-              ? 'stroke-[--primary-color]'
-              : 'stroke-[--text-secondary-color]'
-          }`}
+          color={isActive('search') ? '$blue9' : '$color11'}
         />
-      </Pressable>
+      </Button>
 
-      <Pressable style={LinkStyle} onPress={goToChart}>
-        <View
-          style={{
-            borderWidth: 2,
-            borderRadius: 9999,
-            width: 32,
-            height: 32,
-            alignItems: 'center',
-            justifyContent: 'center',
-            paddingBottom: 0,
-          }}
-          className={`${
-            isActive('chart')
-              ? 'border-[--primary-color]'
-              : 'border-[--text-secondary-color]'
-          }`}
+      <Button {...linkProps} onPress={goToChart}>
+        <Circle
+          size={32}
+          borderWidth={2}
+          borderColor={isActive('chart') ? '$blue9' : '$color11'}
+          alignItems="center"
+          justifyContent="center"
         >
           <SkyhitzLogo size={20} id={`main-nav-${column ? 'column' : 'row'}`} />
-        </View>
-      </Pressable>
+        </Circle>
+      </Button>
 
       {user && (
-        <Pressable style={LinkStyle} onPress={goToMyProfile}>
+        <Button {...linkProps} onPress={goToMyProfile}>
           <User
             size={28}
-            className={`${
-              isActive('profile')
-                ? 'stroke-[--primary-color]'
-                : 'stroke-[--text-secondary-color]'
-            }`}
+            color={isActive('profile') ? '$blue9' : '$color11'}
           />
-        </Pressable>
+        </Button>
       )}
-    </View>
+    </Container>
   )
 }

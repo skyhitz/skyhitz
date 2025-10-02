@@ -5870,13 +5870,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/prop-types@npm:*":
-  version: 15.7.15
-  resolution: "@types/prop-types@npm:15.7.15"
-  checksum: 10/31aa2f59b28f24da6fb4f1d70807dae2aedfce090ec63eaf9ea01727a9533ef6eaf017de5bff99fbccad7d1c9e644f52c6c2ba30869465dd22b1a7221c29f356
-  languageName: node
-  linkType: hard
-
 "@types/react-native@npm:^0.73.0":
   version: 0.73.0
   resolution: "@types/react-native@npm:0.73.0"
@@ -5886,13 +5879,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/react@npm:^18.2.0":
-  version: 18.3.25
-  resolution: "@types/react@npm:18.3.25"
+"@types/react@npm:~19.0.10":
+  version: 19.0.14
+  resolution: "@types/react@npm:19.0.14"
   dependencies:
-    "@types/prop-types": "npm:*"
     csstype: "npm:^3.0.2"
-  checksum: 10/1b806cc90207558bd96384f2a74e8a457c6211bd71b22d74ed7efb745e4e1b4fe7aea59eb906b8cf96571f9e0ab4fdb89e00395a082a361cfd7a8baf50bcb9c1
+  checksum: 10/caf4572aae4f7efd049138bc4917f465a8e00abb362fcf6e6f82c9ed88fc42555109f0a3be7a738ed5efbdd51b0f0a4256f7d5141545f29fb7dc31b8e872aa4b
   languageName: node
   linkType: hard
 
@@ -6688,7 +6680,7 @@ __metadata:
     "@tamagui/lucide-icons": "npm:^1.135.0"
     "@tamagui/shorthands": "npm:^1.135.0"
     "@tamagui/themes": "npm:^1.135.0"
-    "@types/react": "npm:^18.2.0"
+    "@types/react": "npm:~19.0.10"
     "@types/react-native": "npm:^0.73.0"
     algoliasearch: "npm:^5.23.4"
     expo-constants: "npm:~17.1.6"
@@ -13071,6 +13063,7 @@ __metadata:
   resolution: "next-app@workspace:apps/next"
   dependencies:
     "@tamagui/config": "npm:^1.135.0"
+    "@tamagui/lucide-icons": "npm:^1.135.0"
     "@tamagui/next-plugin": "npm:^1.135.0"
     "@tamagui/next-theme": "npm:^1.135.0"
     "@types/node": "npm:^20.14.1"

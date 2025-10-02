@@ -1,5 +1,5 @@
 'use client'
-import { View } from 'react-native'
+import { YStack, XStack } from 'tamagui'
 import { useMemo } from 'react'
 import { usePathname } from 'solito/navigation'
 import MainTabBar from 'app/ui/navigation/MainTabBar'
@@ -16,24 +16,24 @@ export function MainNavigation({
   const currentTabName = useMemo(() => route.split('/').at(-1) || '', [route])
 
   return (
-    <View className="flex h-[100dvh] flex-1 overflow-hidden bg-[--bg-color]">
+    <YStack height="100dvh" flex={1} overflow="hidden" backgroundColor="$background">
       {/* Top Navigation - hidden on mobile */}
-      <Navbar className="hidden md:flex" />
+      <Navbar display={{ xs: 'none', md: 'flex' }} />
 
-      <View className="flex flex-1 flex-row">
+      <XStack flex={1} flexDirection="row">
         {/* Side Navigation - hidden on mobile - always show regardless of login status */}
         <MainTabBar
-          className="hidden md:flex"
+          display={{ xs: 'none', md: 'flex' }}
           currentTabName={currentTabName}
           column
         />
 
         {/* Main Content */}
-        <View className="flex-1 overflow-auto">{children}</View>
-      </View>
+        <YStack flex={1} overflow="auto">{children}</YStack>
+      </XStack>
 
       {/* Bottom Navigation - visible only on mobile */}
       <MobileTabBarWrapper />
-    </View>
+    </YStack>
   )
 }

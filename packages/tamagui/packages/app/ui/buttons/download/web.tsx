@@ -1,6 +1,4 @@
 'use client'
-// Import from our typed components file instead of directly from react-native
-import { Pressable } from 'react-native'
 import { Entry } from 'app/api/graphql/types'
 import { videoSrc } from 'app/utils/entry'
 import { MICRO_SPEND_DOWNLOAD_XLM } from 'app/constants/constants'
@@ -14,14 +12,14 @@ import { useQuery } from '@apollo/client'
 import { USER_CREDITS } from 'app/api/graphql/operations'
 import { useTopUpModalStore } from 'app/state/topup'
 import { trackDownload } from 'app/utils/analytics'
+import { Button, GetProps } from 'tamagui'
 
-interface Props {
+type Props = GetProps<typeof Button> & {
   size?: number
-  className?: string
   entry: Entry
 }
 
-const DownloadBtn = ({ size = 24, className = '', entry }: Props) => {
+const DownloadBtn = ({ size = 24, entry, ...props }: Props) => {
   const user = useUserStore((s) => s.user)
   const { push } = useRouter()
   const [invest] = useMutation(INVEST_ENTRY)
@@ -65,9 +63,15 @@ const DownloadBtn = ({ size = 24, className = '', entry }: Props) => {
   }
 
   return (
-    <Pressable onPress={handleDownload} className={className}>
+    <Button 
+      onPress={handleDownload}
+      backgroundColor="transparent"
+      padding="$0"
+      borderWidth={0}
+      {...props}
+    >
       <DownloadIcon size={size} />
-    </Pressable>
+    </Button>
   )
 }
 

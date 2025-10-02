@@ -1,7 +1,7 @@
 'use client'
 import * as React from 'react'
-import { View, Text, Pressable } from 'react-native'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
+import { YStack, XStack, Text, Button } from 'tamagui'
 
 interface ToastProps {
   message: string
@@ -14,25 +14,31 @@ const Toast = ({ message, type, onDismiss }: ToastProps) => {
   const isError = type === 'error'
   const isSuccess = type === 'success'
 
-  // Use theme CSS variables instead of hardcoded colors
+  // Use theme colors instead of hardcoded colors
   const bgColor = isError
-    ? 'bg-[--error-bg-color]'
+    ? '$red9'
     : isSuccess
-    ? 'bg-[--success-bg-color]'
-    : 'bg-[--primary-color]'
+    ? '$green9'
+    : '$blue9'
 
   return (
-    <View
-      className={`absolute top-0 left-0 right-0 z-50 px-4 ${bgColor}`}
-      style={{ paddingTop: insets.top }}
+    <YStack
+      position="absolute"
+      top={0}
+      left={0}
+      right={0}
+      zIndex={50}
+      paddingHorizontal="$4"
+      backgroundColor={bgColor}
+      paddingTop={insets.top}
     >
-      <View className="flex-row items-center justify-between py-4">
-        <Text className="flex-1 text-white font-medium">{message}</Text>
-        <Pressable onPress={onDismiss}>
-          <Text className="text-white ml-2">✕</Text>
-        </Pressable>
-      </View>
-    </View>
+      <XStack flexDirection="row" alignItems="center" justifyContent="space-between" paddingVertical="$4">
+        <Text flex={1} color="$white1" fontWeight="500">{message}</Text>
+        <Button onPress={onDismiss} backgroundColor="transparent" padding="$0" borderWidth={0}>
+          <Text color="$white1" marginLeft="$2">✕</Text>
+        </Button>
+      </XStack>
+    </YStack>
   )
 }
 

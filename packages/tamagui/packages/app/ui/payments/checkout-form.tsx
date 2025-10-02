@@ -15,7 +15,7 @@ import {
 import { Config } from 'app/config'
 import { P } from 'app/design/typography'
 import { Button } from 'app/design/button'
-import { View, TextInput, Platform } from 'react-native'
+import { TextInput, Platform } from 'react-native'
 import StyledTextInput from 'app/features/accounts/styledTextInput'
 import { Formik, FormikProps } from 'formik'
 import { topUpFormSchema } from 'app/validation'
@@ -23,6 +23,7 @@ import { useCreatePaymentIntentMutation } from 'app/api/graphql/mutations'
 import CompletePage from './complete-page'
 import { trackTopUp } from 'app/utils/analytics'
 import { useUserStore } from 'app/state/user'
+import { YStack, XStack } from 'tamagui'
 
 type FormFields = {
   email: string
@@ -215,7 +216,7 @@ const InnerCheckoutForm = ({
         isValid,
         handleSubmit,
       }: FormikProps<FormFields>) => (
-        <View className="mb-4 bg-white p-6 rounded-lg">
+        <YStack marginBottom="$4" backgroundColor="$white1" padding="$6" borderRadius="$3">
           <StyledTextInput
             value={values.email}
             onChangeText={handleChange('email')}
@@ -229,9 +230,9 @@ const InnerCheckoutForm = ({
             editable={!isLoading}
             autoCapitalize="none"
             inputMode="email"
-            className="mb-3 mt-1 block w-full rounded-md border border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            marginBottom="$3"
+            marginTop="$1"
             placeholderTextColor="grey"
-            textInputClassName="!text-gray-900"
           />
           <StyledTextInput
             value={values.amount.toString()}
@@ -250,46 +251,46 @@ const InnerCheckoutForm = ({
             ref={amountInputRef}
             editable={!isLoading}
             autoCapitalize="none"
-            className="mt-1 block w-full rounded-md border border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            marginTop="$1"
             inputMode="numeric"
             placeholderTextColor="grey"
-            textInputClassName="!text-gray-900"
           />
-          <View className="mt-4 h-auto min-h-[1.25rem] w-full flex-row">
-            <P className="text-red w-full text-center text-sm">
+          <XStack marginTop="$4" height="auto" minHeight={20} width="100%" flexDirection="row">
+            <P color="$red9" width="100%" textAlign="center" fontSize="$3">
               {(touched.email && errors.email) ||
                 (touched.amount && errors.amount) ||
                 message}
             </P>
-          </View>
+          </XStack>
 
-          <P className="block py-2 text-sm font-medium text-gray-700">
+          <P display="block" paddingVertical="$2" fontSize="$3" fontWeight="500" color="$gray10">
             USD Amount (${values.amount})
           </P>
 
-          <P className="block py-2 text-sm font-medium text-gray-700">
+          <P display="block" paddingVertical="$2" fontSize="$3" fontWeight="500" color="$gray10">
             Processing Fee: ${getFee(values.amount).toFixed(2)}
           </P>
 
-          <P className="block py-2 text-sm font-medium text-gray-700">
+          <P display="block" paddingVertical="$2" fontSize="$3" fontWeight="500" color="$gray10">
             Total XLM: {getTotalXLM(values.amount).toFixed(2)}
           </P>
 
-          <P className="block py-2 text-sm font-bold text-gray-700">
+          <P display="block" paddingVertical="$2" fontSize="$3" fontWeight="bold" color="$gray10">
             +1.5% International fee for non-USD cards.
           </P>
 
           {Platform.OS === 'web' && (
             <PaymentElement
               id="payment-element"
-              className="mt-4"
               options={paymentElementOptions}
             />
           )}
 
           <Button
-            wrapperClassName="w-full my-4"
-            className="text-center bg-primary hover:bg-primary-dark"
+            width="100%"
+            marginVertical="$4"
+            textAlign="center"
+            backgroundColor="$blue9"
             disabled={
               isLoading ||
               !stripe ||
@@ -301,7 +302,7 @@ const InnerCheckoutForm = ({
           >
             {isLoading ? 'Loading...' : 'Top Up'}
           </Button>
-        </View>
+        </YStack>
       )}
     </Formik>
   )

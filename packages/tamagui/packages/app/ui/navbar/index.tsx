@@ -3,9 +3,9 @@ import { P } from 'app/design/typography'
 import { SkyhitzLogo } from 'app/ui/logo'
 import { useUserState } from 'app/state/user/hooks'
 import { TextLink } from 'solito/link'
-import { XStack, YStack, Button } from 'tamagui'
+import { XStack, YStack, Button, GetProps } from 'tamagui'
 
-const Navbar = ({ className }: { className?: string }) => {
+const Navbar = (props: GetProps<typeof XStack>) => {
   const { user } = useUserState()
   const userLoading = false // We'll implement loading state later if needed
 
@@ -17,7 +17,7 @@ const Navbar = ({ className }: { className?: string }) => {
       alignItems="center"
       justifyContent="space-between"
       padding="$3"
-      className={className}
+      {...props}
     >
       <XStack flexDirection="row">
         <TextLink href="/">

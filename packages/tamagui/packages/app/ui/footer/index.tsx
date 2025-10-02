@@ -3,9 +3,9 @@ import { A, H3, P } from 'app/design/typography'
 import { SkyhitzLogo } from 'app/ui/logo'
 import { footer } from 'app/constants/content'
 import ThemeSwitcher from '../ThemeSwitcher'
-import { YStack, XStack } from 'tamagui'
+import { YStack, XStack, GetProps } from 'tamagui'
 
-export default function Footer({ className }: { className?: string }) {
+export default function Footer(props: GetProps<typeof YStack>) {
   const { companyName, sections } = footer
   return (
     <YStack
@@ -15,7 +15,7 @@ export default function Footer({ className }: { className?: string }) {
       paddingHorizontal="$6"
       paddingBottom="$12"
       lg={{ paddingHorizontal: '$8' }}
-      className={className}
+      {...props}
     >
       <XStack xl={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '$8' }}>
         <YStack />

@@ -3,7 +3,6 @@ import * as React from 'react'
 import Svg, { Path } from 'react-native-svg'
 
 export default function PlayIcon({
-  className,
   size = 24,
   ...props
 }: React.ComponentProps<typeof Svg> & { size?: number }) {
@@ -17,7 +16,6 @@ export default function PlayIcon({
       strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={className}
       {...props}
     >
       <Path d="M8 5.14v14l11-7-11-7z" fill="currentColor" stroke="none" />

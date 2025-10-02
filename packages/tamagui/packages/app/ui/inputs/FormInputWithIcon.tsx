@@ -8,12 +8,13 @@ type FormInputWithIconProps = TextInputProps & {
   name?: string
   label?: string
   icon?: React.ReactNode
-  className?: string
-  inputClassName?: string
   error?: string
   value?: string
   onChangeText?: (text: string) => void
   onBlur?: (e: any) => void
+  marginVertical?: any
+  marginTop?: any
+  marginBottom?: any
 }
 
 const StyledInput = styled(Input, {
@@ -45,9 +46,10 @@ export function FormInputWithIcon({
   name,
   label,
   icon,
-  className = '',
-  inputClassName = '',
   error: propError,
+  marginVertical,
+  marginTop,
+  marginBottom,
   ...props
 }: FormInputWithIconProps) {
   // Handle both direct error prop and Formik integration
@@ -59,7 +61,7 @@ export function FormInputWithIcon({
   const errorMessage = propError || (meta?.touched ? meta?.error : undefined)
 
   return (
-    <YStack marginBottom="$4" className={className}>
+    <YStack marginBottom={marginBottom || "$4"} marginTop={marginTop} marginVertical={marginVertical}>
       {label && (
         <Text
           marginBottom="$1"
@@ -98,7 +100,6 @@ export function FormInputWithIcon({
           placeholderTextColor="$gray9"
           hasError={hasError}
           hasIcon={!!icon}
-          className={inputClassName}
           {...props}
         />
       </XStack>

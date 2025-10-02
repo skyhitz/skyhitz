@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { PostScreen } from './screen'
-import { View, ActivityIndicator } from 'react-native'
-import { P } from 'app/design/typography'
+import { YStack } from 'tamagui'
+import { P, ActivityIndicator } from 'app/design/typography'
 import { Navbar } from 'app/ui/navbar/Navbar'
 import Footer from 'app/ui/footer'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
@@ -50,43 +50,41 @@ export function PostScreenNative() {
   // Show loading state
   if (loading) {
     return (
-      <View
-        className="flex-1 items-center justify-center"
-        style={{
-          paddingTop: insets.top,
-          paddingBottom: insets.bottom,
-          backgroundColor: 'var(--bg-color)',
-        }}
+      <YStack
+        flex={1}
+        alignItems="center"
+        justifyContent="center"
+        paddingTop={insets.top}
+        paddingBottom={insets.bottom}
+        backgroundColor="$background"
       >
         <Navbar />
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="var(--primary-color)" />
-          <P className="mt-4 text-center">Loading post...</P>
-        </View>
+        <YStack flex={1} alignItems="center" justifyContent="center">
+          <ActivityIndicator size="large" />
+          <P marginTop="$4" textAlign="center">Loading post...</P>
+        </YStack>
         <Footer />
-      </View>
+      </YStack>
     )
   }
 
   // Show error message
   if (error || !post) {
     return (
-      <View
-        className="flex-1"
-        style={{
-          paddingTop: insets.top,
-          paddingBottom: insets.bottom,
-          backgroundColor: 'var(--bg-color)',
-        }}
+      <YStack
+        flex={1}
+        paddingTop={insets.top}
+        paddingBottom={insets.bottom}
+        backgroundColor="$background"
       >
         <Navbar />
-        <View className="flex-1 items-center justify-center p-4">
-          <P className="text-center text-red-500 mb-4">
+        <YStack flex={1} alignItems="center" justifyContent="center" padding="$4">
+          <P textAlign="center" color="$red9" marginBottom="$4">
             {error || 'Post not found'}
           </P>
-        </View>
+        </YStack>
         <Footer />
-      </View>
+      </YStack>
     )
   }
 

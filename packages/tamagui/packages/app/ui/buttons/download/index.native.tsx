@@ -3,15 +3,17 @@ import { useToast } from 'app/provider/toast'
 import { DownloadButtonProps } from './types'
 import { BaseDownloadButton } from './base'
 import { useState } from 'react'
-import { View, ActivityIndicator, Platform } from 'react-native'
+import { Platform } from 'react-native'
+import { YStack } from 'tamagui'
+import { ActivityIndicator } from 'app/design/typography'
 
 // Safely check for FileSystem support without importing it directly
 // This prevents crashes in Expo Go during component initialization
 
 const DownloadBtn = ({
   size = 24,
-  className = '',
   entry,
+  ...props
 }: DownloadButtonProps) => {
   const toast = useToast()
   const [downloading, setDownloading] = useState(false)
@@ -124,22 +126,20 @@ const DownloadBtn = ({
   return (
     <BaseDownloadButton
       size={size}
-      className={className}
       entry={entry}
       onPress={handleDownload}
       disabled={downloading}
+      {...props}
     >
       {downloading ? (
-        <View
-          style={{
-            width: size,
-            height: size,
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}
+        <YStack
+          width={size}
+          height={size}
+          justifyContent="center"
+          alignItems="center"
         >
-          <ActivityIndicator size="small" color="white" />
-        </View>
+          <ActivityIndicator size="small" />
+        </YStack>
       ) : null}
     </BaseDownloadButton>
   )

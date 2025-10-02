@@ -1,5 +1,5 @@
 'use client'
-import { View } from 'react-native'
+import { YStack } from 'tamagui'
 import { FlatList } from 'react-native'
 import { BeatListEntry } from 'app/ui/beat-list-entry'
 import { Entry } from 'app/api/graphql/types'
@@ -22,9 +22,9 @@ function ListEmptyComponent({
   if (loading) return <CollectionSkeleton duplicates={3} />
 
   return (
-    <View className="mt-8 flex flex-1 items-center justify-center">
+    <YStack marginTop="$8" flex={1} alignItems="center" justifyContent="center">
       <P>{emptyStateText}</P>
-    </View>
+    </YStack>
   )
 }
 
@@ -34,7 +34,7 @@ export default function ProfileBeatsList({
   loading,
 }: ProfileBeatsListProps) {
   return (
-    <View className="mx-auto w-full max-w-6xl flex-1 px-5">
+    <YStack marginHorizontal="auto" width="100%" maxWidth="$6xl" flex={1} paddingHorizontal="$5">
       <FlatList
         keyExtractor={(item) => item.id!}
         data={beats}
@@ -48,6 +48,6 @@ export default function ProfileBeatsList({
           />
         }
       />
-    </View>
+    </YStack>
   )
 }

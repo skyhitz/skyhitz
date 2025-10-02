@@ -1,12 +1,12 @@
 'use client'
 // Shared base component for DownloadBtn
-import { Pressable } from 'react-native'
-import DownloadIcon from 'app/ui/icons/download'
+import { Button } from 'tamagui'
+import { Download } from '@tamagui/lucide-icons'
 import { DownloadButtonProps } from './types'
 
 export const BaseDownloadButton = ({
   size = 24,
-  className = '',
+  marginBottom,
   onPress,
   disabled = false,
   children,
@@ -16,8 +16,8 @@ export const BaseDownloadButton = ({
   children?: React.ReactNode
 }) => {
   return (
-    <Pressable onPress={onPress} className={className} disabled={disabled}>
-      {children || <DownloadIcon size={size} />}
-    </Pressable>
+    <Button onPress={onPress} marginBottom={marginBottom} disabled={disabled} backgroundColor="transparent" padding="$0">
+      {children || <Download size={size} />}
+    </Button>
   )
 }

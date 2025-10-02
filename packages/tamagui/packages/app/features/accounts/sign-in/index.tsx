@@ -19,7 +19,6 @@ export function SignIn() {
       style={{ flex: 1 }}
     >
       <GradientBackground
-        className="from-blue-start via-blue-middle to-blue-end absolute inset-0 flex h-screen items-center justify-center bg-gradient-to-r from-5% via-35% to-95%"
         // native compatibility
         style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
       >

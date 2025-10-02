@@ -1,25 +1,25 @@
 'use client'
-import { View } from 'react-native'
+import { YStack, GetProps } from 'tamagui'
 import { SharedValue } from 'react-native-reanimated'
 import Animated from 'react-native-reanimated'
 
-type SkeletonContainerProps = {
-  className: string
+type SkeletonContainerProps = GetProps<typeof YStack> & {
   sharedValue: SharedValue<number>
 }
 
 export function SkeletonContainer({
-  className,
   sharedValue,
+  ...props
 }: SkeletonContainerProps) {
   return (
-    <View className={`overflow-hidden rounded-md bg-gray-800 ${className}`}>
+    <YStack overflow="hidden" borderRadius="$2" backgroundColor="$gray8" {...props}>
       <Animated.View
-        className="h-full w-[300%] bg-gradient-to-r from-gray-800 via-gray-700 to-gray-800"
         style={{
+          height: '100%',
+          width: '300%',
           transform: [{ translateX: sharedValue }],
         }}
       />
-    </View>
+    </YStack>
   )
 }

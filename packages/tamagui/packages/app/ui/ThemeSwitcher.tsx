@@ -1,7 +1,6 @@
 'use client'
 import { useTheme } from 'app/state/theme/useTheme'
-import Moon from 'app/ui/icons/moon'
-import Sun from 'app/ui/icons/sun'
+import { Moon, Sun } from '@tamagui/lucide-icons'
 import { Button } from 'tamagui'
 
 export default function ThemeSwitcher() {
@@ -19,9 +18,9 @@ export default function ThemeSwitcher() {
       accessibilityRole="button"
     >
       {isDark ? (
-        <Moon color="$color12" width={20} height={20} />
+        <Moon color="$color12" size={20} />
       ) : (
-        <Sun color="$color12" width={20} height={20} />
+        <Sun color="$color12" size={20} />
       )}
     </Button>
   )

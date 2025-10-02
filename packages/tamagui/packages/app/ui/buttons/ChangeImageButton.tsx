@@ -1,9 +1,10 @@
 'use client'
 import * as React from 'react'
-import { Pressable, View, Text, Platform } from 'react-native'
+import { Platform } from 'react-native'
 import { ChangeImage } from 'app/types'
 import { imageSrc } from 'app/utils/entry'
 import { SolitoImage } from 'app/design/solito-image'
+import { YStack, Button, Text } from 'tamagui'
 
 type ChangeImageButtonProps = {
   onImageSelected: (image: ChangeImage) => void
@@ -48,30 +49,37 @@ export function ChangeImageButton({
   }
 
   return (
-    <View className="relative h-32 w-32 overflow-hidden rounded-md bg-gray-800">
+    <YStack position="relative" height={128} width={128} overflow="hidden" borderRadius="$2" backgroundColor="$gray8">
       {current.url ? (
         <SolitoImage
           src={imageSrc(current.url)}
-          className="h-full w-full"
           alt="Profile image"
           fill={true}
+          style={{ height: '100%', width: '100%' }}
         />
       ) : (
-        <View className="h-full w-full bg-gray-800" />
+        <YStack height="100%" width="100%" backgroundColor="$gray8" />
       )}
 
       {progress > 0 && progress < 100 ? (
-        <View className="absolute bottom-0 left-0 right-0 bg-gray-800 p-2">
-          <Text className="text-center text-white">{progressText}</Text>
-        </View>
+        <YStack position="absolute" bottom={0} left={0} right={0} backgroundColor="$gray8" padding="$2">
+          <Text textAlign="center" color="$white1">{progressText}</Text>
+        </YStack>
       ) : (
-        <Pressable
+        <Button
           onPress={handleSelectImage}
-          className="absolute bottom-0 left-0 right-0 bg-gray-800/80 p-2"
+          position="absolute"
+          bottom={0}
+          left={0}
+          right={0}
+          backgroundColor="$gray8"
+          opacity={0.8}
+          padding="$2"
+          borderWidth={0}
         >
-          <Text className="text-center text-sm text-white">{text}</Text>
-        </Pressable>
+          <Text textAlign="center" fontSize="$3" color="$white1">{text}</Text>
+        </Button>
       )}
-    </View>
+    </YStack>
   )
 }

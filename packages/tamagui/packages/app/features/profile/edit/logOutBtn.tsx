@@ -1,20 +1,20 @@
 'use client'
 import { useLogOut } from 'app/hooks/useLogIn'
 import { Button } from 'app/design/button'
-import { View } from 'react-native'
+import { YStack } from 'tamagui'
 
 export function LogOutBtn() {
   const logOut = useLogOut()
 
   return (
-    <View className="my-4 w-full">
+    <YStack marginVertical="$4" width="100%">
       <Button
         onPress={logOut}
         text="Log Out"
-        variant="primary"
-        size="default"
-        className="w-full bg-red"
+        variant="danger"
+        size="medium"
+        width="100%"
       />
-    </View>
+    </YStack>
   )
 }

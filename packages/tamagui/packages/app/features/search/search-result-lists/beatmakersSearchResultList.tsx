@@ -1,7 +1,8 @@
 'use client'
 import * as React from 'react'
 import { useState, useEffect } from 'react'
-import { View, FlatList, Text, Image, Pressable } from 'react-native'
+import { FlatList } from 'react-native'
+import { YStack, XStack, Button, Text } from 'tamagui'
 import { ActivityIndicator } from 'app/design/typography'
 import { algoliaClient, indexNames } from 'app/api/algolia'
 import { User } from 'app/api/graphql/types'
@@ -14,23 +15,31 @@ function SimpleUserEntry({ user }: { user: User }) {
   if (!user || !user.id) return null;
   
   return (
-    <Pressable
-      className="mb-4 flex-row items-center rounded-lg bg-gray-800 p-2"
+    <Button
+      backgroundColor="transparent"
+      padding="$0"
+      marginBottom="$4"
+      borderRadius="$3"
+      paddingHorizontal="$2"
+      paddingVertical="$2"
+      backgroundColor="$gray8"
     >
-      {/* Use the enhanced UserAvatar component that handles placeholders */}
-      <UserAvatar 
-        avatarUrl={user.avatarUrl}
-        displayName={user.displayName || user.username}
-        userId={user.id}
-        email={user.email}
-        size="large"
-      />
-      <View className="ml-3 flex-1">
-        <Text className="text-white">
-          {user.displayName || user.username || 'User'}
-        </Text>
-      </View>
-    </Pressable>
+      <XStack flexDirection="row" alignItems="center">
+        {/* Use the enhanced UserAvatar component that handles placeholders */}
+        <UserAvatar 
+          avatarUrl={user.avatarUrl}
+          displayName={user.displayName || user.username}
+          userId={user.id}
+          email={user.email}
+          size="large"
+        />
+        <YStack marginLeft="$3" flex={1}>
+          <Text color="$white1">
+            {user.displayName || user.username || 'User'}
+          </Text>
+        </YStack>
+      </XStack>
+    </Button>
   );
 }
 
@@ -97,30 +106,30 @@ export function BeatmakersSearchResultList({
 
   if (loading) {
     return (
-      <View className="flex h-40 items-center justify-center">
+      <YStack height={160} alignItems="center" justifyContent="center">
         <ActivityIndicator size="large" />
-      </View>
+      </YStack>
     )
   }
 
   if (!users.length) {
     return (
-      <View className="flex-1 items-center justify-center py-8">
-        <Text className="text-center text-gray-400">
+      <YStack flex={1} alignItems="center" justifyContent="center" paddingVertical="$8">
+        <Text textAlign="center" color="$gray9">
           No collectors found for "{searchPhrase}"
         </Text>
-      </View>
+      </YStack>
     )
   }
 
   return (
-    <View className="flex-1">
+    <YStack flex={1}>
       <FlatList
         data={users}
         keyExtractor={(item) => item?.id || 'unknown'}
         renderItem={renderUserItem}
         showsVerticalScrollIndicator={false}
       />
-    </View>
+    </YStack>
   )
 }

@@ -4,9 +4,7 @@
  * Migrated from legacy implementation to use Zustand
  */
 import { ViewStyle } from 'react-native'
-import ChevronUp from 'app/ui/icons/chevron-up'
-import PlayIcon from 'app/ui/icons/play'
-import PauseIcon from 'app/ui/icons/pause'
+import { ChevronUp, Play, Pause } from '@tamagui/lucide-icons'
 import { usePlayback } from 'app/hooks/usePlayback'
 import { ActivityIndicator, P } from 'app/design/typography'
 import { PlaybackState, usePlayerStore } from 'app/state/player'
@@ -59,9 +57,9 @@ export function MiniPlayerBar({ onTogglePress, animatedStyle }: Props) {
           padding="$0"
         >
           {playbackState === 'PLAYING' ? (
-            <PauseIcon color="$gray10" size={22} />
+            <Pause color="$gray10" size={22} />
           ) : (
-            <PlayIcon color="$gray10" size={22} />
+            <Play color="$gray10" size={22} />
           )}
         </Button>
       )}

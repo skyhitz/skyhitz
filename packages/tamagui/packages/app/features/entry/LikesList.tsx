@@ -1,5 +1,6 @@
 'use client'
-import { View, FlatList, Pressable } from 'react-native'
+import { FlatList } from 'react-native'
+import { YStack, XStack, Button } from 'tamagui'
 import { H3, P } from 'app/design/typography'
 import { Entry } from 'app/api/graphql/types'
 import { gql, useQuery } from '@apollo/client'
@@ -46,34 +47,41 @@ export function LikesList({ entry }: Props) {
   }
 
   const renderItem = ({ item }: { item: User }) => (
-    <Pressable 
+    <Button 
       onPress={() => navigateToProfile(item.id)}
-      className="mb-2 flex flex-row items-center rounded-md p-2 hover:bg-gray-800"
+      backgroundColor="transparent"
+      padding="$0"
+      marginBottom="$2"
+      borderRadius="$2"
+      paddingHorizontal="$2"
+      paddingVertical="$2"
+      hoverStyle={{ backgroundColor: '$gray8' }}
     >
-      <View className="mr-3">
-        <UserAvatar
-          avatarUrl={item.avatarUrl}
-          displayName={item.displayName || item.username}
-          userId={item.id}
-          email={item.username}
-          size="small"
-        />
-      </View>
-      <View>
-        <P className="font-semibold">{item.displayName || item.username}</P>
-        <P className="text-xs text-gray-400">@{item.username}</P>
-      </View>
-    </Pressable>
+      <XStack flexDirection="row" alignItems="center">
+        <YStack marginRight="$3">
+          <UserAvatar
+            avatarUrl={item.avatarUrl}
+            displayName={item.displayName || item.username}
+            userId={item.id}
+            email={item.username}
+            size="small"
+          />
+        </YStack>
+        <YStack>
+          <P fontWeight="600">{item.displayName || item.username}</P>
+          <P fontSize="$2" color="$gray9">@{item.username}</P>
+        </YStack>
+      </XStack>
+    </Button>
   )
 
   return (
     <CollapsableView
       headerText="Liked By"
       initCollapsed={true}
-      className="mt-4 w-full"
     >
       {loading ? (
-        <P className="py-2 text-center text-gray-400">Loading likes...</P>
+        <P paddingVertical="$2" textAlign="center" color="$gray9">Loading likes...</P>
       ) : likes.length > 0 ? (
         <FlatList
           data={likes}
@@ -82,7 +90,7 @@ export function LikesList({ entry }: Props) {
           scrollEnabled={false}
         />
       ) : (
-        <P className="py-2 text-center text-gray-400">No likes yet</P>
+        <P paddingVertical="$2" textAlign="center" color="$gray9">No likes yet</P>
       )}
     </CollapsableView>
   )

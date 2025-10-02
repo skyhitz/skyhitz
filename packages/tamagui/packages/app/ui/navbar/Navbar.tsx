@@ -1,47 +1,53 @@
 import { P } from 'app/design/typography'
 import { SkyhitzLogo } from 'app/ui/logo'
 import { useUserState } from 'app/state/user/hooks'
-import { View } from 'react-native'
+import { XStack, YStack, GetProps } from 'tamagui'
 import { TextLink } from 'solito/link'
 
-export const Navbar = ({ className }: { className?: string }) => {
+export const Navbar = (props: GetProps<typeof XStack>) => {
   const { user, loading: userLoading } = useUserState()
 
   return (
-    <View
-      className={`w-full flex-row flex-wrap items-center justify-between p-3 ${className}`}
+    <XStack
+      width="100%"
+      flexDirection="row"
+      flexWrap="wrap"
+      alignItems="center"
+      justifyContent="space-between"
+      padding="$3"
+      {...props}
     >
-      <View className="flex flex-row">
+      <XStack flexDirection="row">
         <TextLink href="/">
-          <View className="flex flex-row items-center justify-start">
-            <View className="flex min-h-[2.25rem] flex-row items-center">
+          <XStack flexDirection="row" alignItems="center" justifyContent="flex-start">
+            <XStack minHeight={36} flexDirection="row" alignItems="center">
               <SkyhitzLogo id="navbar" />
-              <P className="font-raleway pl-4 text-sm tracking-[12px] text-[--logo-color] sm:text-lg">
+              <P fontFamily="$heading" paddingLeft="$4" fontSize="$3" letterSpacing={12} color="$blue9" $sm={{ fontSize: '$4' }}>
                 SKYHITZ
               </P>
-            </View>
-          </View>
+            </XStack>
+          </XStack>
         </TextLink>
-      </View>
+      </XStack>
       {user || userLoading ? null : (
-        <View className="flex-row items-center justify-end sm:flex">
-          <View className="mr-4">
+        <XStack flexDirection="row" alignItems="center" justifyContent="flex-end" $sm={{ display: 'flex' }}>
+          <YStack marginRight="$4">
             <TextLink href="/sign-in">
-              <P className="font-raleway tracking-0.5 text-sm font-bold">
+              <P fontFamily="$heading" letterSpacing={0.5} fontSize="$3" fontWeight="bold">
                 Log in
               </P>
             </TextLink>
-          </View>
+          </YStack>
 
-          <View className="bg-blue rounded-lg px-3 py-2">
+          <YStack backgroundColor="$blue9" borderRadius="$3" paddingHorizontal="$3" paddingVertical="$2">
             <TextLink href="/sign-up">
-              <P className="font-raleway tracking-0.5 p-2 text-sm font-bold text-white">
+              <P fontFamily="$heading" letterSpacing={0.5} padding="$2" fontSize="$3" fontWeight="bold" color="$white1">
                 Sign Up
               </P>
             </TextLink>
-          </View>
-        </View>
+          </YStack>
+        </XStack>
       )}
-    </View>
+    </XStack>
   )
 }

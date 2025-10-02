@@ -1,5 +1,5 @@
 'use client'
-import { View } from 'react-native'
+import { XStack, YStack } from 'tamagui'
 import { ReactElement } from 'react'
 import { A, P } from 'app/design/typography'
 type Props = {
@@ -18,31 +18,32 @@ export function EntryDetails({ id, link }: Props) {
     value?: string
   }) => {
     return (
-      <View className="my-2 flex flex-row items-center justify-start truncate">
-        <P className="mr-2 min-w-max flex-1 grow text-sm text-[--text-secondary-color]">
+      <XStack marginVertical="$2" flexDirection="row" alignItems="center" justifyContent="flex-start" overflow="hidden">
+        <P marginRight="$2" minWidth="max-content" flex={1} flexGrow={1} fontSize="$3" color="$color11">
           {label}
         </P>
         {trailingWidget ? trailingWidget : null}
-      </View>
+      </XStack>
     )
   }
 
   return (
-    <View className="w-full mt-4">
-      <View className="bg-[--bg-secondary-color] p-5 truncate rounded-lg">
+    <YStack width="100%" marginTop="$4">
+      <YStack backgroundColor="$backgroundHover" padding="$5" overflow="hidden" borderRadius="$3">
         <Row
           label="Metadata:"
           trailingWidget={
             <A
               href={link}
               target="_blank"
-              className="text-sm text-[--primary-color]"
+              fontSize="$3"
+              color="$blue9"
             >
               {id}
             </A>
           }
         />
-      </View>
-    </View>
+      </YStack>
+    </YStack>
   )
 }

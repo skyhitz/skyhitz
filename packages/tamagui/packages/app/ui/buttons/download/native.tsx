@@ -1,20 +1,18 @@
 'use client'
-// Import from our typed components file instead of directly from react-native
-import { Pressable } from 'react-native'
 import { Entry } from 'app/api/graphql/types'
 import { useToast } from 'app/provider/toast'
 import DownloadIcon from 'app/ui/icons/download'
 import { useState } from 'react'
-import { View, ActivityIndicator } from 'react-native'
+import { ActivityIndicator } from 'app/design/typography'
 import * as FileSystem from 'expo-file-system'
+import { Button, YStack, GetProps } from 'tamagui'
 
-interface Props {
+type Props = GetProps<typeof Button> & {
   size?: number
-  className?: string
   entry: Entry
 }
 
-const DownloadBtn = ({ size = 24, className = '', entry }: Props) => {
+const DownloadBtn = ({ size = 24, entry, ...props }: Props) => {
   const toast = useToast()
   const [downloading, setDownloading] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -90,26 +88,27 @@ const DownloadBtn = ({ size = 24, className = '', entry }: Props) => {
   }
 
   return (
-    <Pressable
+    <Button
       onPress={handleDownload}
-      className={className}
       disabled={downloading}
+      backgroundColor="transparent"
+      padding="$0"
+      borderWidth={0}
+      {...props}
     >
       {downloading ? (
-        <View
-          style={{
-            width: size,
-            height: size,
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}
+        <YStack
+          width={size}
+          height={size}
+          justifyContent="center"
+          alignItems="center"
         >
-          <ActivityIndicator size="small" color="white" />
-        </View>
+          <ActivityIndicator size="small" />
+        </YStack>
       ) : (
         <DownloadIcon size={size} />
       )}
-    </Pressable>
+    </Button>
   )
 }
 

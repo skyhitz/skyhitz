@@ -1,11 +1,11 @@
 'use client'
-import { Platform, Share, Pressable } from 'react-native'
+import { Platform, Share } from 'react-native'
 import { useCallback, useMemo, useState } from 'react'
-import Copy from 'app/ui/icons/copy'
-import Check from 'app/ui/icons/check'
+import { Copy, Check } from '@tamagui/lucide-icons'
 import { P } from 'app/design/typography'
 import { trackCopyWallet } from 'app/utils/analytics'
 import { useUserStore } from 'app/state/user'
+import { Button } from 'tamagui'
 
 type Props = {
   walletPublicKey: string
@@ -57,20 +57,31 @@ export function CopyWalletPublicKeyButton({ walletPublicKey }: Props) {
   }, [walletPublicKey])
 
   return (
-    <Pressable
-      className="flex h-fit flex-1 min-w-0 flex-row items-center justify-start"
+    <Button
+      height="auto"
+      flex={1}
+      minWidth={0}
+      flexDirection="row"
+      alignItems="center"
+      justifyContent="flex-start"
       onPress={copyPublicKey}
       disabled={copied}
+      backgroundColor="transparent"
+      padding="$0"
+      borderWidth={0}
     >
-      {!copied && <Copy className="text-white" size={18} />}
-      {copied && <Check className="text-green" size={18} />}
+      {!copied && <Copy color="$white1" size={18} />}
+      {copied && <Check color="$green9" size={18} />}
       <P
-        className="mx-2 text-xs shrink flex-1"
+        marginHorizontal="$2"
+        fontSize="$2"
+        flexShrink={1}
+        flex={1}
         numberOfLines={1}
         ellipsizeMode="middle"
       >
         {displayKey}
       </P>
-    </Pressable>
+    </Button>
   )
 }

@@ -1,8 +1,7 @@
 'use client'
 import * as React from 'react'
 import { Platform, Linking, Share as RNShare } from 'react-native'
-import Share from 'app/ui/icons/share'
-import { X } from 'app/ui/icons/x'
+import { Share2, X } from '@tamagui/lucide-icons'
 import XLogo from 'app/ui/icons/x-logo'
 import { CopyBeatUrlButton } from 'app/ui/buttons/CopyBeatUrlButton'
 import { Dialog, Sheet, YStack, XStack, Button, Text, Adapt } from 'tamagui'
@@ -43,7 +42,7 @@ export function ShareButton({ url, title }: ShareButtonProps) {
         backgroundColor="transparent"
         padding="$0"
       >
-        <Share width={24} height={24} color="$color12" />
+        <Share2 size={24} color="$color12" />
       </Button>
       
       <Dialog open={modalVisible} onOpenChange={(open) => !open && setModalVisible(false)}>
@@ -61,7 +60,7 @@ export function ShareButton({ url, title }: ShareButtonProps) {
                     backgroundColor="transparent"
                     padding="$0"
                   >
-                    <X color="$color12" width={22} height={22} />
+                    <X color="$color12" size={22} />
                   </Button>
                 </XStack>
                 <P marginTop="$5" textAlign="center" fontSize="$3" color="$gray10">

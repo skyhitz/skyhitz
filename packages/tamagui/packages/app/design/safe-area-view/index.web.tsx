@@ -1,10 +1,9 @@
-import { View } from 'react-native'
+import { YStack } from 'tamagui'
 import { NativeSafeAreaViewProps } from 'react-native-safe-area-context'
 
 export function SafeAreaView({
-  className,
   style,
   ...rest
-}: NativeSafeAreaViewProps & { className?: string }) {
-  return <View style={style} className={className} {...rest} />
+}: NativeSafeAreaViewProps) {
+  return <YStack style={style} {...rest} />
 }

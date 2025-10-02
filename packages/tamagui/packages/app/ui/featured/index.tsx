@@ -103,7 +103,7 @@ export function Featured({ title, subtitle, features = [], imgUrl }: any) {
               fill
               sizes="(max-width: 768px) 100vw, 50vw"
               contentFit="cover"
-              className="rounded-2xl"
+              style={{ borderRadius: 16 }}
             />
           </YStack>
         </XStack>

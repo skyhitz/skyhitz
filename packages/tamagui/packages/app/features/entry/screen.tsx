@@ -3,7 +3,7 @@ import * as React from 'react'
 import { useState, useEffect } from 'react'
 import { useEntryParam } from 'app/hooks/param/useEntryParam'
 import { Entry } from 'app/api/graphql/types'
-import { ScrollView, View, Text } from 'react-native'
+import { ScrollView, YStack, XStack, Text } from 'tamagui'
 import { EntryDetails } from './Details'
 import { imageUrlMedium } from 'app/utils/entry'
 import { EntrySummaryColumn } from './SummaryColumn'
@@ -25,9 +25,9 @@ export function EntryScreen({ entry: serverEntry, id: passedId }: Props) {
   // Manual check instead of assert.ok
   if (id === undefined) {
     return (
-      <View className="flex flex-1 items-center justify-center">
+      <YStack flex={1} alignItems="center" justifyContent="center">
         <Text>Error: Entry ID is required</Text>
-      </View>
+      </YStack>
     )
   }
 
@@ -49,32 +49,51 @@ export function EntryScreen({ entry: serverEntry, id: passedId }: Props) {
   if (loading || !entry) {
     // Loading state
     return (
-      <View className="flex flex-1 items-center justify-center">
+      <YStack flex={1} alignItems="center" justifyContent="center">
         {/* Could add a proper loading skeleton here */}
-      </View>
+      </YStack>
     )
   }
 
   return (
-    <View className="flex flex-1 bg-[--bg-color]">
-      <ScrollView contentContainerClassName="flex w-full mx-auto max-w-screen-xl md:flex-row gap-4 md:pt-4 pb-32">
-        <View className="w-full md:w-1/2">
-          <View className="relative aspect-square w-full overflow-hidden rounded-lg shadow-lg">
-            <SolitoImage
-              src={imageUrlMedium(entry.imageUrl)}
-              fill={true}
-              alt={entry.title}
-              style={{ borderRadius: 8 }}
-              className="h-full w-full object-cover"
-              contentFit="cover"
-            />
-          </View>
+    <YStack flex={1} backgroundColor="$background">
+      <ScrollView>
+        <XStack
+          width="100%"
+          marginHorizontal="auto"
+          maxWidth="$7xl"
+          flexDirection={{ xs: 'column', md: 'row' }}
+          gap="$4"
+          paddingTop={{ md: '$4' }}
+          paddingBottom="$16"
+        >
+          <YStack width={{ xs: '100%', md: '50%' }}>
+            <YStack
+              aspectRatio={1}
+              width="100%"
+              overflow="hidden"
+              borderRadius="$3"
+              shadowColor="$shadowColor"
+              shadowOffset={{ width: 0, height: 2 }}
+              shadowOpacity={0.25}
+              shadowRadius={3.84}
+              elevation={5}
+            >
+              <SolitoImage
+                src={imageUrlMedium(entry.imageUrl)}
+                fill={true}
+                alt={entry.title}
+                style={{ borderRadius: 8 }}
+                contentFit="cover"
+              />
+            </YStack>
 
-          <EntryDetails id={entry.id} link={`${r2Gateway}/${entry.id}/index`} />
-        </View>
+            <EntryDetails id={entry.id} link={`${r2Gateway}/${entry.id}/index`} />
+          </YStack>
 
-        <EntrySummaryColumn entry={entry} />
+          <EntrySummaryColumn entry={entry} />
+        </XStack>
       </ScrollView>
-    </View>
+    </YStack>
   )
 }

@@ -3,14 +3,12 @@
  * Player slider component for seeking through tracks
  * Migrated from legacy implementation to use Zustand
  */
-import { View } from 'react-native'
+import { XStack, GetProps } from 'tamagui'
 import { Slider } from 'app/design/slider'
 import { P } from 'app/design/typography'
 import { usePlayerStore } from 'app/state/player'
 
-type Props = {
-  className?: string
-}
+type Props = GetProps<typeof XStack>
 
 const formatSeconds = (seconds: number) => {
   if (seconds === 0) return '0:00'
@@ -20,7 +18,7 @@ const formatSeconds = (seconds: number) => {
   return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`
 }
 
-export function PlayerSlider({ className = '' }: Props) {
+export function PlayerSlider(props: Props) {
   const {
     position,
     positionProgress,
@@ -45,10 +43,14 @@ export function PlayerSlider({ className = '' }: Props) {
   }
 
   return (
-    <View
-      className={`flex flex-row items-center justify-between px-3 ${className}`}
+    <XStack
+      flexDirection="row"
+      alignItems="center"
+      justifyContent="space-between"
+      paddingHorizontal="$3"
+      {...props}
     >
-      <P className="text-xs mx-2">{formatSeconds(position)}</P>
+      <P fontSize="$2" marginHorizontal="$2">{formatSeconds(position)}</P>
       <Slider
         minimumValue={0}
         maximumValue={1}
@@ -58,7 +60,7 @@ export function PlayerSlider({ className = '' }: Props) {
         onValueChange={handleSeekChange}
         disabled={!isReady}
       />
-      <P className="text-xs mx-2">{formatSeconds(duration)}</P>
-    </View>
+      <P fontSize="$2" marginHorizontal="$2">{formatSeconds(duration)}</P>
+    </XStack>
   )
 }

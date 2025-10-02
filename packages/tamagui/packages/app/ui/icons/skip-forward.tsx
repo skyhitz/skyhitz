@@ -4,14 +4,17 @@ import Svg, { Path } from 'react-native-svg'
 
 type Props = {
   size?: number
-  className?: string
   color?: string
+  marginRight?: any
+  marginLeft?: any
 }
 
 export default function SkipForward({
   size = 24,
-  className = '',
   color = 'currentColor',
+  marginRight,
+  marginLeft,
+  ...props
 }: Props) {
   return (
     <Svg
@@ -23,7 +26,7 @@ export default function SkipForward({
       strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={className}
+      {...props}
     >
       <Path d="M5 4l10 8-10 8V4z" />
       <Path d="M19 5v14" />

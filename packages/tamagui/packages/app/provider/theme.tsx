@@ -4,7 +4,7 @@ import * as React from 'react'
 import { useColorScheme } from 'app/state/theme/useColorScheme'
 import { themes } from 'app/state/theme/useTheme'
 import { Platform } from 'react-native'
-import { View } from 'react-native'
+import { YStack } from 'tamagui'
 
 interface Props {
   children: React.ReactNode
@@ -22,8 +22,8 @@ export function ThemeProvider({ children }: Props) {
     return <body style={theme}>{children}</body>
   }
   return (
-    <View className="flex-1" style={theme}>
+    <YStack flex={1} style={theme}>
       {children}
-    </View>
+    </YStack>
   )
 }

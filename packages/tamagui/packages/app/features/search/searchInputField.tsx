@@ -1,7 +1,6 @@
 'use client'
 import { TextInput } from 'react-native'
-import Search from 'app/ui/icons/search'
-import { X } from 'app/ui/icons/x'
+import { Search, X } from '@tamagui/lucide-icons'
 import { XStack, Input, Button } from 'tamagui'
 
 type SearchInputFieldProps = {
@@ -34,8 +33,7 @@ export function SearchInputField({
       paddingVertical="$1"
     >
       <Search
-        width={20}
-        height={20}
+        size={20}
         color="$gray10"
         marginRight="$2"
       />
@@ -61,8 +59,7 @@ export function SearchInputField({
           hitSlop={8}
         >
           <X
-            width={20}
-            height={20}
+            size={20}
             color="$gray10"
           />
         </Button>

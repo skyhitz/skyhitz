@@ -2,7 +2,7 @@
 import { useEffect } from 'react'
 import { SkeletonContainer } from 'app/ui/skeletons/SkeletonContainer'
 import { useSharedValue, withRepeat, withTiming } from 'react-native-reanimated'
-import { View } from 'react-native'
+import { XStack } from 'tamagui'
 import { FlatList } from 'react-native'
 
 type CollectionSkeletonProps = {
@@ -18,23 +18,21 @@ export function CollectionSkeleton({ duplicates }: CollectionSkeletonProps) {
 
   const EntrySkeleton = () => {
     return (
-      <View className="mx-auto my-2 w-full max-w-6xl flex-row px-5">
-        <SkeletonContainer className="h-10 w-10" sharedValue={x} />
-        <SkeletonContainer className="mx-5 mr-1 h-10 flex-1" sharedValue={x} />
-      </View>
+      <XStack marginHorizontal="auto" marginVertical="$2" width="100%" maxWidth="$6xl" flexDirection="row" paddingHorizontal="$5">
+        <SkeletonContainer height={40} width={40} sharedValue={x} />
+        <SkeletonContainer marginHorizontal="$5" marginRight="$1" height={40} flex={1} sharedValue={x} />
+      </XStack>
     )
   }
   
   return (
-    <>
-      <FlatList
-        data={Array(duplicates)
-          .fill(0)
-          .map((_, i) => {
-            return { key: i }
-          })}
-        renderItem={() => <EntrySkeleton />}
-      />
-    </>
+    <FlatList
+      data={Array(duplicates)
+        .fill(0)
+        .map((_, i) => {
+          return { key: i }
+        })}
+      renderItem={() => <EntrySkeleton />}
+    />
   )
 }

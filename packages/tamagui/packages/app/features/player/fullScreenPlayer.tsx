@@ -3,7 +3,7 @@
  * Full screen player component
  * Migrated from legacy implementation to use Zustand
  */
-import { Pressable, SafeAreaView, Text, View } from 'react-native'
+import { Button, YStack, XStack, Text } from 'tamagui'
 import ChevronDown from 'app/ui/icons/chevron-down'
 import { PlayerButtonsRow } from './components/playerButtonsRow'
 import { PlayerSlider } from './components/playerSlider'
@@ -20,51 +20,86 @@ function EntryInfo() {
   const { entry } = usePlayerStore()
 
   return (
-    <>
-      <View className="flex-1 items-center justify-center md:max-w-[200px] md:items-start md:px-4">
-        <Text
-          className="text-center text-sm font-bold text-[--text-color]"
-          ellipsizeMode="tail"
-          numberOfLines={1}
-        >
-          {entry?.title}
-        </Text>
-        <Text
-          className="text-center text-base text-[--text-color] md:text-xs"
-          ellipsizeMode="tail"
-          numberOfLines={1}
-        >
-          {entry?.artist}
-        </Text>
-      </View>
-    </>
+    <YStack 
+      flex={1} 
+      alignItems="center" 
+      justifyContent="center" 
+      maxWidth={{ md: 200 }} 
+      $md={{ alignItems: 'flex-start', paddingHorizontal: '$4' }}
+    >
+      <Text
+        textAlign="center"
+        fontSize="$3"
+        fontWeight="bold"
+        color="$color"
+        ellipsizeMode="tail"
+        numberOfLines={1}
+      >
+        {entry?.title}
+      </Text>
+      <Text
+        textAlign="center"
+        fontSize={{ xs: '$4', md: '$2' }}
+        color="$color"
+        ellipsizeMode="tail"
+        numberOfLines={1}
+      >
+        {entry?.artist}
+      </Text>
+    </YStack>
   )
 }
 
 export function FullScreenPlayer({ onTogglePress, animatedStyle }: Props) {
   return (
     <MotiView
-      style={[animatedStyle]}
-      className="absolute z-[1] inset-0 opacity-0 md:z-10 md:flex md:flex-row md:flex-grow md:!opacity-100"
+      style={[
+        animatedStyle,
+        {
+          position: 'absolute',
+          zIndex: 1,
+          inset: 0,
+          opacity: 0,
+        }
+      ]}
     >
-      <View className="flex w-full flex-row items-center justify-between py-3 md:hidden">
-        <Pressable className="mx-2" onPress={onTogglePress} hitSlop={10}>
-          <ChevronDown className="text-[--text-color]" size={24} />
-        </Pressable>
-      </View>
-      <View className="w-full items-center justify-between gap-y-8 md:flex-row">
+      <XStack 
+        width="100%" 
+        flexDirection="row" 
+        alignItems="center" 
+        justifyContent="space-between" 
+        paddingVertical="$3" 
+        display={{ md: 'none' }}
+      >
+        <Button backgroundColor="transparent" padding="$0" marginHorizontal="$2" onPress={onTogglePress}>
+          <ChevronDown color="$color" size={24} />
+        </Button>
+      </XStack>
+      <YStack 
+        width="100%" 
+        alignItems="center" 
+        justifyContent="space-between" 
+        gap="$8" 
+        $md={{ flexDirection: 'row' }}
+      >
         <VideoPlayer />
 
-        <PlayerSlider className="md:hidden w-full" />
+        <PlayerSlider display={{ md: 'none' }} width="100%" />
         <EntryInfo />
-        <PlayerButtonsRow size="large" className="md:hidden" />
-        <View className="hidden grow justify-end md:flex h-full gap-1">
+        <PlayerButtonsRow size="large" display={{ md: 'none' }} />
+        <YStack 
+          display={{ xs: 'none', md: 'flex' }} 
+          flexGrow={1} 
+          justifyContent="flex-end" 
+          height="100%" 
+          gap="$1"
+        >
           <PlayerButtonsRow />
           <PlayerSlider />
-        </View>
-        <View className="hidden h-full w-64 lg:flex" />
+        </YStack>
+        <YStack display={{ xs: 'none', lg: 'flex' }} height="100%" width={256} />
         {/* Like list commented out for now */}
-      </View>
+      </YStack>
     </MotiView>
   )
 }

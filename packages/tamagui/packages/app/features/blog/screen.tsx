@@ -6,7 +6,7 @@ import { useBlogPosts } from 'app/hooks/algolia/useBlogPosts'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
 import Footer from 'app/ui/footer'
 import { Navbar } from 'app/ui/navbar/Navbar'
-import { View } from 'react-native'
+import { YStack, XStack } from 'tamagui'
 import { SolitoImage } from 'app/design/solito-image'
 import { formattedDate } from 'app/utils'
 import { Post } from 'app/types/index'
@@ -15,9 +15,9 @@ import { imageSrc } from 'app/utils/entry'
 const PostWrapper = ({ imageUrl, title, publishedAtTimestamp, slug }: Post) => {
   return (
     <A href={`/blog/${slug}`}>
-      <View className="flex flex-row items-center justify-start gap-8">
-        <View className="aspect-[2/2] w-32 object-cover">
-          <View className="relative h-full w-full overflow-hidden rounded-2xl">
+      <XStack flexDirection="row" alignItems="center" justifyContent="flex-start" gap="$8">
+        <YStack aspectRatio={1} width={128}>
+          <YStack position="relative" height="100%" width="100%" overflow="hidden" borderRadius="$4">
             <SolitoImage
               src={imageSrc(imageUrl)}
               alt={title}
@@ -25,17 +25,17 @@ const PostWrapper = ({ imageUrl, title, publishedAtTimestamp, slug }: Post) => {
               fill
               style={{ width: '100%', height: '100%' }}
             />
-          </View>
-        </View>
-        <View className="flex shrink flex-col items-start justify-center">
-          <H2 className="mb-2 break-words text-xl text-[--text-color]">
+          </YStack>
+        </YStack>
+        <YStack flexShrink={1} flexDirection="column" alignItems="flex-start" justifyContent="center">
+          <H2 marginBottom="$2" fontSize="$5" color="$color">
             {title}
           </H2>
-          <P className="text-[--secondary-color]">
+          <P color="$color11">
             {formattedDate(publishedAtTimestamp)}
           </P>
-        </View>
-      </View>
+        </YStack>
+      </XStack>
     </A>
   )
 }
@@ -50,25 +50,22 @@ export function BlogScreen({ posts = [] }: { posts?: any[] }) {
   } = useBlogPosts(0) || {}
 
   return (
-    <View
-      className={`flex h-full w-full`}
-      style={{
-        paddingTop: insets.top,
-        paddingBottom: insets.bottom,
-        backgroundColor: 'var(--bg-color)',
-      }}
+    <YStack
+      height="100%"
+      width="100%"
+      paddingTop={insets.top}
+      paddingBottom={insets.bottom}
+      backgroundColor="$background"
     >
       <Navbar />
-      <View className="mx-auto mb-32 w-full max-w-7xl px-6 lg:px-8">
-        <H1 className="mb-4 mt-10 text-4xl text-[--text-color]">Blog</H1>
-        <View
-          style={{
-            borderBottomWidth: 1,
-            borderBottomColor: 'var(--border-color)',
-            marginVertical: 32,
-          }}
+      <YStack marginHorizontal="auto" marginBottom="$16" width="100%" maxWidth="$7xl" paddingHorizontal="$6" lg={{ paddingHorizontal: '$8' }}>
+        <H1 marginBottom="$4" marginTop="$10" fontSize="$9" color="$color">Blog</H1>
+        <YStack
+          borderBottomWidth={1}
+          borderBottomColor="$borderColor"
+          marginVertical="$8"
         />
-        <View className="gap-16">
+        <YStack gap="$16">
           {posts && posts.length > 0
             ? posts.map((props, index) => (
                 <PostWrapper key={`post-${index}`} {...props} />
@@ -83,31 +80,31 @@ export function BlogScreen({ posts = [] }: { posts?: any[] }) {
 
           {(!posts || posts.length === 0) &&
             (!extraPosts || extraPosts.length === 0) && (
-              <View className="py-12 items-center">
-                <P className="text-[--secondary-color]">
+              <YStack paddingVertical="$12" alignItems="center">
+                <P color="$color11">
                   Loading blog posts...
                 </P>
-              </View>
+              </YStack>
             )}
-        </View>
-        <View className="mt-16 flex h-12 items-center justify-center">
+        </YStack>
+        <YStack marginTop="$16" height={48} alignItems="center" justifyContent="center">
           {isLoadingMore ? (
-            <ActivityIndicator size={'small'} color="var(--primary-color)" />
+            <ActivityIndicator size={'small'} />
           ) : (
             loadMoreEnabled && (
               <Button
                 onPress={() => {
                   onNextPage()
                 }}
-                className="text-[--primary-color]"
+                color="$blue9"
               >
                 Load More →
               </Button>
             )
           )}
-        </View>
-      </View>
+        </YStack>
+      </YStack>
       <Footer />
-    </View>
+    </YStack>
   )
 }

@@ -1,12 +1,11 @@
 'use client'
 import { useState, useEffect } from 'react'
 import {
-  View,
   PanResponder,
-  Pressable,
   useWindowDimensions,
 } from 'react-native'
 import { MotiView } from 'moti'
+import { YStack, Button } from 'tamagui'
 
 export const Slider = ({
   onValueChange,
@@ -123,38 +122,40 @@ export const Slider = ({
   }
 
   return (
-    <Pressable
+    <Button
       onLayout={(event) => {
         const { width } = event.nativeEvent.layout
         setSliderWidth(width)
       }}
       onPress={handleBarPress}
       style={style}
-      className={'flex justify-center items-center flex-grow h-10'}
+      flexGrow={1}
+      height={40}
+      justifyContent="center"
+      alignItems="center"
       disabled={disabled}
+      backgroundColor="transparent"
+      borderWidth={0}
+      padding="$0"
     >
-      <View className="relative w-full rounded-full -top-[0.175rem]">
-        <View
-          style={{
-            position: 'absolute',
-            left: 0,
-            height: 4,
-            backgroundColor: maximumTrackTintColor,
-            width: sliderWidth,
-            borderRadius: 9999,
-            opacity: disabled ? 0.5 : 1,
-          }}
+      <YStack position="relative" width="100%" borderRadius="$round" top={-2.8}>
+        <YStack
+          position="absolute"
+          left={0}
+          height={4}
+          backgroundColor={maximumTrackTintColor}
+          width={sliderWidth}
+          borderRadius="$round"
+          opacity={disabled ? 0.5 : 1}
         />
-        <View
-          style={{
-            position: 'absolute',
-            left: 0,
-            height: 4,
-            backgroundColor: minimumTrackTintColor,
-            width: sliderPosition,
-            borderRadius: 9999,
-            opacity: disabled ? 0.5 : 1,
-          }}
+        <YStack
+          position="absolute"
+          left={0}
+          height={4}
+          backgroundColor={minimumTrackTintColor}
+          width={sliderPosition}
+          borderRadius="$round"
+          opacity={disabled ? 0.5 : 1}
         />
         <MotiView
           style={{
@@ -168,7 +169,7 @@ export const Slider = ({
           }}
           {...panResponder.panHandlers}
         />
-      </View>
-    </Pressable>
+      </YStack>
+    </Button>
   )
 }

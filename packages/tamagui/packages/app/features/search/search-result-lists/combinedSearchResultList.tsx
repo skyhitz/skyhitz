@@ -1,12 +1,12 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { View, FlatList, ScrollView } from 'react-native'
+import { FlatList, ScrollView } from 'react-native'
+import { YStack, XStack, Button as TamaguiButton } from 'tamagui'
 import { ActivityIndicator, P } from 'app/design/typography'
 import { entriesIndex, usersIndex } from 'app/api/algolia'
 import { useLazyQuery } from '@apollo/client'
 import { SEARCH_EXTERNAL_MUSIC, EXTERNAL_AUDIO_URL } from 'app/api/graphql/operations'
 import Pickaxe from 'app/ui/icons/pickaxe'
-import { Pressable } from 'react-native'
 import { Entry, User } from 'app/api/graphql/types'
 import { BeatListEntry } from 'app/ui/beat-list-entry'
 import { TextLink } from 'solito/link'
@@ -39,12 +39,15 @@ function UserCard({ user }: { user: User }) {
   const displayName = user.displayName || user.username || 'User'
 
   return (
-    <View
-      className="rounded-lg bg-[--card-bg-color] overflow-hidden border-b border-[--border-color]"
-      style={{ borderBottomWidth: 0.5 }}
+    <YStack
+      borderRadius="$3"
+      backgroundColor="$backgroundHover"
+      overflow="hidden"
+      borderBottomWidth={0.5}
+      borderColor="$borderColor"
     >
       <TextLink href={`/profile/${user.id}`}>
-        <View className="flex-row items-center py-2">
+        <XStack flexDirection="row" alignItems="center" paddingVertical="$2">
           {/* Use our enhanced UserAvatar component with gradient placeholder */}
           <UserAvatar
             avatarUrl={user.avatarUrl}
@@ -53,22 +56,24 @@ function UserCard({ user }: { user: User }) {
             email={user.email}
             size="medium"
           />
-          <View className="ml-3 flex-1">
-            <P className="text-[--text-color] font-medium text-sm">
+          <YStack marginLeft="$3" flex={1}>
+            <P color="$color" fontWeight="500" fontSize="$3">
               {displayName}
             </P>
             {user.description ? (
               <P
-                className="text-[--text-secondary-color] text-sm mt-1"
+                color="$color11"
+                fontSize="$3"
+                marginTop="$1"
                 numberOfLines={2}
               >
                 {user.description}
               </P>
             ) : null}
-          </View>
-        </View>
+          </YStack>
+        </XStack>
       </TextLink>
-    </View>
+    </YStack>
   )
 }
 
@@ -167,9 +172,9 @@ export function CombinedSearchResultList({
 
   // Simple section header
   const SectionHeader = ({ title }: { title: string }) => (
-    <View className="mt-4 mb-2">
-      <P className="text-xs uppercase tracking-wide text-[--text-secondary-color]">{title}</P>
-    </View>
+    <YStack marginTop="$4" marginBottom="$2">
+      <P fontSize="$2" textTransform="uppercase" letterSpacing={1} color="$color11">{title}</P>
+    </YStack>
   )
 
   const renderEntryItem = useCallback(
@@ -210,11 +215,11 @@ export function CombinedSearchResultList({
   // Element to show when no results are found
   const NoResultsComponent = useCallback(
     () => (
-      <View className="flex-1 items-center justify-center pt-4">
-        <P className="text-center text-[--text-secondary-color]">
+      <YStack flex={1} alignItems="center" justifyContent="center" paddingTop="$4">
+        <P textAlign="center" color="$color11">
           {`No results found for "${debouncedSearchPhrase}"`}
         </P>
-      </View>
+      </YStack>
     ),
     [debouncedSearchPhrase]
   )
@@ -222,9 +227,9 @@ export function CombinedSearchResultList({
   // Loading indicator component
   const LoadingComponent = useCallback(
     () => (
-      <View className="flex-1 items-center justify-center pt-4">
+      <YStack flex={1} alignItems="center" justifyContent="center" paddingTop="$4">
         <ActivityIndicator size="large" />
-      </View>
+      </YStack>
     ),
     []
   )
@@ -233,17 +238,17 @@ export function CombinedSearchResultList({
   const totalCount = entryResults.length + userResults.length + externalResults.length
 
   return (
-    <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 120 }}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120 }}>
       {/* Entries section */}
       {/* <SectionHeader title="Beats" /> */}
       {entriesLoading && entryResults.length === 0 ? (
         <LoadingComponent />
       ) : (
-        <View>
+        <YStack>
           {entryResults.map((r) => (
-            <View key={`entry-${r.id}`}>{renderEntryItem(r)}</View>
+            <YStack key={`entry-${r.id}`}>{renderEntryItem(r)}</YStack>
           ))}
-        </View>
+        </YStack>
       )}
 
       {/* Users section */}
@@ -251,11 +256,11 @@ export function CombinedSearchResultList({
       {usersLoading && userResults.length === 0 ? (
         <LoadingComponent />
       ) : (
-        <View>
+        <YStack>
           {userResults.map((r) => (
-            <View key={`user-${r.id}`}>{renderUserItem(r)}</View>
+            <YStack key={`user-${r.id}`}>{renderUserItem(r)}</YStack>
           ))}
-        </View>
+        </YStack>
       )}
 
       {/* External section */}
@@ -263,11 +268,11 @@ export function CombinedSearchResultList({
       {externalLoading && externalResults.length === 0 ? (
         <LoadingComponent />
       ) : (
-        <View>
+        <YStack>
           {externalResults.map((r) => (
-            <View key={`external-${r.id}`}>{renderExternalItem(r)}</View>
+            <YStack key={`external-${r.id}`}>{renderExternalItem(r)}</YStack>
           ))}
-        </View>
+        </YStack>
       )}
 
       {debouncedSearchPhrase && allDone && totalCount === 0 ? (
@@ -298,12 +303,15 @@ function ExternalTrackRow({ track, onSelect }: { track: ExternalTrack; onSelect:
   const [mining, setMining] = useState(false)
   const toast = useToast()
   return (
-    <Pressable onPress={onSelect} className="flex">
-      <View
-        className="flex flex-row items-center py-2 border-b border-[--border-color]"
-        style={{ borderBottomWidth: 0.5 }}
+    <TamaguiButton onPress={onSelect} backgroundColor="transparent" padding="$0">
+      <XStack
+        flexDirection="row"
+        alignItems="center"
+        paddingVertical="$2"
+        borderBottomWidth={0.5}
+        borderColor="$borderColor"
       >
-        <View className="aspect-[2/2] w-12 object-cover">
+        <YStack aspectRatio={1} width={48}>
           <SolitoImage
             src={track.imageUrl || 'https://skyhitz.io/icon.png'}
             alt={track.title || ''}
@@ -312,18 +320,20 @@ function ExternalTrackRow({ track, onSelect }: { track: ExternalTrack; onSelect:
             sizes="4rem"
             style={{ borderRadius: 6 }}
           />
-        </View>
-        <View className="ml-2 flex flex-1 justify-center pr-2">
-          <P numberOfLines={1} className="text-sm font-bold leading-6">
+        </YStack>
+        <YStack marginLeft="$2" flex={1} justifyContent="center" paddingRight="$2">
+          <P numberOfLines={1} fontSize="$3" fontWeight="bold" lineHeight="$6">
             {track.title}
           </P>
-          <P numberOfLines={1} className="text-xs leading-6 text-[--text-secondary-color]">
+          <P numberOfLines={1} fontSize="$2" lineHeight="$6" color="$color11">
             {track.artist}
           </P>
-        </View>
-        <View className="flex flex-row items-center">
-          <Pressable
-            className="cursor-pointer"
+        </YStack>
+        <XStack flexDirection="row" alignItems="center">
+          <TamaguiButton
+            backgroundColor="transparent"
+            padding="$0"
+            cursor="pointer"
             disabled={mining}
             onPress={async () => {
               if (!isAuthed) return push('/sign-in')
@@ -364,12 +374,12 @@ function ExternalTrackRow({ track, onSelect }: { track: ExternalTrack; onSelect:
             {mining ? (
               <ActivityIndicator size="small" />
             ) : (
-              <Pickaxe size={20} color="var(--text-color)" />
+              <Pickaxe size={20} color="$color" />
             )}
-          </Pressable>
-        </View>
-      </View>
+          </TamaguiButton>
+        </XStack>
+      </XStack>
       
-    </Pressable>
+    </TamaguiButton>
   )
 }

@@ -2,7 +2,7 @@ import * as React from 'react'
 import { HomeScreen } from './screen'
 import { fetchHomePagePosts } from 'app/api/algolia'
 import { Post } from 'app/types/index'
-import { View } from 'react-native'
+import { YStack } from 'tamagui'
 import { P, ActivityIndicator } from 'app/design/typography'
 import { homeContent } from 'app/constants/content'
 
@@ -33,20 +33,20 @@ export function HomeScreenNative() {
   // Show a loading indicator while data is being fetched
   if (loading && posts.length === 0) {
     return (
-      <View className="flex-1 items-center justify-center">
+      <YStack flex={1} alignItems="center" justifyContent="center">
         <ActivityIndicator size="large" />
-      </View>
+      </YStack>
     )
   }
 
   // Show error message if fetch failed
   if (error && posts.length === 0) {
     return (
-      <View className="flex-1 items-center justify-center p-4">
-        <P className="text-center text-red-500">
+      <YStack flex={1} alignItems="center" justifyContent="center" padding="$4">
+        <P textAlign="center" color="$red9">
           Error loading content: {error}
         </P>
-      </View>
+      </YStack>
     )
   }
 

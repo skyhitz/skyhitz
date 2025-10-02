@@ -1,5 +1,5 @@
 'use client'
-import { View } from 'react-native'
+import { YStack } from 'tamagui'
 import { useUserLikesQuery } from 'app/api/graphql/mutations'
 import { isSome } from 'app/utils'
 import ProfileBeatsList from 'app/features/profile/profileBeatsList'
@@ -11,9 +11,9 @@ export default function LikesScreen() {
   const entries = data?.userLikes?.filter(isSome) ?? []
 
   return (
-    <SafeAreaView className="bg-[--bg-color]">
-      <View className="w-full flex-1 pb-32">
-        <P className="web:flex font-unbounded my-4 ml-8 hidden text-lg font-bold">
+    <SafeAreaView backgroundColor="$background">
+      <YStack width="100%" flex={1} paddingBottom="$16">
+        <P display={{ xs: 'none', md: 'flex' }} fontFamily="$heading" marginVertical="$4" marginLeft="$8" fontSize="$5" fontWeight="bold">
           Likes
         </P>
         <ProfileBeatsList
@@ -21,7 +21,7 @@ export default function LikesScreen() {
           emptyStateText="Nothing in your favorites list yet"
           loading={loading}
         />
-      </View>
+      </YStack>
     </SafeAreaView>
   )
 }

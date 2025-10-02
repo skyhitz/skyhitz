@@ -4,7 +4,6 @@ import Svg, { Path } from 'react-native-svg'
 type Props = {
   size?: number
   color?: string
-  className?: string
   stroke?: string
 }
 

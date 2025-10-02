@@ -1,5 +1,5 @@
 'use client'
-import { View } from 'react-native'
+import { YStack, XStack } from 'tamagui'
 import { Button } from 'app/design/button'
 import { Formik, FormikProps } from 'formik'
 import { useEffect } from 'react'
@@ -75,7 +75,7 @@ export function SignUpForm({ signedXDR }: SignUpFormProps = {}) {
   }
 
   return (
-    <View className="w-72 items-center md:w-96">
+    <YStack width={{ xs: 288, md: 384 }} alignItems="center">
       <Formik
         validateOnMount
         initialValues={initialValues}
@@ -91,45 +91,45 @@ export function SignUpForm({ signedXDR }: SignUpFormProps = {}) {
           isValid,
           handleSubmit,
         }: FormikProps<FormData>) => (
-          <View className="items-center">
+          <YStack alignItems="center">
             <StyledTextInput
               value={values.displayedName}
               onChangeText={handleChange('displayedName')}
               onBlur={handleBlur('displayedName')}
-              className="mt-4"
+              marginTop="$4"
               placeholder="Display Name"
               showFeedback={touched.displayedName}
               valid={!errors.displayedName}
               editable={!loading}
             />
-            <View className="mt-2 flex-row">
-              <P className="text-red min-h-5 w-full text-center text-sm">
+            <XStack marginTop="$2" flexDirection="row">
+              <P color="$red9" minHeight="$5" width="100%" textAlign="center" fontSize="$3">
                 {touched.displayedName && errors.displayedName}
               </P>
-            </View>
+            </XStack>
 
             <StyledTextInput
               value={values.username}
               onChangeText={handleChange('username')}
               onBlur={handleBlur('username')}
-              className="mt-4"
+              marginTop="$4"
               placeholder="Username"
               showFeedback={touched.username}
               valid={!errors.username}
               editable={!loading}
               autoCapitalize="none"
             />
-            <View className="mt-2 flex-row">
-              <P className="text-red min-h-5 w-full text-center text-sm">
+            <XStack marginTop="$2" flexDirection="row">
+              <P color="$red9" minHeight="$5" width="100%" textAlign="center" fontSize="$3">
                 {touched.username && errors.username}
               </P>
-            </View>
+            </XStack>
 
             <StyledTextInput
               value={values.email}
               onChangeText={handleChange('email')}
               onBlur={handleBlur('email')}
-              className="mt-4"
+              marginTop="$4"
               placeholder="Email"
               showFeedback={touched.email}
               valid={!errors.email}
@@ -137,31 +137,31 @@ export function SignUpForm({ signedXDR }: SignUpFormProps = {}) {
               autoCapitalize="none"
               keyboardType="email-address"
             />
-            <View className="mt-2 flex-row">
-              <P className="text-red min-h-5 w-full text-center text-sm">
+            <XStack marginTop="$2" flexDirection="row">
+              <P color="$red9" minHeight="$5" width="100%" textAlign="center" fontSize="$3">
                 {(touched.email && errors.email) || error?.message}
               </P>
-            </View>
+            </XStack>
 
             <Button
               onPress={() => handleSubmit()}
               loading={loading}
               text="Sign Up"
               size="large"
-              className="mt-6"
+              marginTop="$6"
               disabled={!isValid}
             />
-            <View className="mt-8 flex-row">
-              <P className="min-h-5 w-full text-center text-sm text-white">
+            <XStack marginTop="$8" flexDirection="row">
+              <P minHeight="$5" width="100%" textAlign="center" fontSize="$3" color="$white1">
                 Already have an account?{' '}
-                <A className="mx-2 text-gray-700" href="/sign-in">
+                <A marginHorizontal="$2" color="$gray10" href="/sign-in">
                   Sign In
                 </A>
               </P>
-            </View>
-          </View>
+            </XStack>
+          </YStack>
         )}
       </Formik>
-    </View>
+    </YStack>
   )
 }

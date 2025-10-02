@@ -1,102 +1,92 @@
 'use client'
 import * as React from 'react'
-import { Text as RNText, TextProps, ActivityIndicator as RNActivityIndicator, ActivityIndicatorProps } from 'react-native'
+import { 
+  Text as TamaguiText, 
+  H1 as TamaguiH1, 
+  H2 as TamaguiH2, 
+  H3 as TamaguiH3, 
+  H4 as TamaguiH4,
+  Paragraph as TamaguiParagraph,
+  Spinner,
+  styled,
+  GetProps
+} from 'tamagui'
 
 // Basic text component with default styling
-export function Text({ className, ...props }: TextProps & { className?: string }) {
+export function Text(props: GetProps<typeof TamaguiText>) {
   return (
-    <RNText className={`text-base ${className || ''}`} {...props}>
-      {props.children}
-    </RNText>
+    <TamaguiText fontSize="$4" {...props} />
   )
 }
 
 // Paragraph component
-export function P({ className, ...props }: TextProps & { className?: string }) {
+export function P(props: GetProps<typeof TamaguiParagraph>) {
   return (
-    <RNText className={`text-base leading-relaxed ${className || ''}`} {...props}>
-      {props.children}
-    </RNText>
+    <TamaguiParagraph fontSize="$4" lineHeight="$5" {...props} />
   )
 }
 
 // Heading 1 component
-export function H1({ className, ...props }: TextProps & { className?: string }) {
+export function H1(props: GetProps<typeof TamaguiH1>) {
   return (
-    <RNText className={`text-3xl font-bold ${className || ''}`} {...props}>
-      {props.children}
-    </RNText>
+    <TamaguiH1 fontSize="$9" fontWeight="bold" {...props} />
   )
 }
 
 // Heading 2 component
-export function H2({ className, ...props }: TextProps & { className?: string }) {
+export function H2(props: GetProps<typeof TamaguiH2>) {
   return (
-    <RNText className={`text-2xl font-bold ${className || ''}`} {...props}>
-      {props.children}
-    </RNText>
+    <TamaguiH2 fontSize="$8" fontWeight="bold" {...props} />
   )
 }
 
 // Heading 3 component
-export function H3({ className, ...props }: TextProps & { className?: string }) {
+export function H3(props: GetProps<typeof TamaguiH3>) {
   return (
-    <RNText className={`text-xl font-bold ${className || ''}`} {...props}>
-      {props.children}
-    </RNText>
+    <TamaguiH3 fontSize="$6" fontWeight="bold" {...props} />
   )
 }
 
 // Heading 4 component
-export function H4({ className, ...props }: TextProps & { className?: string }) {
+export function H4(props: GetProps<typeof TamaguiH4>) {
   return (
-    <RNText className={`text-lg font-bold ${className || ''}`} {...props}>
-      {props.children}
-    </RNText>
+    <TamaguiH4 fontSize="$5" fontWeight="bold" {...props} />
   )
 }
 
 // Activity indicator with theming
 export function ActivityIndicator({ 
   size = 'small',
-  color = '#ffffff',
+  color = '$color',
   ...props
-}: ActivityIndicatorProps) {
-  return <RNActivityIndicator size={size} color={color} {...props} />
+}: { size?: 'small' | 'large'; color?: string }) {
+  return <Spinner size={size} color={color} {...props} />
 }
 
 // Small Text component
-export function Small({ className, ...props }: TextProps & { className?: string }) {
-  return (
-    <RNText className={`text-sm ${className || ''}`} {...props}>
-      {props.children}
-    </RNText>
-  )
-}
+export const Small = styled(TamaguiText, {
+  fontSize: '$3',
+})
 
 // Label component
-export function Label({ className, ...props }: TextProps & { className?: string }) {
-  return (
-    <RNText className={`text-sm font-medium ${className || ''}`} {...props}>
-      {props.children}
-    </RNText>
-  )
-}
+export const Label = styled(TamaguiText, {
+  fontSize: '$3',
+  fontWeight: '500',
+})
 
 // Caption component
-export function Caption({ className, ...props }: TextProps & { className?: string }) {
-  return (
-    <RNText className={`text-xs text-gray-500 ${className || ''}`} {...props}>
-      {props.children}
-    </RNText>
-  )
-}
+export const Caption = styled(TamaguiText, {
+  fontSize: '$2',
+  color: '$gray10',
+})
 
-// Button text component
-export function Button({ className, ...props }: TextProps & { className?: string }) {
-  return (
-    <RNText className={`text-base font-semibold ${className || ''}`} {...props}>
-      {props.children}
-    </RNText>
-  )
-}
+// Anchor/Link component
+export const A = styled(TamaguiText, {
+  name: 'A',
+  tag: 'a',
+  cursor: 'pointer',
+  textDecorationLine: 'underline',
+  hoverStyle: {
+    opacity: 0.8,
+  },
+})

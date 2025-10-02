@@ -1,7 +1,7 @@
 'use client'
 import { Entry } from 'app/api/graphql/types'
-import { View } from 'react-native'
-import InfoCircle from 'app/ui/icons/info-circle'
+import { YStack, XStack } from 'tamagui'
+import { Info } from '@tamagui/lucide-icons'
 import { H1, P } from 'app/design/typography'
 import { CollapsableView } from 'app/ui/CollapsableView'
 import { ActionButtons } from './ActionButtons'
@@ -14,28 +14,34 @@ type Props = {
 
 export function EntrySummaryColumn({ entry }: Props) {
   return (
-    <View className="flex w-full md:ml-4 md:flex-1">
-      <View>
-        <H1 className="font-unbounded mb-2 text-3xl font-bold md:text-5xl md:ml-0 ml-4">
+    <YStack width="100%" marginLeft={{ md: '$4' }} flex={{ md: 1 }}>
+      <YStack>
+        <H1 
+          fontFamily="$heading" 
+          marginBottom="$2" 
+          fontSize={{ xs: '$9', md: '$11' }} 
+          fontWeight="bold" 
+          marginLeft={{ xs: '$4', md: '$0' }}
+        >
           {entry.title}
         </H1>
-        <P className="md:text-2xl md:ml-0 ml-4">{entry.artist}</P>
+        <P fontSize={{ md: '$8' }} marginLeft={{ xs: '$4', md: '$0' }}>{entry.artist}</P>
 
         {/* Action buttons below title/artist to match legacy layout */}
-        <View className="mt-4 flex-row items-center gap-4 md:ml-0 ml-4">
+        <XStack marginTop="$4" flexDirection="row" alignItems="center" gap="$4" marginLeft={{ xs: '$4', md: '$0' }}>
           <ActionButtons entry={entry} />
-        </View>
-      </View>
+        </XStack>
+      </YStack>
 
       {/* Invest component */}
       <InvestSection entry={entry} />
 
-      <CollapsableView headerText="Description" icon={InfoCircle}>
-        <P className="p-5 text-sm leading-6">{entry.description}</P>
+      <CollapsableView headerText="Description" icon={Info}>
+        <P padding="$5" fontSize="$3" lineHeight="$6">{entry.description}</P>
       </CollapsableView>
 
       {/* Likes List (using ClientLikesList for cross-platform compatibility) */}
       <ClientLikesList entry={entry} />
-    </View>
+    </YStack>
   )
 }

@@ -1,5 +1,6 @@
 'use client'
-import { View, FlatList } from 'react-native'
+import { FlatList } from 'react-native'
+import { YStack } from 'tamagui'
 import { BeatListEntry } from 'app/ui/beat-list-entry'
 import { useState, useEffect } from 'react'
 import { P, ActivityIndicator } from 'app/design/typography'
@@ -59,24 +60,24 @@ export function BeatsSearchResultList({
 
   if (loading) {
     return (
-      <View className="flex h-40 items-center justify-center">
+      <YStack height={160} alignItems="center" justifyContent="center">
         <ActivityIndicator size="large" />
-      </View>
+      </YStack>
     )
   }
 
   if (!entries.length) {
     return (
-      <View className="flex-1 items-center justify-center py-8">
-        <P className="text-center text-gray-400">
+      <YStack flex={1} alignItems="center" justifyContent="center" paddingVertical="$8">
+        <P textAlign="center" color="$gray9">
           No MFTs found for "{searchPhrase}"
         </P>
-      </View>
+      </YStack>
     )
   }
 
   return (
-    <View className="flex-1">
+    <YStack flex={1}>
       <FlatList
         data={entries}
         keyExtractor={(item) => item.id!}
@@ -85,6 +86,6 @@ export function BeatsSearchResultList({
         )}
         showsVerticalScrollIndicator={false}
       />
-    </View>
+    </YStack>
   )
 }

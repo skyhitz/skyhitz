@@ -7,7 +7,7 @@ import { User } from 'app/api/graphql/types'
 import { useRouter } from 'solito/navigation'
 import { P, ActivityIndicator } from 'app/design/typography'
 import { Button } from 'app/design/button'
-import { View } from 'react-native'
+import { YStack } from 'tamagui'
 
 export function AuthenticationView({
   signInParam,
@@ -58,23 +58,23 @@ export function AuthenticationView({
   }, [signInParam, signIn, replace])
 
   return (
-    <View className="flex w-72 items-center">
+    <YStack width={288} alignItems="center">
       {error ? (
         <>
-          <P className="w-full text-center text-[#d9544f]">{error.message}</P>
+          <P width="100%" textAlign="center" color="#d9544f">{error.message}</P>
           <Button
             text="Go back"
             onPress={() => replace('/')}
-            className="my-3"
+            marginVertical="$3"
             variant="secondary"
           />
         </>
       ) : (
         <>
           <ActivityIndicator size="large" />
-          <P className="mt-2 text-center text-white">Authentication</P>
+          <P marginTop="$2" textAlign="center" color="$white1">Authentication</P>
         </>
       )}
-    </View>
+    </YStack>
   )
 }

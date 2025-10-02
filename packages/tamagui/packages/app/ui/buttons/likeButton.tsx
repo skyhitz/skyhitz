@@ -1,5 +1,5 @@
 'use client'
-import Like from 'app/ui/icons/like'
+import { Heart } from '@tamagui/lucide-icons'
 import { Entry } from 'app/api/graphql/types'
 import { useUserStore } from 'app/state/user'
 import { useRouter } from 'solito/navigation'
@@ -17,11 +17,10 @@ import { Button } from 'tamagui'
 
 interface Props {
   size?: number
-  className?: string
   entry: Entry
 }
 
-function LikeButton({ size = 24, className, entry }: Props) {
+function LikeButton({ size = 24, entry }: Props) {
   const user = useUserStore((state) => state.user)
   const { push } = useRouter()
 
@@ -108,13 +107,11 @@ function LikeButton({ size = 24, className, entry }: Props) {
       disabled={likeLoading}
       backgroundColor="transparent"
       padding="$0"
-      className={className}
     >
-      <Like
-        width={size}
-        height={size}
+      <Heart
+        size={size}
         fill={isLiked ? '$gray10' : 'none'}
-        stroke="$gray10"
+        color="$gray10"
       />
     </Button>
   )

@@ -1,22 +1,18 @@
 import { TextInput, TextInputProps } from 'react-native'
 import * as React from 'react'
-import Check from 'app/ui/icons/check'
-import Close from 'app/ui/icons/close'
-import { XStack, Input } from 'tamagui'
+import { Check, X } from '@tamagui/lucide-icons'
+import { XStack, Input, GetProps } from 'tamagui'
 
-type StyledInputProps = TextInputProps & {
+type StyledInputProps = TextInputProps & GetProps<typeof XStack> & {
   valid?: boolean
   showFeedback?: boolean
-  textInputClassName?: string
 }
 
 const StyledTextInput = React.forwardRef(function StyledTextInput(
   {
-    className,
     valid,
     value,
     showFeedback,
-    textInputClassName,
     ...rest
   }: StyledInputProps,
   ref: React.ForwardedRef<TextInput>,
@@ -30,7 +26,7 @@ const StyledTextInput = React.forwardRef(function StyledTextInput(
       borderRadius="$3"
       backgroundColor="$gray8"
       padding="$2"
-      className={className}
+      {...rest}
     >
       <Input
         flex={1}
@@ -45,15 +41,13 @@ const StyledTextInput = React.forwardRef(function StyledTextInput(
         borderWidth={0}
         outlineStyle="none"
         value={value}
-        className={textInputClassName}
-        {...rest}
         ref={ref}
       />
       {showFeedback &&
         (valid ? (
-          <Check color="$green9" width={16} />
+          <Check color="$green9" size={16} />
         ) : (
-          <Close color="$red9" width={16} />
+          <X color="$red9" size={16} />
         ))}
     </XStack>
   )

@@ -1,5 +1,5 @@
 'use client'
-import { View } from 'react-native'
+import { YStack, XStack } from 'tamagui'
 import { Button } from 'app/design/button'
 import { Entry } from 'app/api/graphql/types'
 import Stellar from 'app/ui/icons/stellar'
@@ -153,48 +153,48 @@ export function InvestSection({ entry }: Props) {
   const ownershipPercentage = entry.tvl ? (shares / Number(entry.tvl)) * 100 : 0
 
   return (
-    <View className="my-6 w-full rounded-lg bg-[--bg-secondary-color] p-4">
-      <View className="mb-4 gap-2">
-        <View className="flex-row">
-          <P className="text-[--text-secondary-color] mr-1 font-unbounded text-xs">
+    <YStack marginVertical="$6" width="100%" borderRadius="$3" backgroundColor="$backgroundHover" padding="$4">
+      <YStack marginBottom="$4" gap="$2">
+        <XStack flexDirection="row">
+          <P color="$color11" marginRight="$1" fontFamily="$heading" fontSize="$2">
             TVL:{' '}
           </P>
-          <P className="font-unbounded text-xs">
+          <P fontFamily="$heading" fontSize="$2">
             {`${stroopsToLumens(entry.tvl?.toString() || '0')} XLM`}
           </P>
-        </View>
-        <View className="flex-row">
-          <P className="text-[--text-secondary-color] mr-1 font-unbounded text-xs">
+        </XStack>
+        <XStack flexDirection="row">
+          <P color="$color11" marginRight="$1" fontFamily="$heading" fontSize="$2">
             APR:{' '}
           </P>
-          <P className="text-[--primary-color] font-unbounded text-xs">
+          <P color="$blue9" fontFamily="$heading" fontSize="$2">
             {`${entry.apr}%`}
           </P>
-        </View>
+        </XStack>
         {user && (
-          <View className="flex-row items-center">
-            <P className="text-[--text-secondary-color] mr-1 font-unbounded text-xs">
+          <XStack flexDirection="row" alignItems="center">
+            <P color="$color11" marginRight="$1" fontFamily="$heading" fontSize="$2">
               Share:{' '}
             </P>
-            <P className="text-[--text-color] font-unbounded text-xs">
+            <P color="$color" fontFamily="$heading" fontSize="$2">
               {`${ownershipPercentage.toFixed(2)}%`}
             </P>
             {equityToBuy ? (
-              <P className="!text-[--primary-color] font-unbounded text-xs">
+              <P color="$blue9" fontFamily="$heading" fontSize="$2">
                 {` +${Number(equityToBuy).toFixed(2)}%`}
               </P>
             ) : null}
-          </View>
+          </XStack>
         )}
         {user && (
-          <View className="flex-row">
-            <P className="text-[--text-secondary-color] text-xs font-unbounded">
+          <XStack flexDirection="row">
+            <P color="$color11" fontSize="$2" fontFamily="$heading">
               Your balance:{' '}
             </P>
-            <P className="text-[--text-color] text-xs font-unbounded">
+            <P color="$color" fontSize="$2" fontFamily="$heading">
               {`${userCredits} XLM`}
             </P>
-          </View>
+          </XStack>
         )}
 
         <FormInputWithIcon
@@ -203,12 +203,12 @@ export function InvestSection({ entry }: Props) {
           onChangeText={setAmountToInvest}
           placeholder={`Amount to invest (min ${INVEST_MIN_XLM} XLM)`}
           keyboardType="numeric"
-          className="my-4"
+          marginVertical="$4"
         />
-        <P className="text-center text-xs text-[--text-secondary-color] italic mt-1 mb-3">
+        <P textAlign="center" fontSize="$2" color="$color11" fontStyle="italic" marginTop="$1" marginBottom="$3">
           Minimum investment: {INVEST_MIN_XLM} XLM
         </P>
-      </View>
+      </YStack>
 
       <Button
         onPress={onSubmit}
@@ -222,14 +222,17 @@ export function InvestSection({ entry }: Props) {
           investLoading
         }
         text="Invest Now"
-        className="w-full bg-[--invest-button-bg-color] hover:bg-[--invest-button-bg-color] border-0 font-semibold"
+        width="100%"
+        backgroundColor="$blue9"
+        borderWidth={0}
+        fontWeight="600"
       />
 
-      <P className="mt-4 text-center text-xs text-[--text-secondary-color]">
+      <P marginTop="$4" textAlign="center" fontSize="$2" color="$color11">
         By investing, you are purchasing shares in this creation's future
         earnings.
       </P>
-    </View>
+    </YStack>
   )
 }
 

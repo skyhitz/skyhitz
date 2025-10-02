@@ -1,5 +1,5 @@
 'use client'
-import { View } from 'react-native'
+import { YStack } from 'tamagui'
 import { useUserCollectionQuery } from 'app/api/graphql/mutations'
 import { User } from 'app/api/graphql/types'
 import { isSome } from 'app/utils'
@@ -12,9 +12,9 @@ export default function CollectionScreen({ user }: { user: User }) {
   const entries = data?.userEntries?.filter(isSome) ?? []
 
   return (
-    <SafeAreaView className="bg-[--bg-color]">
-      <View className="w-full flex-1 pb-32">
-        <P className="web:flex font-unbounded my-4 ml-8 hidden text-lg font-bold">
+    <SafeAreaView backgroundColor="$background">
+      <YStack width="100%" flex={1} paddingBottom="$16">
+        <P display={{ xs: 'none', md: 'flex' }} fontFamily="$heading" marginVertical="$4" marginLeft="$8" fontSize="$5" fontWeight="bold">
           Collection
         </P>
         <ProfileBeatsList
@@ -22,7 +22,7 @@ export default function CollectionScreen({ user }: { user: User }) {
           emptyStateText="Nothing in your collection yet"
           loading={loading}
         />
-      </View>
+      </YStack>
     </SafeAreaView>
   )
 }

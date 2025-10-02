@@ -26,7 +26,7 @@ export function ActionButtons({ entry }: ActionButtonsProps) {
       />
 
       {/* Download button */}
-      <DownloadBtn entry={entry} size={20} className="mb-1" />
+      <DownloadBtn entry={entry} size={20} marginBottom="$1" />
     </>
   )
 }

@@ -1,7 +1,8 @@
 'use client'
 
 import { Entry } from 'app/api/graphql/types'
-import { View, FlatList, Pressable, Platform } from 'react-native'
+import { FlatList, Platform } from 'react-native'
+import { YStack, XStack, Button } from 'tamagui'
 import { H3, P } from 'app/design/typography'
 import { gql, useQuery } from '@apollo/client'
 import { CollapsableView } from 'app/ui/CollapsableView'
@@ -46,12 +47,8 @@ export default function ClientLikesList({ entry }: Props) {
     // For web, use a native anchor tag that doesn't require router
     if (Platform.OS === 'web') {
       return (
-        // <a
-        //   href={`/collector/${item.id}`}
-        //   className="mb-2 flex flex-row items-center rounded-md p-2 hover:bg-gray-800 no-underline"
-        // >
-        <View className="mb-2 flex flex-row items-center rounded-md p-2 hover:bg-gray-800 no-underline">
-          <View className="mr-3">
+        <XStack marginBottom="$2" flexDirection="row" alignItems="center" borderRadius="$2" padding="$2" hoverStyle={{ backgroundColor: '$gray8' }}>
+          <YStack marginRight="$3">
             <UserAvatar
               avatarUrl={item.avatarUrl}
               displayName={item.displayName || item.username}
@@ -59,42 +56,43 @@ export default function ClientLikesList({ entry }: Props) {
               email={item.username}
               size="small"
             />
-          </View>
-          <View>
-            <P className="font-semibold">{item.displayName || item.username}</P>
-            <P className="text-xs text-gray-400">@{item.username}</P>
-          </View>
-        </View>
-        // </a>
+          </YStack>
+          <YStack>
+            <P fontWeight="600">{item.displayName || item.username}</P>
+            <P fontSize="$2" color="$gray9">@{item.username}</P>
+          </YStack>
+        </XStack>
       )
     }
 
     // For native, use a Pressable with a window.location approach
     return (
-      <Pressable
-        onPress={() => {
-          // if (Platform.OS === 'web') {
-          //   window.location.href = `/collector/${item.id}`
-          // }
-          // Note: For native, we'd need a navigation solution that doesn't rely on router
-          // This component is only used in web currently so we're focusing on that
-        }}
-        className="mb-2 flex flex-row items-center rounded-md p-2 hover:bg-gray-800"
+      <Button 
+        backgroundColor="transparent"
+        padding="$0"
+        onPress={() => {}}
+        marginBottom="$2"
+        borderRadius="$2"
+        paddingHorizontal="$2"
+        paddingVertical="$2"
+        hoverStyle={{ backgroundColor: '$gray8' }}
       >
-        <View className="mr-3">
-          <UserAvatar
-            avatarUrl={item.avatarUrl}
-            displayName={item.displayName || item.username}
-            userId={item.id}
-            email={item.username}
-            size="small"
-          />
-        </View>
-        <View>
-          <P className="font-semibold">{item.displayName || item.username}</P>
-          <P className="text-xs text-gray-400">@{item.username}</P>
-        </View>
-      </Pressable>
+        <XStack flexDirection="row" alignItems="center">
+          <YStack marginRight="$3">
+            <UserAvatar
+              avatarUrl={item.avatarUrl}
+              displayName={item.displayName || item.username}
+              userId={item.id}
+              email={item.username}
+              size="small"
+            />
+          </YStack>
+          <YStack>
+            <P fontWeight="600">{item.displayName || item.username}</P>
+            <P fontSize="$2" color="$gray9">@{item.username}</P>
+          </YStack>
+        </XStack>
+      </Button>
     )
   }
 
@@ -102,11 +100,10 @@ export default function ClientLikesList({ entry }: Props) {
     likes.length > 0 || loading ? <CollapsableView
       headerText="Likes"
       initCollapsed={true}
-      className="mt-4 w-full"
       icon={Like}
     >
       {loading ? (
-        <P className="py-2 text-center text-gray-400">Loading likes...</P>
+        <P paddingVertical="$2" textAlign="center" color="$gray9">Loading likes...</P>
       ) : likes.length > 0 ? (
         <FlatList
           data={likes}
@@ -115,7 +112,7 @@ export default function ClientLikesList({ entry }: Props) {
           scrollEnabled={false}
         />
       ) : (
-        <P className="py-2 text-center text-gray-400">No likes yet</P>
+        <P paddingVertical="$2" textAlign="center" color="$gray9">No likes yet</P>
       )}
     </CollapsableView> : null
   )

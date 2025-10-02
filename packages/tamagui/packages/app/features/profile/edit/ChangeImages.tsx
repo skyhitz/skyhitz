@@ -1,5 +1,5 @@
 'use client'
-import { View } from 'react-native'
+import { YStack, XStack } from 'tamagui'
 import { ChangeImage } from 'app/types'
 import { P } from 'app/design/typography'
 import { ChangeImageButton } from 'app/ui/buttons/ChangeImageButton'
@@ -27,10 +27,10 @@ export function ChangeImages({
   }, [progress])
 
   return (
-    <View className="w-full max-w-lg">
-      <View className="flex flex-row flex-wrap justify-center">
-        <View className="m-2">
-          <P className="mb-1 text-center text-white">Avatar</P>
+    <YStack width="100%" maxWidth={512}>
+      <XStack flexDirection="row" flexWrap="wrap" justifyContent="center">
+        <YStack margin="$2">
+          <P marginBottom="$1" textAlign="center" color="$white1">Avatar</P>
           <ChangeImageButton
             onImageSelected={setAvatar}
             progress={progress}
@@ -38,9 +38,9 @@ export function ChangeImages({
             text="Change Avatar"
             current={avatar}
           />
-        </View>
-        <View className="m-2">
-          <P className="mb-1 text-center text-white">Background</P>
+        </YStack>
+        <YStack margin="$2">
+          <P marginBottom="$1" textAlign="center" color="$white1">Background</P>
           <ChangeImageButton
             onImageSelected={setBackground}
             progress={progress}
@@ -48,8 +48,8 @@ export function ChangeImages({
             text="Change Background"
             current={background}
           />
-        </View>
-      </View>
-    </View>
+        </YStack>
+      </XStack>
+    </YStack>
   )
 }
