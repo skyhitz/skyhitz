@@ -10,6 +10,26 @@ export const config = createTamagui({
     body: bodyFont,
     heading: headingFont,
   },
+  tokens: {
+    ...defaultConfig.tokens,
+    size: {
+      ...defaultConfig.tokens.size,
+      '7xl': 1280, // max-width for large screens
+    },
+  },
+  themes: {
+    ...defaultConfig.themes,
+    light: {
+      ...defaultConfig.themes.light,
+      gray8: '#27272a', // zinc-800
+      gray10: '#a1a1aa', // zinc-400
+    },
+    dark: {
+      ...defaultConfig.themes.dark,
+      gray8: '#27272a', // zinc-800
+      gray10: '#a1a1aa', // zinc-400
+    },
+  },
   settings:{
     ...defaultConfig.settings,
     onlyAllowShorthands: false

@@ -76,14 +76,26 @@ export const Hero = ({ title, desc }: HeroProps) => {
         position="relative"
         marginVertical="$8"
         $md={{ marginVertical: 0 }}
+        backgroundColor="$gray2"
+        borderRadius="$4"
+        alignItems="center"
+        justifyContent="center"
       >
-        <SolitoImage
-          src="/img/app.webp"
-          alt="Skyhitz app"
-          fill
-          sizes="(max-width: 768px) 100vw, 50vw"
-          contentFit="contain"
-        />
+        {/* Placeholder for app image - add app.webp to public/img/ */}
+        <YStack
+          width="100%"
+          height="100%"
+          alignItems="center"
+          justifyContent="center"
+          opacity={0.3}
+        >
+          <P fontSize="$8" fontWeight="bold" color="$gray8">
+            Skyhitz
+          </P>
+          <P fontSize="$3" color="$gray10" marginTop="$2">
+            App Preview
+          </P>
+        </YStack>
       </YStack>
     </XStack>
   )
