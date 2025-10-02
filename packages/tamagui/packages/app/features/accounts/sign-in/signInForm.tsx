@@ -1,6 +1,5 @@
 'use client'
 import { SignInForm as FormData } from 'app/types'
-import { View } from 'react-native'
 import { Button } from 'app/design/button'
 import { Formik, FormikProps } from 'formik'
 import StyledTextInput from 'app/features/accounts/styledTextInput'
@@ -8,6 +7,7 @@ import { useRequestTokenMutation } from 'app/api/graphql/mutations'
 import { signInFormSchema } from 'app/validation'
 import { A, P } from 'app/design/typography'
 import { ApolloError } from '@apollo/client'
+import { YStack, XStack } from 'tamagui'
 
 type SignInFormProps = {
   onEmailSend: () => void
@@ -41,7 +41,10 @@ export function SignInForm({
   }
 
   return (
-    <View className="w-72 items-center md:w-96">
+    <YStack
+      width={{ xs: 288, md: 384 }}
+      alignItems="center"
+    >
       {/* Wallet connect button will be implemented later */}
       <Formik
         validateOnMount
@@ -58,12 +61,12 @@ export function SignInForm({
           isValid,
           handleSubmit,
         }: FormikProps<FormData>) => (
-          <View className="items-center">
+          <YStack alignItems="center">
             <StyledTextInput
               value={values.usernameOrEmail}
               onChangeText={handleChange('usernameOrEmail')}
               onBlur={handleBlur('usernameOrEmail')}
-              className="mt-4"
+              marginTop="$4"
               placeholder="Email"
               showFeedback={touched.usernameOrEmail}
               valid={!errors.usernameOrEmail}
@@ -73,32 +76,44 @@ export function SignInForm({
               autoCapitalize="none"
               keyboardType="email-address"
             />
-            <View className="mt-4 flex-row">
-              <P className="text-red min-h-5 w-full text-center text-sm">
+            <XStack marginTop="$4" flexDirection="row">
+              <P
+                color="$red9"
+                minHeight="$5"
+                width="100%"
+                textAlign="center"
+                fontSize="$3"
+              >
                 {(touched.usernameOrEmail && errors.usernameOrEmail) ||
                   error?.message}
               </P>
-            </View>
+            </XStack>
 
             <Button
               onPress={() => handleSubmit()}
               loading={loading}
               text="Log In"
               size="large"
-              className="mt-6"
+              marginTop="$6"
               disabled={!isValid}
             />
-            <View className="mt-8 flex-row">
-              <P className="min-h-5 w-full text-center text-sm text-white">
+            <XStack marginTop="$8" flexDirection="row">
+              <P
+                minHeight="$5"
+                width="100%"
+                textAlign="center"
+                fontSize="$3"
+                color="$white1"
+              >
                 Don&apos;t have an account?{' '}
-                <A className="mx-2 text-gray-700" href="/sign-up">
+                <A marginHorizontal="$2" color="$gray10" href="/sign-up">
                   Sign Up
                 </A>
               </P>
-            </View>
-          </View>
+            </XStack>
+          </YStack>
         )}
       </Formik>
-    </View>
+    </YStack>
   )
 }

@@ -4,10 +4,9 @@ import BlogSection from 'app/ui/blog-section'
 import CtaBanner from 'app/ui/cta-banner'
 import Faq from 'app/ui/faq'
 import { Featured } from 'app/ui/featured'
-import Footer from 'app/ui/footer'
 import { Hero } from 'app/ui/hero'
-import { Navbar } from 'app/ui/navbar/Navbar'
-import { ScrollView, View } from 'react-native'
+import { ScrollView } from 'react-native'
+import { YStack } from 'tamagui'
 import { JSX } from 'react'
 import { Post } from 'app/types/index'
 
@@ -49,22 +48,19 @@ export function HomeScreen(props: HomePageProps) {
   const insets = useSafeArea()
 
   return (
-    <View
-      className="flex-1 bg-[--bg-color]"
-      style={{
-        paddingTop: insets.top,
-        paddingBottom: insets.bottom,
-      }}
+    <YStack
+      flex={1}
+      backgroundColor="$background"
+      paddingTop={insets.top}
+      paddingBottom={insets.bottom}
     >
-      <Navbar />
-      <ScrollView className="flex-1 w-full">
+      <ScrollView style={{ flex: 1, width: '100%' }}>
         {header && <Hero {...header} />}
         {cta && <CtaBanner {...cta} />}
         {featured && <Featured {...featured} />}
         {faq && <Faq {...faq} />}
         {posts && <BlogSection posts={posts} />}
-        <Footer />
       </ScrollView>
-    </View>
+    </YStack>
   )
 }

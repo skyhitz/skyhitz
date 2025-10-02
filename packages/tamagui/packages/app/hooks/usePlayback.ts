@@ -1,3 +1,4 @@
+'use client'
 /**
  * usePlayback hook for managing media playback
  * Using Zustand store for state management

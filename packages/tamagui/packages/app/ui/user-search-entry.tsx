@@ -1,8 +1,9 @@
 'use client';
 import * as React from 'react';
-import { Text, View, Image, Pressable } from 'react-native';
+import { Image } from 'react-native';
 import { User } from 'app/api/graphql/types';
 import { useRouter } from 'solito/navigation';
+import { YStack, XStack, Text } from 'tamagui';
 
 type UserSearchEntryProps = {
   user: User;
@@ -25,32 +26,39 @@ export const UserSearchEntry = React.memo(function UserSearchEntryComponent({ us
   }, [userId, push]);
 
   return (
-    <Pressable
+    <XStack
+      marginBottom="$4"
+      flexDirection="row"
+      alignItems="center"
+      borderRadius="$3"
+      backgroundColor="$gray8"
+      padding="$2"
+      pressStyle={{ opacity: 0.8 }}
       onPress={handlePress}
-      className="mb-4 flex-row items-center rounded-lg bg-gray-800 p-2"
+      cursor="pointer"
     >
       <Image
         source={{ uri: avatarUrl }}
-        className="h-14 w-14 rounded-full"
+        style={{ height: 56, width: 56, borderRadius: 28 }}
         alt={username}
       />
 
-      <View className="ml-3 flex-1">
-        <Text numberOfLines={1} className="text-base font-medium text-white">
+      <YStack marginLeft="$3" flex={1}>
+        <Text numberOfLines={1} fontSize="$4" fontWeight="500" color="$white1">
           {displayName}
         </Text>
-        <Text numberOfLines={1} className="text-sm text-gray-400">
+        <Text numberOfLines={1} fontSize="$3" color="$gray10">
           {`@${username}`}
         </Text>
-      </View>
+      </YStack>
 
       {description ? (
-        <View className="w-1/3">
-          <Text numberOfLines={1} className="text-xs text-gray-300">
+        <YStack width="33%">
+          <Text numberOfLines={1} fontSize="$2" color="$gray11">
             {description}
           </Text>
-        </View>
+        </YStack>
       ) : null}
-    </Pressable>
+    </XStack>
   );
 });

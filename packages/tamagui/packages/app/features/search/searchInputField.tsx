@@ -1,7 +1,8 @@
 'use client'
-import { TextInput, Pressable, View } from 'react-native'
+import { TextInput } from 'react-native'
 import Search from 'app/ui/icons/search'
 import { X } from 'app/ui/icons/x'
+import { XStack, Input, Button } from 'tamagui'
 
 type SearchInputFieldProps = {
   value: string
@@ -21,30 +22,51 @@ export function SearchInputField({
   placeholder = 'Search for Music or Collectors',
 }: SearchInputFieldProps) {
   return (
-    <View className="flex w-full flex-row items-center rounded-lg border border-[--border-color] bg-[--card-bg-color] px-2 py-1">
+    <XStack
+      width="100%"
+      flexDirection="row"
+      alignItems="center"
+      borderRadius="$3"
+      borderWidth={1}
+      borderColor="$borderColor"
+      backgroundColor="$background"
+      paddingHorizontal="$2"
+      paddingVertical="$1"
+    >
       <Search
         width={20}
         height={20}
-        className="mr-2 stroke-[--text-secondary-color]"
+        color="$gray10"
+        marginRight="$2"
       />
-      <TextInput
+      <Input
+        flex={1}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        className="remove-font-padding flex-1 text-sm text-[--text-color] py-1"
+        fontSize="$3"
+        color="$color12"
+        paddingVertical="$1"
+        backgroundColor="transparent"
+        borderWidth={0}
+        outlineStyle="none"
         autoCapitalize={autoCapitalize}
-        // @ts-ignore - outlineStyle works on web but isn't in the type definitions
-        style={{ outlineStyle: 'none' }}
       />
       {showX && (
-        <Pressable onPress={onXClick} hitSlop={8}>
+        <Button
+          onPress={onXClick}
+          backgroundColor="transparent"
+          padding="$1"
+          marginLeft="$2"
+          hitSlop={8}
+        >
           <X
             width={20}
             height={20}
-            className="ml-2 stroke-[--text-secondary-color]"
+            color="$gray10"
           />
-        </Pressable>
+        </Button>
       )}
-    </View>
+    </XStack>
   )
 }

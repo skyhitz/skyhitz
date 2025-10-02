@@ -2,57 +2,98 @@
 import { P } from 'app/design/typography'
 import { SkyhitzLogo } from 'app/ui/logo'
 import { useUserState } from 'app/state/user/hooks'
-import { Text, View } from 'react-native'
 import { TextLink } from 'solito/link'
+import { XStack, YStack, Button } from 'tamagui'
 
 const Navbar = ({ className }: { className?: string }) => {
   const { user } = useUserState()
   const userLoading = false // We'll implement loading state later if needed
 
   return (
-    <View
-      className={`w-full flex-row flex-wrap items-center justify-between p-3 ${className}`}
+    <XStack
+      width="100%"
+      flexDirection="row"
+      flexWrap="wrap"
+      alignItems="center"
+      justifyContent="space-between"
+      padding="$3"
+      className={className}
     >
-      <View className="flex flex-row">
+      <XStack flexDirection="row">
         <TextLink href="/">
-          <View className="flex flex-row items-center justify-start">
-            <View className="flex min-h-[2.25rem] flex-row items-center">
+          <XStack flexDirection="row" alignItems="center" justifyContent="flex-start">
+            <XStack minHeight={36} flexDirection="row" alignItems="center">
               <SkyhitzLogo id="navbar" />
-              <Text className="font-raleway pl-4 text-base tracking-[12px] text-gray-600 sm:text-lg">
+              <P
+                fontFamily="$heading"
+                paddingLeft="$4"
+                fontSize="$4"
+                letterSpacing="$2"
+                color="$gray10"
+                $sm={{ fontSize: '$5' }}
+              >
                 SKYHITZ
-              </Text>
-            </View>
-          </View>
+              </P>
+            </XStack>
+          </XStack>
         </TextLink>
         {user || userLoading ? null : (
-          <View className="ml-8 hidden flex-row items-center sm:flex">
+          <XStack
+            marginLeft="$8"
+            display={{ xs: 'none', sm: 'flex' }}
+            flexDirection="row"
+            alignItems="center"
+          >
             <TextLink href="/chart">
-              <P className="mr-4 text-sm">Chart</P>
+              <P marginRight="$4" fontSize="$3">Chart</P>
             </TextLink>
             <TextLink href="/search">
-              <P className="mr-4 text-sm">Search</P>
+              <P marginRight="$4" fontSize="$3">Search</P>
             </TextLink>
-          </View>
+          </XStack>
         )}
-      </View>
+      </XStack>
       {user || userLoading ? null : (
-        <View className="flex-row items-center justify-end sm:flex">
+        <XStack
+          flexDirection="row"
+          alignItems="center"
+          justifyContent="flex-end"
+          display={{ xs: 'none', sm: 'flex' }}
+        >
           <TextLink href="/sign-in">
-            <P className="font-raleway tracking-0.5 mr-4 text-sm font-bold">
+            <P
+              fontFamily="$heading"
+              letterSpacing="$1"
+              marginRight="$4"
+              fontSize="$3"
+              fontWeight="bold"
+            >
               Log in
             </P>
           </TextLink>
 
-          <View className="bg-blue rounded-lg px-3 py-2">
+          <Button
+            backgroundColor="$blue9"
+            borderRadius="$3"
+            paddingHorizontal="$3"
+            paddingVertical="$2"
+          >
             <TextLink href="/sign-up">
-              <P className="font-raleway tracking-0.5 p-2 text-sm font-bold text-white">
+              <P
+                fontFamily="$heading"
+                letterSpacing="$1"
+                padding="$2"
+                fontSize="$3"
+                fontWeight="bold"
+                color="$white1"
+              >
                 Sign Up
               </P>
             </TextLink>
-          </View>
-        </View>
+          </Button>
+        </XStack>
       )}
-    </View>
+    </XStack>
   )
 }
 

@@ -1,5 +1,4 @@
 'use client'
-import { View, Pressable } from 'react-native'
 import { Entry } from 'app/api/graphql/types'
 import { P } from 'app/design/typography'
 import { imageUrlSmall } from 'app/utils/entry'
@@ -11,10 +10,11 @@ import LikeButton from 'app/ui/buttons/likeButton'
 import Stellar from 'app/ui/icons/stellar'
 import { stroopsToLumens } from 'app/utils/stroopsToLumens'
 import { usePlayback } from 'app/hooks/usePlayback'
+import { XStack, YStack, Button } from 'tamagui'
 
 // Reusable component for APR text with consistent styling
 function APRText({ apr }: { apr: string }) {
-  return <P className="mr-3 text-xs text-[--primary-color]">APR: {apr}</P>
+  return <P marginRight="$3" fontSize="$2" color="$blue9">APR: {apr}</P>
 }
 
 export type PressableState = Readonly<{
@@ -45,80 +45,118 @@ export function BeatListEntry({
   const aprFormatted = entry.apr ? `${Math.round(entry.apr)}%` : '0%'
 
   return (
-    <Pressable onPress={handlePress} className="flex">
-      {({ hovered }: PressableState) => (
-        <View
-          className="flex flex-row items-center py-2 border-b border-[--border-color]"
-          style={{ borderBottomWidth: 0.5 }}
+    <Button
+      onPress={handlePress}
+      backgroundColor="transparent"
+      padding="$0"
+      flexDirection="row"
+      alignItems="center"
+      paddingVertical="$2"
+      borderBottomWidth={0.5}
+      borderBottomColor="$borderColor"
+    >
+      {/* Album artwork */}
+      <YStack
+        aspectRatio={1}
+        width={48}
+        overflow="hidden"
+      >
+        <SolitoImage
+          src={imageUrlSmall(entry.imageUrl)}
+          alt={entry.title || ''}
+          contentFit="cover"
+          fill
+          sizes="4rem"
+          style={{ borderRadius: 6 }}
+        />
+      </YStack>
+
+      {/* Rank number */}
+      {spot && (
+        <P
+          marginLeft="$2"
+          width={32}
+          textAlign="center"
+          fontSize="$8"
+          lineHeight="$2"
         >
-          {/* Album artwork */}
-          <View className="aspect-[2/2] w-12 object-cover">
-            <SolitoImage
-              src={imageUrlSmall(entry.imageUrl)}
-              alt={entry.title || ''}
-              contentFit="cover"
-              fill
-              sizes="4rem"
-              style={{ borderRadius: 6 }}
-            />
-          </View>
-
-          {/* Rank number */}
-          {spot && (
-            <P className="ml-2 w-8 text-center text-2xl leading-none">{spot}</P>
-          )}
-
-          {/* Title and artist */}
-          <View className="ml-2 flex flex-1 justify-center pr-2">
-            <P numberOfLines={1} className="text-sm font-bold leading-6">
-              {entry.title}
-            </P>
-            <P
-              numberOfLines={1}
-              className="text-xs leading-6 text-[--text-secondary-color]"
-            >
-              {entry.artist}
-            </P>
-
-            {/* Mobile TVL and APR */}
-            {entry.tvl && entry.apr ? (
-              <Pressable
-                className="flex flex-row items-center md:hidden"
-                onPress={() => push(`/music/${entry.id}`)}
-              >
-                <View className="mr-3 flex flex-row items-center">
-                  <Stellar size={10} color="var(--primary-color)" />
-                  <P className="ml-1 text-xs leading-6">{tvlFormatted}</P>
-                </View>
-                <APRText apr={aprFormatted} />
-              </Pressable>
-            ) : null}
-          </View>
-
-          {/* Right side actions */}
-          <View className="flex flex-row items-center">
-            {/* Desktop TVL and APR */}
-            {entry.tvl && entry.apr ? (
-              <Pressable
-                className="hidden flex-row items-center md:flex"
-                onPress={() => push(`/music/${entry.id}`)}
-              >
-                <APRText apr={aprFormatted} />
-              </Pressable>
-            ) : null}
-
-            {/* <DownloadBtn size={14} className="mr-3" entry={entry} /> */}
-
-            {/* Like button */}
-            <LikeButton size={20} entry={entry} />
-
-            {/* More options dots */}
-            <Pressable onPress={() => push(`/music/${entry.id}`)}>
-              <VerticalDots size={24} className="stroke-[--text-color]" />
-            </Pressable>
-          </View>
-        </View>
+          {spot}
+        </P>
       )}
-    </Pressable>
+
+      {/* Title and artist */}
+      <YStack
+        marginLeft="$2"
+        flex={1}
+        justifyContent="center"
+        paddingRight="$2"
+      >
+        <P
+          numberOfLines={1}
+          fontSize="$3"
+          fontWeight="bold"
+          lineHeight="$6"
+        >
+          {entry.title}
+        </P>
+        <P
+          numberOfLines={1}
+          fontSize="$2"
+          lineHeight="$6"
+          color="$gray10"
+        >
+          {entry.artist}
+        </P>
+
+        {/* Mobile TVL and APR */}
+        {entry.tvl && entry.apr ? (
+          <Button
+            flexDirection="row"
+            alignItems="center"
+            md={{ display: 'none' }}
+            backgroundColor="transparent"
+            padding="$0"
+            onPress={() => push(`/music/${entry.id}`)}
+          >
+            <XStack marginRight="$3" flexDirection="row" alignItems="center">
+              <Stellar size={10} color="$blue9" />
+              <P marginLeft="$1" fontSize="$2" lineHeight="$6">{tvlFormatted}</P>
+            </XStack>
+            <APRText apr={aprFormatted} />
+          </Button>
+        ) : null}
+      </YStack>
+
+      {/* Right side actions */}
+      <XStack flexDirection="row" alignItems="center">
+        {/* Desktop TVL and APR */}
+        {entry.tvl && entry.apr ? (
+          <Button
+            display={{ xs: 'none', md: 'flex' }}
+            flexDirection="row"
+            alignItems="center"
+            backgroundColor="transparent"
+            padding="$0"
+            onPress={() => push(`/music/${entry.id}`)}
+          >
+            <APRText apr={aprFormatted} />
+          </Button>
+        ) : null}
+
+        {/* <DownloadBtn size={14} className="mr-3" entry={entry} /> */}
+
+        {/* Like button */}
+        <LikeButton size={20} entry={entry} />
+
+        {/* More options dots */}
+        <Button
+          backgroundColor="transparent"
+          padding="$0"
+          onPress={() => push(`/music/${entry.id}`)}
+        >
+          <VerticalDots size={24} color="$color12" />
+        </Button>
+      </XStack>
+    </Button>
   )
 }

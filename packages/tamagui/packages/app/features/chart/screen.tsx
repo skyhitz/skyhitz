@@ -1,5 +1,5 @@
 'use client'
-import { FlatList, View } from 'react-native'
+import { FlatList } from 'react-native'
 import { BeatListEntry } from 'app/ui/beat-list-entry'
 import { ActivityIndicator, H1 } from 'app/design/typography'
 import { Entry } from 'app/api/graphql/types'
@@ -7,6 +7,7 @@ import { SafeAreaView } from 'app/design/safe-area-view'
 import Footer from 'app/ui/footer'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { algoliaClient, indexNames } from 'app/api/algolia'
+import { YStack } from 'tamagui'
 
 const PAGE_SIZE = 20
 
@@ -57,18 +58,35 @@ export function ChartScreen({ entries = [] }: { entries?: Entry[] }) {
   }, [fetchPage])
 
   return (
-    <SafeAreaView className="bg-[--bg-color] mx-auto flex w-full flex-1">
-      <View className="mx-auto mb-32 w-full max-w-7xl px-2 lg:px-8">
+    <SafeAreaView
+      backgroundColor="$background"
+      marginHorizontal="auto"
+      flex={1}
+      width="100%"
+    >
+      <YStack
+        marginHorizontal="auto"
+        marginBottom="$32"
+        width="100%"
+        maxWidth="$7xl"
+        paddingHorizontal="$2"
+        lg={{ paddingHorizontal: '$8' }}
+      >
         {/* Trending header */}
-        <View className="mb-4">
-          <H1 className="py-2 text-xl font-bold sm:text-2xl">Trending</H1>
-          <View
-            style={{
-              borderBottomWidth: 1,
-              borderBottomColor: 'var(--border-color)',
-            }}
+        <YStack marginBottom="$4">
+          <H1
+            paddingVertical="$2"
+            fontSize="$6"
+            fontWeight="bold"
+            sm={{ fontSize: '$7' }}
+          >
+            Trending
+          </H1>
+          <YStack
+            borderBottomWidth={1}
+            borderBottomColor="$borderColor"
           />
-        </View>
+        </YStack>
 
         {/* Infinite list */}
         <FlatList
@@ -81,15 +99,15 @@ export function ChartScreen({ entries = [] }: { entries?: Entry[] }) {
           onEndReached={onEnd}
           ListFooterComponent={
             loadingMore ? (
-              <View className="py-4 items-center">
+              <YStack paddingVertical="$4" alignItems="center">
                 <ActivityIndicator size={'small'} />
-              </View>
+              </YStack>
             ) : null
           }
           showsVerticalScrollIndicator={false}
         />
         <Footer />
-      </View>
+      </YStack>
     </SafeAreaView>
   )
 }

@@ -1,9 +1,8 @@
 'use client'
 import * as React from 'react'
-// Import from our typed components file instead of directly from react-native
-import { Pressable, Text } from 'react-native'
 import Copy from 'app/ui/icons/copy'
 import * as Clipboard from 'expo-clipboard'
+import { Button, XStack, Text } from 'tamagui'
 
 type CopyBeatUrlButtonProps = {
   beatUrl: string
@@ -23,14 +22,19 @@ export function CopyBeatUrlButton({ beatUrl }: CopyBeatUrlButtonProps) {
   }, [beatUrl])
 
   return (
-    <Pressable
+    <Button
       onPress={handleCopy}
-      className="flex-row items-center rounded-md bg-white/10 px-3 py-2"
+      flexDirection="row"
+      alignItems="center"
+      borderRadius="$2"
+      backgroundColor="$gray8"
+      paddingHorizontal="$3"
+      paddingVertical="$2"
     >
-      <Copy className="mr-2 h-4 w-4 stroke-current text-[--text-color]" />
-      <Text className="text-sm text-[--text-color]">
+      <Copy marginRight="$2" width={16} height={16} color="$color12" />
+      <Text fontSize="$3" color="$color12">
         {copied ? 'Copied!' : 'Copy Link'}
       </Text>
-    </Pressable>
+    </Button>
   )
 }

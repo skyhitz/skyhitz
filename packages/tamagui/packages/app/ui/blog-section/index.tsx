@@ -1,27 +1,50 @@
-import { H2 } from 'app/design/typography'
-import { View } from 'react-native'
+import { H2, A } from 'app/design/typography'
 import Card from 'app/ui/card'
 import { TextLink } from 'solito/link'
+import { YStack, XStack } from 'tamagui'
 
 export default function BlogSection({ posts = [] }: { posts?: any[] }) {
   return (
-    <View className="mx-auto w-full max-w-7xl px-6 pb-24 md:pb-32 lg:px-8">
-      <View className="mx-auto w-full">
-        <View className="flex flex-row justify-between">
-          <H2 className="text-2xl font-bold leading-10 tracking-tight">
+    <YStack
+      marginHorizontal="auto"
+      width="100%"
+      maxWidth="$7xl"
+      paddingHorizontal="$6"
+      paddingBottom="$24"
+      md={{ paddingBottom: '$32' }}
+      lg={{ paddingHorizontal: '$8' }}
+    >
+      <YStack marginHorizontal="auto" width="100%">
+        <XStack flexDirection="row" justifyContent="space-between">
+          <H2
+            fontSize="$7"
+            fontWeight="bold"
+            lineHeight="$10"
+            letterSpacing="$-1"
+          >
             Blog
           </H2>
-          <TextLink
-            href="/blog"
-            className="text-sm font-semibold text-[--primary-color]"
-          >
-            See all →
+          <TextLink href="/blog">
+            <A
+              fontSize="$3"
+              fontWeight="600"
+              color="$blue9"
+            >
+              See all →
+            </A>
           </TextLink>
-        </View>
-        <View className="mt-10 flex min-h-fit w-full flex-col gap-4 sm:flex-row lg:gap-8">
+        </XStack>
+        <XStack
+          marginTop="$10"
+          minHeight="fit-content"
+          width="100%"
+          flexDirection={{ xs: 'column', sm: 'row' }}
+          gap="$4"
+          lg={{ gap: '$8' }}
+        >
           {posts && posts.map((post) => <Card key={post.slug} {...post} />)}
-        </View>
-      </View>
-    </View>
+        </XStack>
+      </YStack>
+    </YStack>
   )
 }

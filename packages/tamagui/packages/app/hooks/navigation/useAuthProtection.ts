@@ -1,3 +1,4 @@
+'use client'
 /**
  * Hook for protecting routes that require authentication
  */

@@ -22,13 +22,13 @@ export default function CtaBanner({
         position="relative"
         height={320}
         overflow="hidden"
-        $gtMd={{
+        $md={{
           position: 'absolute',
           left: 0,
           height: '100%',
           width: '33.333%',
         }}
-        $gtLg={{
+        $lg={{
           width: '50%',
         }}
       >
@@ -51,23 +51,23 @@ export default function CtaBanner({
         maxWidth={1280}
         paddingBottom={0}
         paddingTop="$14"
-        $gtSm={{ paddingVertical: '$14' }}
-        $gtLg={{ paddingHorizontal: '$8', paddingVertical: '$14' }}
+        $sm={{ paddingVertical: '$14' }}
+        $lg={{ paddingHorizontal: '$8', paddingVertical: '$14' }}
         id="mission"
       >
         <YStack
           paddingHorizontal="$6"
-          $gtMd={{
+          $md={{
             marginLeft: 'auto',
             width: '66.666%',
             paddingLeft: '$14',
           }}
-          $gtLg={{
+          $lg={{
             width: '50%',
             paddingLeft: '$14',
             paddingRight: 0,
           }}
-          $gtXl={{
+          $xl={{
             paddingLeft: '$16',
           }}
         >
@@ -87,7 +87,7 @@ export default function CtaBanner({
             fontSize="$9"
             fontWeight="bold"
             letterSpacing={-1}
-            $gtSm={{ fontSize: '$10' }}
+            $sm={{ fontSize: '$10' }}
           >
             {title}
           </H2>

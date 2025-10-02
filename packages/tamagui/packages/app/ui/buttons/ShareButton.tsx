@@ -1,11 +1,12 @@
 'use client'
 import * as React from 'react'
-import { Modal, Pressable, Text, View, Platform } from 'react-native'
-import { Linking, Share as RNShare, SafeAreaView } from 'react-native'
+import { Platform, Linking, Share as RNShare } from 'react-native'
 import Share from 'app/ui/icons/share'
 import { X } from 'app/ui/icons/x'
 import XLogo from 'app/ui/icons/x-logo'
 import { CopyBeatUrlButton } from 'app/ui/buttons/CopyBeatUrlButton'
+import { Dialog, Sheet, YStack, XStack, Button, Text, Adapt } from 'tamagui'
+import { P } from 'app/design/typography'
 
 type ShareButtonProps = {
   url: string
@@ -35,38 +36,107 @@ export function ShareButton({ url, title }: ShareButtonProps) {
 
   return (
     <>
-      <Pressable className="flex-row items-center" onPress={onShare}>
-        <Share className="h-6 w-6 text-[--text-color]" />
-      </Pressable>
-      <Modal visible={modalVisible} transparent>
-        <SafeAreaView className="bg-black/70 flex-1 items-center justify-center px-2">
-          <View className="bg-[--bg-color] max-w-md items-center rounded-xl p-4 border border-[--border-color]">
-            <View className="w-full flex-row items-center">
-              <Text className="flex-1 text-center text-base font-bold text-[--text-color]">
-                {title}
-              </Text>
-              <Pressable onPress={() => setModalVisible(false)}>
-                <X className="text-[--text-color]" width={22} height={22} />
-              </Pressable>
-            </View>
-            <Text className="mt-5 text-center text-sm text-[--text-color-secondary]">
-              Copy link or post directly.
-            </Text>
-            <View className="mt-5 flex-row items-center justify-center">
-              <CopyBeatUrlButton beatUrl={url} />
-              <Text className="mx-3 text-center text-sm text-[--text-color-secondary]">or</Text>
-              <Pressable
-                onPress={() =>
-                  Linking.openURL(`https://x.com/intent/tweet?url=${url}`)
-                }
-                aria-label="Read more about Skyhitz on X"
-              >
-                <XLogo width={20} height={20} className="text-[--text-color]" />
-              </Pressable>
-            </View>
-          </View>
-        </SafeAreaView>
-      </Modal>
+      <Button
+        flexDirection="row"
+        alignItems="center"
+        onPress={onShare}
+        backgroundColor="transparent"
+        padding="$0"
+      >
+        <Share width={24} height={24} color="$color12" />
+      </Button>
+      
+      <Dialog open={modalVisible} onOpenChange={(open) => !open && setModalVisible(false)}>
+        <Adapt when="sm" platform="touch">
+          <Sheet modal dismissOnSnapToBottom>
+            <Sheet.Frame padding="$4" backgroundColor="$background">
+              <Sheet.Handle />
+              <YStack alignItems="center">
+                <XStack width="100%" flexDirection="row" alignItems="center">
+                  <Text flex={1} textAlign="center" fontSize="$4" fontWeight="bold" color="$color12">
+                    {title}
+                  </Text>
+                  <Button
+                    onPress={() => setModalVisible(false)}
+                    backgroundColor="transparent"
+                    padding="$0"
+                  >
+                    <X color="$color12" width={22} height={22} />
+                  </Button>
+                </XStack>
+                <P marginTop="$5" textAlign="center" fontSize="$3" color="$gray10">
+                  Copy link or post directly.
+                </P>
+                <XStack marginTop="$5" flexDirection="row" alignItems="center" justifyContent="center">
+                  <CopyBeatUrlButton beatUrl={url} />
+                  <P marginHorizontal="$3" textAlign="center" fontSize="$3" color="$gray10">or</P>
+                  <Button
+                    onPress={() => Linking.openURL(`https://x.com/intent/tweet?url=${url}`)}
+                    aria-label="Read more about Skyhitz on X"
+                    backgroundColor="transparent"
+                    padding="$0"
+                  >
+                    <XLogo width={20} height={20} color="$color12" />
+                  </Button>
+                </XStack>
+              </YStack>
+            </Sheet.Frame>
+            <Sheet.Overlay animation="lazy" enterStyle={{ opacity: 0 }} exitStyle={{ opacity: 0 }} />
+          </Sheet>
+        </Adapt>
+
+        <Dialog.Portal>
+          <Dialog.Overlay
+            key="overlay"
+            animation="quick"
+            opacity={0.7}
+            backgroundColor="$black1"
+            enterStyle={{ opacity: 0 }}
+            exitStyle={{ opacity: 0 }}
+          />
+          <Dialog.Content
+            bordered
+            elevate
+            key="content"
+            animation="quick"
+            enterStyle={{ x: 0, y: -20, opacity: 0, scale: 0.9 }}
+            exitStyle={{ x: 0, y: 10, opacity: 0, scale: 0.95 }}
+            backgroundColor="$background"
+            borderRadius="$4"
+            padding="$4"
+            maxWidth={480}
+            borderColor="$borderColor"
+          >
+            <YStack alignItems="center">
+              <XStack width="100%" flexDirection="row" alignItems="center">
+                <Text flex={1} textAlign="center" fontSize="$4" fontWeight="bold" color="$color12">
+                  {title}
+                </Text>
+                <Dialog.Close asChild>
+                  <Button backgroundColor="transparent" padding="$0">
+                    <X color="$color12" width={22} height={22} />
+                  </Button>
+                </Dialog.Close>
+              </XStack>
+              <P marginTop="$5" textAlign="center" fontSize="$3" color="$gray10">
+                Copy link or post directly.
+              </P>
+              <XStack marginTop="$5" flexDirection="row" alignItems="center" justifyContent="center">
+                <CopyBeatUrlButton beatUrl={url} />
+                <P marginHorizontal="$3" textAlign="center" fontSize="$3" color="$gray10">or</P>
+                <Button
+                  onPress={() => Linking.openURL(`https://x.com/intent/tweet?url=${url}`)}
+                  aria-label="Read more about Skyhitz on X"
+                  backgroundColor="transparent"
+                  padding="$0"
+                >
+                  <XLogo width={20} height={20} color="$color12" />
+                </Button>
+              </XStack>
+            </YStack>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog>
     </>
   )
 }

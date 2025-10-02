@@ -1,5 +1,4 @@
 'use client'
-import { Pressable } from 'react-native'
 import Like from 'app/ui/icons/like'
 import { Entry } from 'app/api/graphql/types'
 import { useUserStore } from 'app/state/user'
@@ -12,6 +11,7 @@ import { LIKE_ENTRY, INVEST_ENTRY, USER_LIKES, USER_CREDITS } from 'app/api/grap
 import { useTopUpModalStore } from 'app/state/topup'
 import { useToast } from 'app/provider/toast'
 import { trackLike } from 'app/utils/analytics'
+import { Button } from 'tamagui'
 
 // Using imported GraphQL operations from operations.ts
 
@@ -103,19 +103,20 @@ function LikeButton({ size = 24, className, entry }: Props) {
   }
 
   return (
-    <Pressable
+    <Button
       onPress={handlePress}
       disabled={likeLoading}
+      backgroundColor="transparent"
+      padding="$0"
       className={className}
     >
       <Like
         width={size}
         height={size}
-        className={`${
-          isLiked ? 'fill-[--text-secondary-color]' : ''
-        } stroke-[--text-secondary-color]`}
+        fill={isLiked ? '$gray10' : 'none'}
+        stroke="$gray10"
       />
-    </Pressable>
+    </Button>
   )
 }
 

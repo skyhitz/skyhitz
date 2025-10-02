@@ -1,8 +1,8 @@
 'use client'
 import { ReactNode } from 'react'
 import { P } from 'app/design/typography'
-import { View } from 'react-native'
 import ChevronRight from 'app/ui/icons/chevron-right'
+import { XStack } from 'tamagui'
 
 type ProfileRowProps = {
   icon: ReactNode
@@ -12,15 +12,27 @@ type ProfileRowProps = {
 
 export function ProfileRow({ icon, title, count }: ProfileRowProps) {
   return (
-    <View className="mt-1.5 flex w-full flex-row items-center justify-between rounded-lg border border-[--border-color] bg-[--bg-secondary-color] px-4 py-3">
-      <View className="flex flex-row items-center">
+    <XStack
+      marginTop="$1.5"
+      width="100%"
+      flexDirection="row"
+      alignItems="center"
+      justifyContent="space-between"
+      borderRadius="$3"
+      borderWidth={1}
+      borderColor="$borderColor"
+      backgroundColor="$background"
+      paddingHorizontal="$4"
+      paddingVertical="$3"
+    >
+      <XStack flexDirection="row" alignItems="center">
         {icon}
-        <P className="ml-3">{title}</P>
-      </View>
-      <View className="flex flex-row items-center">
-        {count !== undefined && <P className="mr-2">{count}</P>}
-        <ChevronRight className="h-5 w-5 fill-none stroke-current stroke-2 text-[--text-color]" />
-      </View>
-    </View>
+        <P marginLeft="$3">{title}</P>
+      </XStack>
+      <XStack flexDirection="row" alignItems="center">
+        {count !== undefined && <P marginRight="$2">{count}</P>}
+        <ChevronRight width={20} height={20} fill="none" strokeWidth={2} stroke="$color12" />
+      </XStack>
+    </XStack>
   )
 }

@@ -54,6 +54,7 @@ module.exports = function () {
       'expo-linking',
       'expo-constants',
       'expo-modules-core',
+      'expo-clipboard',
       'react-native-reanimated',
       'moti',
       'app',

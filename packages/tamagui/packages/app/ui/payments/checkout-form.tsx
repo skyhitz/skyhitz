@@ -13,7 +13,8 @@ import {
   StripePaymentElementOptions,
 } from '@stripe/stripe-js'
 import { Config } from 'app/config'
-import { Button, P } from 'app/design/typography'
+import { P } from 'app/design/typography'
+import { Button } from 'app/design/button'
 import { View, TextInput, Platform } from 'react-native'
 import StyledTextInput from 'app/features/accounts/styledTextInput'
 import { Formik, FormikProps } from 'formik'

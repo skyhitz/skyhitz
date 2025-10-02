@@ -3,6 +3,7 @@ import { YStack } from 'tamagui'
 import { Hero } from 'app/ui/hero'
 import CtaBanner from 'app/ui/cta-banner'
 import { Featured } from 'app/ui/featured'
+import { Navbar, Footer } from 'app'
 
 // Mock data - in real app this comes from CMS or API
 const homePageData = {
@@ -43,9 +44,11 @@ const homePageData = {
 export default function HomePage() {
   return (
     <YStack flex={1} backgroundColor="$background">
+      <Navbar />
       <Hero {...homePageData.header} />
       <CtaBanner {...homePageData.cta} />
       <Featured {...homePageData.featured} />
+      <Footer />
     </YStack>
   )
 }

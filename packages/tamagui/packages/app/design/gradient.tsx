@@ -45,3 +45,6 @@ export const DarkGradient = ({
     </YStack>
   )
 }
+
+// Alias for compatibility
+export const GradientBackground = BlueGradient

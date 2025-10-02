@@ -5,6 +5,12 @@ export * from './design/typography'
 export * from './design/button'
 export * from './design/gradient'
 
+// UI Components
+export { default as Navbar } from './ui/navbar'
+export { default as Footer } from './ui/footer'
+export { default as ThemeSwitcher } from './ui/ThemeSwitcher'
+export { FormInputWithIcon } from './ui/inputs/FormInputWithIcon'
+
 // Features
 export * from './features/home/screen'
 export * from './features/accounts/sign-in'

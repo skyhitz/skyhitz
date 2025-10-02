@@ -1,3 +1,4 @@
+'use client'
 import { useCallback, useState } from 'react'
 import { Config } from 'app/config'
 import { SecureStorage } from 'app/utils/secure-storage'

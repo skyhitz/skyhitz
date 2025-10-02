@@ -1,7 +1,8 @@
-import { TextInput, TextInputProps, View } from 'react-native'
+import { TextInput, TextInputProps } from 'react-native'
 import * as React from 'react'
 import Check from 'app/ui/icons/check'
 import Close from 'app/ui/icons/close'
+import { XStack, Input } from 'tamagui'
 
 type StyledInputProps = TextInputProps & {
   valid?: boolean
@@ -21,28 +22,40 @@ const StyledTextInput = React.forwardRef(function StyledTextInput(
   ref: React.ForwardedRef<TextInput>,
 ) {
   return (
-    <View
-      className={'flex h-12 w-full flex-row items-center rounded-lg bg-gray-700/20 p-2 '.concat(
-        className ?? '',
-      )}
+    <XStack
+      height={48}
+      width="100%"
+      flexDirection="row"
+      alignItems="center"
+      borderRadius="$3"
+      backgroundColor="$gray8"
+      padding="$2"
+      className={className}
     >
-      <TextInput
+      <Input
+        flex={1}
         placeholderTextColor={
-          rest.placeholderTextColor ? rest.placeholderTextColor : 'white'
+          rest.placeholderTextColor ? rest.placeholderTextColor : '$white1'
         }
         autoCapitalize="none"
-        className={`remove-font-padding grow text-sm leading-none text-white outline-none ${textInputClassName}`}
+        fontSize="$3"
+        lineHeight="$2"
+        color="$white1"
+        backgroundColor="transparent"
+        borderWidth={0}
+        outlineStyle="none"
         value={value}
+        className={textInputClassName}
         {...rest}
         ref={ref}
       />
       {showFeedback &&
         (valid ? (
-          <Check className="text-green w-4" />
+          <Check color="$green9" width={16} />
         ) : (
-          <Close className="text-red w-4" />
+          <Close color="$red9" width={16} />
         ))}
-    </View>
+    </XStack>
   )
 })
 

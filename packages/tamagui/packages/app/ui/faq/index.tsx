@@ -1,9 +1,8 @@
 'use client'
 import { H2, P } from 'app/design/typography'
-import { Pressable, View } from 'react-native'
-import { AnimatePresence, MotiView } from 'moti'
 import { useState } from 'react'
 import { AnimateHeight } from '../animate-height'
+import { YStack, XStack, Button } from 'tamagui'
 
 // Define the props interface directly to avoid import errors
 interface FaqItemProps {
@@ -28,72 +27,78 @@ export default function Faq({ title, faqs = [] }: FaqComponentProps) {
   }
 
   return (
-    <View
-      className="mx-auto w-full max-w-7xl px-6 pb-24 md:pb-32 lg:px-8"
+    <YStack
+      marginHorizontal="auto"
+      width="100%"
+      maxWidth="$7xl"
+      paddingHorizontal="$6"
+      paddingBottom="$24"
+      md={{ paddingBottom: '$32' }}
+      lg={{ paddingHorizontal: '$8' }}
       id="faq"
     >
-      <View className="mx-auto w-full divide-y divide-gray-900/10">
-        <H2 className="text-2xl font-bold leading-10 tracking-tight">
+      <YStack marginHorizontal="auto" width="100%">
+        <H2
+          fontSize="$7"
+          fontWeight="bold"
+          lineHeight="$10"
+          letterSpacing="$-1"
+        >
           {title}
         </H2>
-        <View className="mt-10 space-y-6 divide-y divide-gray-900/10">
+        <YStack marginTop="$10" space="$6">
           {faqs.map((faq, index) => {
             return (
-              <View key={index} className="pt-6">
-                <Pressable onPress={() => handleOnPress(index)}>
-                  <View className="flex flex-row justify-between">
-                    <P className="text-base font-semibold leading-7">
+              <YStack
+                key={index}
+                paddingTop="$6"
+                borderTopWidth={index > 0 ? 1 : 0}
+                borderTopColor="$gray9"
+              >
+                <Button
+                  onPress={() => handleOnPress(index)}
+                  backgroundColor="transparent"
+                  padding="$0"
+                  justifyContent="space-between"
+                  flexDirection="row"
+                >
+                  <XStack flex={1} flexDirection="row" justifyContent="space-between">
+                    <P
+                      fontSize="$4"
+                      fontWeight="600"
+                      lineHeight="$7"
+                      flex={1}
+                      textAlign="left"
+                    >
                       {faq.question}
                     </P>
-                    <AnimatePresence exitBeforeEnter>
-                      {openFaq === index && (
-                        <MotiView
-                          animate={{ opacity: 1 }}
-                          transition={{ type: 'timing', duration: 250 }}
-                          exit={{
-                            opacity: 0,
-                          }}
-                          key="minus"
-                        >
-                          <P className="text-2xl leading-7">-</P>
-                        </MotiView>
-                      )}
-                      {openFaq !== index && (
-                        <MotiView
-                          animate={{ opacity: 1 }}
-                          transition={{ type: 'timing', duration: 250 }}
-                          exit={{
-                            opacity: 0,
-                          }}
-                          key="plus"
-                        >
-                          <P className="text-2xl leading-7">+</P>
-                        </MotiView>
-                      )}
-                    </AnimatePresence>
-                  </View>
-                </Pressable>
+                    <P
+                      fontSize="$7"
+                      lineHeight="$7"
+                      animation="quick"
+                    >
+                      {openFaq === index ? '-' : '+'}
+                    </P>
+                  </XStack>
+                </Button>
 
                 <AnimateHeight hide={openFaq !== index}>
-                  <AnimatePresence>
-                    {openFaq === index && (
-                      <MotiView
-                        animate={{ opacity: 1 }}
-                        transition={{ type: 'timing', duration: 600 }}
-                        exit={{
-                          opacity: 0,
-                        }}
-                      >
-                        <P className="mt-4 text-base leading-7">{faq.answer}</P>
-                      </MotiView>
-                    )}
-                  </AnimatePresence>
+                  {openFaq === index && (
+                    <P
+                      marginTop="$4"
+                      fontSize="$4"
+                      lineHeight="$7"
+                      animation="quick"
+                    >
+                      {faq.answer}
+                    </P>
+                  )}
                 </AnimateHeight>
-              </View>
+              </YStack>
             )
           })}
-        </View>
-      </View>
-    </View>
+        </YStack>
+      </YStack>
+    </YStack>
   )
 }

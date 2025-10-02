@@ -1,19 +1,28 @@
 'use client'
 import { A, H3, P } from 'app/design/typography'
-import { View } from 'react-native'
 import { SkyhitzLogo } from 'app/ui/logo'
 import { footer } from 'app/constants/content'
 import ThemeSwitcher from '../ThemeSwitcher'
+import { YStack, XStack } from 'tamagui'
 
 export default function Footer({ className }: { className?: string }) {
   const { companyName, sections } = footer
   return (
-    <View
-      className={`mx-auto w-full max-w-7xl px-6 pb-12 lg:px-8 ${className}`}
+    <YStack
+      marginHorizontal="auto"
+      width="100%"
+      maxWidth="$7xl"
+      paddingHorizontal="$6"
+      paddingBottom="$12"
+      lg={{ paddingHorizontal: '$8' }}
+      className={className}
     >
-      <View className="xl:grid xl:grid-cols-2 xl:gap-8">
-        <View />
-        <View className="gap-8 sm:grid sm:grid-cols-3">
+      <XStack xl={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '$8' }}>
+        <YStack />
+        <XStack
+          gap="$8"
+          sm={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}
+        >
           {sections.map(
             ({
               title,
@@ -23,39 +32,55 @@ export default function Footer({ className }: { className?: string }) {
               links: { name: string; href: string }[]
             }) => {
               return (
-                <View key={title}>
-                  <H3 className="text-sm font-semibold leading-6 text-[--text-color]">
+                <YStack key={title}>
+                  <H3
+                    fontSize="$3"
+                    fontWeight="600"
+                    lineHeight="$6"
+                    color="$color12"
+                  >
                     {title}
                   </H3>
-                  <View role="list" className="mt-6 space-y-4">
+                  <YStack role="list" marginTop="$6" space="$4">
                     {links.map((item) => (
-                      <View key={item.name}>
+                      <YStack key={item.name}>
                         <A
                           href={item.href}
                           role="link"
-                          className="text-sm leading-6 hover:opacity-80 text-[--text-color]"
+                          fontSize="$3"
+                          lineHeight="$6"
+                          hoverStyle={{ opacity: 0.8 }}
+                          color="$color12"
                         >
                           {item.name}
                         </A>
-                      </View>
+                      </YStack>
                     ))}
-                  </View>
-                </View>
+                  </YStack>
+                </YStack>
               )
             }
           )}
-        </View>
-      </View>
+        </XStack>
+      </XStack>
 
-      <View className="flex flex-row items-center justify-between mt-16">
-        <View className="flex flex-row items-center gap-4">
+      <XStack
+        flexDirection="row"
+        alignItems="center"
+        justifyContent="space-between"
+        marginTop="$16"
+      >
+        <XStack flexDirection="row" alignItems="center" gap="$4">
           <SkyhitzLogo size={25} id="footer" />
-          <P className="text-xs text-[--text-color]">
+          <P
+            fontSize="$2"
+            color="$color12"
+          >
             © {new Date().getFullYear()} {companyName} - All Rights Reserved.
           </P>
-        </View>
+        </XStack>
         <ThemeSwitcher />
-      </View>
-    </View>
+      </XStack>
+    </YStack>
   )
 }

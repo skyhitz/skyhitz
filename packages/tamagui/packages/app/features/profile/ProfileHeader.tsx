@@ -3,12 +3,13 @@ import { imageSrc } from 'app/utils/entry'
 import { UserAvatar } from 'app/ui/user-avatar'
 import XLogo from 'app/ui/icons/x-logo'
 import Instagram from 'app/ui/icons/instagram'
-import { Linking, Pressable, View } from 'react-native'
+import { Linking } from 'react-native'
 // import { ShareButton } from 'app/ui/buttons/ShareButton'
 import { SolitoImage } from 'app/design/solito-image'
 import { User } from 'app/api/graphql/types'
 import { H3, P } from 'app/design/typography'
 import { Config } from 'app/config'
+import { YStack, XStack, Button } from 'tamagui'
 
 type SocialLinksProps = {
   twitter: string
@@ -21,40 +22,39 @@ export function SocialLinks({
   instagram,
   profileUrl,
 }: SocialLinksProps) {
-  // Using array of elements to avoid any whitespace text nodes
-  const socialItems = [
-    // Share button
-    <View key="share">
-      {/* <ShareButton url={profileUrl} title="Share profile" /> */}
-    </View>,
-  ]
-
-  // Add Instagram if available
-  if (instagram) {
-    socialItems.push(
-      <View key="instagram" className="mx-2">
-        <Pressable
-          onPress={() => Linking.openURL(`https://instagram.com/${instagram}`)}
-        >
-          <Instagram className="h-6 w-6 fill-none stroke-[1.5] stroke-[--text-color]" />
-        </Pressable>
-      </View>
-    )
-  }
-
-  // Add X (formerly Twitter) if available
-  if (twitter) {
-    socialItems.push(
-      <View key="x" className="mx-2">
-        <Pressable onPress={() => Linking.openURL(`https://x.com/${twitter}`)}>
-          <XLogo className="h-6 w-6 text-[--text-color]" />
-        </Pressable>
-      </View>
-    )
-  }
-
   return (
-    <View className="flex min-h-[1.5rem] flex-row-reverse">{socialItems}</View>
+    <XStack minHeight={24} flexDirection="row-reverse" alignItems="center">
+      {/* Share button placeholder */}
+      <YStack key="share">
+        {/* <ShareButton url={profileUrl} title="Share profile" /> */}
+      </YStack>
+
+      {/* Instagram */}
+      {instagram && (
+        <YStack key="instagram" marginHorizontal="$2">
+          <Button
+            onPress={() => Linking.openURL(`https://instagram.com/${instagram}`)}
+            backgroundColor="transparent"
+            padding="$0"
+          >
+            <Instagram width={24} height={24} fill="none" strokeWidth={1.5} stroke="$color12" />
+          </Button>
+        </YStack>
+      )}
+
+      {/* X (Twitter) */}
+      {twitter && (
+        <YStack key="x" marginHorizontal="$2">
+          <Button
+            onPress={() => Linking.openURL(`https://x.com/${twitter}`)}
+            backgroundColor="transparent"
+            padding="$0"
+          >
+            <XLogo width={24} height={24} color="$color12" />
+          </Button>
+        </YStack>
+      )}
+    </XStack>
   )
 }
 
@@ -76,37 +76,52 @@ export function ProfileHeader({ user, action }: ProfileHeaderProps) {
       sizes="100vw"
     />
   ) : (
-    <View className="h-40 w-full bg-gray-800 md:h-60" />
+    <YStack height={160} width="100%" backgroundColor="$gray8" md={{ height: 240 }} />
   )
 
   return (
-    <View className="w-full">
-      <View className="h-40 w-full md:h-60">
+    <YStack width="100%">
+      <YStack height={160} width="100%" md={{ height: 240 }} position="relative">
         {backgroundElement}
-        <View className="absolute -bottom-8 left-5 flex-row items-end md:left-20">
+        <XStack
+          position="absolute"
+          bottom={-32}
+          left={20}
+          md={{ left: 80 }}
+          flexDirection="row"
+          alignItems="flex-end"
+        >
           <UserAvatar
             avatarUrl={user.avatarUrl}
             displayName={user.displayName}
             size="xlarge"
           />
-        </View>
-      </View>
+        </XStack>
+      </YStack>
 
-      <View className="mt-12 flex w-full flex-row items-start justify-between px-5 md:px-20">
-        <View className="flex flex-col">
+      <XStack
+        marginTop="$12"
+        width="100%"
+        flexDirection="row"
+        alignItems="flex-start"
+        justifyContent="space-between"
+        paddingHorizontal={20}
+        md={{ paddingHorizontal: 80 }}
+      >
+        <YStack flexDirection="column">
           <H3>{user.displayName}</H3>
           <P>@{user.username}</P>
-        </View>
+        </YStack>
 
-        <View className="flex flex-row items-center">
+        <XStack flexDirection="row" alignItems="center">
           <SocialLinks
             twitter={user.twitter || ''}
             instagram={user.instagram || ''}
             profileUrl={profileUrl}
           />
           {action ? action : null}
-        </View>
-      </View>
-    </View>
+        </XStack>
+      </XStack>
+    </YStack>
   )
 }

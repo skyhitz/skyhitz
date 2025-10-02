@@ -1,28 +1,36 @@
 'use client'
-import { Text, View } from 'react-native'
+import { XStack, YStack, Text, Separator as TamaguiSeparator } from 'tamagui'
 
-export function Line({ className = 'w-full', text = '' }: { className?: string, text?: string }) {
+export function Line({ text = '' }: { text?: string }) {
   if (text) {
     return (
-      <View className="mb-6 flex w-full flex-row items-center">
-        <View className={`border border-transparent border-b-white grow ${className}`} />
-        <Text className="px-2 text-white">{text}</Text>
-        <View className={`border border-transparent border-b-white grow ${className}`} />
-      </View>
+      <XStack
+        marginBottom="$6"
+        width="100%"
+        alignItems="center"
+        gap="$2"
+      >
+        <TamaguiSeparator borderColor="$white1" flex={1} />
+        <Text paddingHorizontal="$2" color="$white1">{text}</Text>
+        <TamaguiSeparator borderColor="$white1" flex={1} />
+      </XStack>
     )
   }
   
-  return (
-    <View className={`border border-transparent border-b-white ${className}`} />
-  )
+  return <TamaguiSeparator borderColor="$white1" width="100%" />
 }
 
 export function Separator() {
   return (
-    <View className="my-8 flex w-full flex-row items-center">
-      <Line className="grow" />
-      <Text className="px-2 text-white">or</Text>
-      <Line className="grow" />
-    </View>
+    <XStack
+      marginVertical="$8"
+      width="100%"
+      alignItems="center"
+      gap="$2"
+    >
+      <TamaguiSeparator borderColor="$white1" flex={1} />
+      <Text paddingHorizontal="$2" color="$white1">or</Text>
+      <TamaguiSeparator borderColor="$white1" flex={1} />
+    </XStack>
   )
 }

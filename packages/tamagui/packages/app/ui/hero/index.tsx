@@ -22,15 +22,15 @@ export const Hero = ({ title, desc }: HeroProps) => {
       paddingTop="$8"
       width="100%"
       flexDirection="column"
-      $gtMd={{ flexDirection: 'row' }}
+      $md={{ flexDirection: 'row' }}
       gap="$10"
-      $gtLg={{ paddingHorizontal: '$8' }}
+      $lg={{ paddingHorizontal: '$8' }}
     >
       <YStack
         flex={1}
         maxWidth={640}
         marginHorizontal="auto"
-        $gtLg={{ marginHorizontal: 0 }}
+        $lg={{ marginHorizontal: 0 }}
       >
         <H1
           marginTop="$10"
@@ -39,7 +39,7 @@ export const Hero = ({ title, desc }: HeroProps) => {
           fontWeight="bold"
           lineHeight="$11"
           letterSpacing={-1}
-          $gtSm={{ fontSize: "$11" }}
+          $sm={{ fontSize: "$11" }}
         >
           {title}
         </H1>
@@ -75,7 +75,7 @@ export const Hero = ({ title, desc }: HeroProps) => {
         minHeight={610}
         position="relative"
         marginVertical="$8"
-        $gtMd={{ marginVertical: 0 }}
+        $md={{ marginVertical: 0 }}
       >
         <SolitoImage
           src="/img/app.webp"

@@ -3,7 +3,7 @@ import { useColorScheme } from './useColorScheme'
 
 // Define CSS variables for themes
 export const themes = {
-  light: vars({
+  light: {
     // Base colors
     '--bg-color': '#FFFFFF',
     '--surface-color': '#F5F5F5',
@@ -27,8 +27,8 @@ export const themes = {
 
     // Logo color
     '--logo-color': 'rgb(75 85 99)',
-  }),
-  dark: vars({
+  },
+  dark: {
     // Base colors
     '--bg-color': '#161616',
     '--surface-color': '#000000',
@@ -52,7 +52,7 @@ export const themes = {
 
     // Logo color
     '--logo-color': '#e5e7eb',
-  }),
+  },
 }
 
 /**

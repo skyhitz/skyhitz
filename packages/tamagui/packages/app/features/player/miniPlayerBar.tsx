@@ -3,18 +3,18 @@
  * Mini Player Bar component that shows at the bottom of the screen on mobile
  * Migrated from legacy implementation to use Zustand
  */
-import { View, Pressable, ViewStyle } from 'react-native'
+import { ViewStyle } from 'react-native'
 import ChevronUp from 'app/ui/icons/chevron-up'
 import PlayIcon from 'app/ui/icons/play'
 import PauseIcon from 'app/ui/icons/pause'
 import { usePlayback } from 'app/hooks/usePlayback'
 import { ActivityIndicator, P } from 'app/design/typography'
-import { MotiView } from 'moti'
 import { PlaybackState, usePlayerStore } from 'app/state/player'
+import { XStack, Button } from 'tamagui'
 
 type Props = {
   onTogglePress?: () => void
-  animatedStyle: ViewStyle
+  animatedStyle?: ViewStyle
 }
 
 export function MiniPlayerBar({ onTogglePress, animatedStyle }: Props) {
@@ -22,29 +22,49 @@ export function MiniPlayerBar({ onTogglePress, animatedStyle }: Props) {
   const { playbackState, entry } = usePlayerStore()
 
   return (
-    <MotiView
-      className="z-10 flex h-10 flex-row items-center justify-between px-2.5 opacity-100 md:hidden"
-      style={[animatedStyle]}
+    <XStack
+      zIndex={10}
+      height={40}
+      flexDirection="row"
+      alignItems="center"
+      justifyContent="space-between"
+      paddingHorizontal="$2.5"
+      opacity={1}
+      display={{ xs: 'flex', md: 'none' }}
+      animation="quick"
+      style={animatedStyle}
     >
-      <Pressable onPress={onTogglePress}>
-        <View className="flex flex-row items-center md:hidden">
-          <ChevronUp className="text-gray-600" />
-          <P className="ml-2.5 pl-1 text-sm">
+      <Button
+        onPress={onTogglePress}
+        backgroundColor="transparent"
+        padding="$0"
+      >
+        <XStack
+          flexDirection="row"
+          alignItems="center"
+          display={{ xs: 'flex', md: 'none' }}
+        >
+          <ChevronUp color="$gray10" />
+          <P marginLeft="$2.5" paddingLeft="$1" fontSize="$3">
             {entry?.title} - {entry?.artist}
           </P>
-        </View>
-      </Pressable>
+        </XStack>
+      </Button>
       {playbackState === PlaybackState.LOADING ? (
         <ActivityIndicator />
       ) : (
-        <Pressable onPress={playPause}>
+        <Button
+          onPress={playPause}
+          backgroundColor="transparent"
+          padding="$0"
+        >
           {playbackState === 'PLAYING' ? (
-            <PauseIcon className="text-gray-600" size={22} />
+            <PauseIcon color="$gray10" size={22} />
           ) : (
-            <PlayIcon className="text-gray-600" size={22} />
+            <PlayIcon color="$gray10" size={22} />
           )}
-        </Pressable>
+        </Button>
       )}
-    </MotiView>
+    </XStack>
   )
 }

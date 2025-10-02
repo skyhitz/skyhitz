@@ -1,5 +1,5 @@
 'use client'
-import { View, KeyboardAvoidingView, Platform } from 'react-native'
+import { Platform } from 'react-native'
 import { useCallback, useEffect } from 'react'
 import Wallet from 'app/ui/icons/wallet'
 import Stellar from 'app/ui/icons/stellar'
@@ -11,6 +11,7 @@ import { useToast } from 'app/provider/toast'
 import { Button } from 'app/design/button'
 import { H1, P } from 'app/design/typography'
 import { Modal } from 'app/design/modal'
+import { YStack, XStack } from 'tamagui'
 
 // Define WithdrawalForm type locally to match schema expectations
 type WithdrawalForm = {
@@ -65,22 +66,40 @@ export function SendXLMModal({
 
   return (
     <Modal visible={visible} onClose={onClose}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="flex-1"
+      <YStack
+        width="100%"
+        alignItems="center"
+        borderRadius="$4"
+        borderWidth={1}
+        borderColor="$borderColor"
+        backgroundColor="$background"
+        padding="$6"
       >
-        <View className="flex w-full items-center rounded-xl border border-[--border-color] bg-[--bg-color] p-6">
-          <View className="flex w-full items-center">
-            <H1 className="text-xl font-bold font-unbounded text-[--text-color]">
-              Send XLM
-            </H1>
+        <YStack width="100%" alignItems="center">
+          <H1
+            fontSize="$7"
+            fontWeight="bold"
+            fontFamily="$heading"
+            color="$color12"
+          >
+            Send XLM
+          </H1>
 
-            <View className="mt-8 w-full flex flex-row items-center justify-center">
-              <Stellar size={18} className="mr-2" />
-              <P className="font-unbounded text-[--text-color] ml-2">
-                Current Balance: {currentBalance.toFixed(2)} XLM
-              </P>
-            </View>
+          <XStack
+            marginTop="$8"
+            width="100%"
+            alignItems="center"
+            justifyContent="center"
+            gap="$2"
+          >
+            <Stellar size={18} />
+            <P
+              fontFamily="$heading"
+              color="$color12"
+            >
+              Current Balance: {currentBalance.toFixed(2)} XLM
+            </P>
+          </XStack>
 
             <Formik
               initialValues={initialValues}
@@ -96,12 +115,11 @@ export function SendXLMModal({
                 errors,
                 setFieldValue,
               }: FormikProps<WithdrawalForm>) => (
-                <View className="mt-6 flex w-full items-center">
+                <YStack marginTop="$6" width="100%" alignItems="center">
                   <FormInputWithIcon
                     value={values.address}
                     placeholder="Stellar Address (Without Memo)"
                     icon={<Wallet size={20} />}
-                    className="py-1 mb-4 w-full"
                     onChangeText={(text) => {
                       // Only allow uppercase letters and numbers (valid Stellar address characters)
                       const validStellarAddress = text.replace(/[^A-Z0-9]/g, '')
@@ -113,7 +131,6 @@ export function SendXLMModal({
                     value={values.amount > 0 ? values.amount.toString() : ''}
                     placeholder="XLM to send"
                     icon={<Stellar size={20} />}
-                    className="py-1 mb-6 w-full"
                     onChangeText={(text) => {
                       if (text === '') {
                         setFieldValue('amount', 0)
@@ -125,14 +142,25 @@ export function SendXLMModal({
                     }}
                   />
 
-                  <P className="mb-6 text-xs text-[--text-secondary-color]">
+                  <P
+                    marginBottom="$6"
+                    fontSize="$2"
+                    color="$color11"
+                  >
                     Send to Stellar Public Network address only. Do not send if
                     a memo is required, funds will be lost if you send to a
                     wallet that requires a Memo.
                   </P>
 
                   {(errors.address || errors.amount || error) && (
-                    <P className="mb-4 min-h-5 w-full text-center text-sm text-red">
+                    <P
+                      marginBottom="$4"
+                      minHeight={20}
+                      width="100%"
+                      textAlign="center"
+                      fontSize="$3"
+                      color="$red9"
+                    >
                       {errors.address || errors.amount || error?.message}
                     </P>
                   )}
@@ -143,12 +171,11 @@ export function SendXLMModal({
                     disabled={!isValid}
                     loading={loading}
                   />
-                </View>
+                </YStack>
               )}
             </Formik>
-          </View>
-        </View>
-      </KeyboardAvoidingView>
+          </YStack>
+        </YStack>
     </Modal>
   )
 }

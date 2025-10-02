@@ -1,3 +1,4 @@
+'use client'
 import { useEffect, useState } from 'react'
 import { useDebounce } from 'app/hooks/useDebounce'
 import { algoliaClient } from 'app/api/algolia'

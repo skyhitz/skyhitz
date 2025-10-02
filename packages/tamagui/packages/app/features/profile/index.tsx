@@ -1,5 +1,4 @@
 'use client'
-import { View } from 'react-native'
 import { ProfileHeader } from './ProfileHeader'
 import Cog from 'app/ui/icons/cog'
 import { CopyWalletPublicKeyButton } from 'app/ui/buttons/CopyWalletPublicKeyButton'
@@ -25,6 +24,7 @@ import { CLAIMABLE_EARNINGS_PREVIEW } from 'app/api/graphql/operations'
 import { P, ActivityIndicator } from 'app/design/typography'
 import { useToast } from 'app/provider/toast'
 import Stellar from 'app/ui/icons/stellar'
+import { YStack, XStack, Button } from 'tamagui'
 
 const MIN_WITHDRAWAL_AMOUNT = 3
 
@@ -113,25 +113,32 @@ export function ProfileScreen({ user }: { user: User }) {
   }
 
   return (
-    <SafeAreaView className="bg-[--bg-color]">
-      <View className="mb-16 min-h-screen w-full pb-10">
+    <SafeAreaView backgroundColor="$background">
+      <YStack marginBottom="$16" minHeight="100vh" width="100%" paddingBottom="$10">
         <ProfileHeader
           user={user}
           action={
-            <View className="ml-2 flex flex-row">
+            <XStack marginLeft="$2" flexDirection="row">
               <Link href="/profile/edit">
-                <View className="items-center">
-                  <Cog className="h-5 w-5" fill="var(--text-color)" />
-                </View>
+                <YStack alignItems="center">
+                  <Cog width={20} height={20} fill="$color12" />
+                </YStack>
               </Link>
-            </View>
+            </XStack>
           }
         />
 
-        <View className="mt-8 w-full items-center justify-center px-4">
-          <View className="mb-0.5 flex w-full flex-row items-center justify-between">
-            <View className="ml-2 flex flex-row items-center gap-2">
-                <P className="flex flex-row items-center font-bold font-unbounded text-[--text-color] gap-2">
+        <YStack marginTop="$8" width="100%" alignItems="center" justifyContent="center" paddingHorizontal="$4">
+          <XStack marginBottom="$1" flex={1} width="100%" flexDirection="row" alignItems="center" justifyContent="space-between">
+            <XStack marginLeft="$2" flexDirection="row" alignItems="center" gap="$2">
+                <P
+                  flexDirection="row"
+                  alignItems="center"
+                  fontWeight="bold"
+                  fontFamily="$heading"
+                  color="$color12"
+                  gap="$2"
+                >
                   <Stellar size={18} />
                   {`${credits?.userCredits || 0} XLM`}
                 </P>
@@ -139,29 +146,35 @@ export function ProfileScreen({ user }: { user: User }) {
               {isClaimingEarnings ? (
                 <ActivityIndicator size="small" />
               ) : null}
-            </View>
-            <View className="mr-2">
-              <P
-                className="cursor-pointer flex flex-row items-center font-bold decoration-2 font-unbounded text-[--text-color]"
+            </XStack>
+            <XStack marginRight="$2">
+              <Button
+                backgroundColor="transparent"
+                padding="$0"
+                flexDirection="row"
+                alignItems="center"
+                fontWeight="bold"
+                fontFamily="$heading"
+                color="$color12"
                 onPress={handleWithdraw}
               >
-                <Send size={18} className="text-blue mr-2" />
-                Send
-              </P>
-            </View>
-          </View>
-          <View className="my-4 w-full items-start justify-center">
+                <Send size={18} color="$blue9" marginRight="$2" />
+                <P>Send</P>
+              </Button>
+            </XStack>
+          </XStack>
+          <YStack marginVertical="$4" width="100%" alignItems="flex-start" justifyContent="center">
             {user.publicKey && (
               <CopyWalletPublicKeyButton walletPublicKey={user.publicKey} />
             )}
-          </View>
+          </YStack>
 
-          <View className="flex w-full flex-col">
+          <YStack flex={1} width="100%" flexDirection="column">
             <TextLink href="/profile/likes">
               <ProfileRow
                 title="Likes"
                 icon={
-                  <Like className="h-5 w-5 fill-none stroke-current stroke-2 text-[--text-color]" />
+                  <Like width={20} height={20} fill="none" stroke="$color12" strokeWidth={2} />
                 }
                 count={userLikesData?.userLikes?.length || 0}
               />
@@ -171,7 +184,7 @@ export function ProfileScreen({ user }: { user: User }) {
               <ProfileRow
                 title="Collection"
                 icon={
-                  <StarBorder className="h-5 w-5 fill-none stroke-current stroke-2 text-[--text-color]" />
+                  <StarBorder width={20} height={20} fill="none" stroke="$color12" strokeWidth={2} />
                 }
                 count={userCollectionData?.userEntries?.length || 0}
               />
@@ -181,13 +194,13 @@ export function ProfileScreen({ user }: { user: User }) {
               <ProfileRow
                 title="Top-up"
                 icon={
-                  <TopUp className="h-5 w-5 fill-none stroke-current stroke-2 text-[--text-color]" />
+                  <TopUp width={20} height={20} fill="none" stroke="$color12" strokeWidth={2} />
                 }
               />
             </TextLink>
-          </View>
-        </View>
-      </View>
+          </YStack>
+        </YStack>
+      </YStack>
 
       <LowBalanceModal
         visible={lowBalanceModalVisible}

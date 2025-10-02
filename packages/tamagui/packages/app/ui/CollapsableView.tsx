@@ -1,9 +1,9 @@
 'use client'
 import { ReactNode, useState } from 'react'
-import { Pressable, Text, View, StyleProp, ViewStyle } from 'react-native'
 import ChevronDown from 'app/ui/icons/chevron-down'
 import ChevronUp from 'app/ui/icons/chevron-up'
 import { AnimateHeight } from './animate-height'
+import { YStack, XStack, Text } from 'tamagui'
 
 type Props = {
   initCollapsed?: boolean
@@ -11,7 +11,6 @@ type Props = {
   icon?: React.ComponentType<any>
   headerText: string
   className?: string
-  style?: StyleProp<ViewStyle>
 }
 
 export const CollapsableView = ({
@@ -20,39 +19,49 @@ export const CollapsableView = ({
   headerText,
   icon: Icon,
   className,
-  style,
 }: Props) => {
   const [collapsed, setCollapsed] = useState<boolean>(initCollapsed)
 
   return (
-    <View
-      className={`mt-8 w-full overflow-hidden rounded-lg border border-[--bg-secondary-color] ${
-        className ?? ''
-      }`}
-      style={style}
+    <YStack
+      marginTop="$8"
+      width="100%"
+      overflow="hidden"
+      borderRadius="$3"
+      borderWidth={1}
+      borderColor="$borderColor"
+      className={className}
     >
-      <Pressable
+      <XStack
+        flexDirection="row"
+        alignItems="center"
+        padding="$5"
+        pressStyle={{ opacity: 0.8 }}
         onPress={() => {
           setCollapsed(!collapsed)
         }}
+        cursor="pointer"
       >
-        <View className="flex flex-row items-center p-5">
-          {Icon && <Icon size={18} className="text-gray-400" />}
-          <Text className="mx-2 flex-1 font-semibold text-gray-400">
-            {headerText}
-          </Text>
+        {Icon && <Icon size={18} color="$gray10" />}
+        <Text
+          marginHorizontal="$2"
+          flex={1}
+          fontWeight="600"
+          color="$gray10"
+        >
+          {headerText}
+        </Text>
 
-          {collapsed ? (
-            <ChevronDown size={18} className="text-gray-400" />
-          ) : (
-            <ChevronUp size={18} className="text-gray-400" />
-          )}
-        </View>
-      </Pressable>
+        {collapsed ? (
+          <ChevronDown size={18} color="$gray10" />
+        ) : (
+          <ChevronUp size={18} color="$gray10" />
+        )}
+      </XStack>
 
       <AnimateHeight hide={collapsed}>
-        <View className={'overflow-hidden text-gray-400'}>{children}</View>
+        <YStack overflow="hidden" color="$gray10">{children}</YStack>
       </AnimateHeight>
-    </View>
+    </YStack>
   )
 }

@@ -1,26 +1,28 @@
 'use client'
-import { Pressable } from 'react-native'
 import { useTheme } from 'app/state/theme/useTheme'
 import Moon from 'app/ui/icons/moon'
 import Sun from 'app/ui/icons/sun'
+import { Button } from 'tamagui'
 
 export default function ThemeSwitcher() {
   const { isDark, toggleTheme, theme } = useTheme()
 
   return (
-    <Pressable
+    <Button
       onPress={toggleTheme}
-      className={`flex items-center justify-center rounded-full p-2 ${
-        isDark ? 'bg-gray-800' : 'bg-gray-200'
-      }`}
+      alignItems="center"
+      justifyContent="center"
+      borderRadius="$10"
+      padding="$2"
+      backgroundColor={isDark ? '$gray8' : '$gray3'}
       accessibilityLabel="Toggle theme"
       accessibilityRole="button"
     >
       {isDark ? (
-        <Moon className="text-[--text-color]" width={20} height={20} />
+        <Moon color="$color12" width={20} height={20} />
       ) : (
-        <Sun className="text-[--text-color]" width={20} height={20} />
+        <Sun color="$color12" width={20} height={20} />
       )}
-    </Pressable>
+    </Button>
   )
 }

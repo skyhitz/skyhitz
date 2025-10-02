@@ -1,6 +1,7 @@
 'use client'
 
-import { A, Button, H1, H2, P, ActivityIndicator } from 'app/design/typography'
+import { A, H1, H2, P, ActivityIndicator } from 'app/design/typography'
+import { Button } from 'app/design/button'
 import { useBlogPosts } from 'app/hooks/algolia/useBlogPosts'
 import { useSafeArea } from 'app/provider/safe-area/use-safe-area'
 import Footer from 'app/ui/footer'

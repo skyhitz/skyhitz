@@ -1,6 +1,6 @@
 'use client'
 import * as React from 'react'
-import { Image, View, Text, Platform, StyleSheet } from 'react-native'
+import { Image, Platform } from 'react-native'
 import { imageSrc } from 'app/utils/entry'
 import { 
   gradientPairs, 
@@ -8,16 +8,23 @@ import {
   getGradientIndex, 
   getInitials, 
   getUserIdentifier,
-  getFontSizeClass 
 } from 'app/utils/avatar'
+import { YStack, Text } from 'tamagui'
 
 type Size = 'small' | 'medium' | 'large' | 'xlarge'
 
 const sizeMap = {
-  small: 'h-8 w-8',
-  medium: 'h-12 w-12',
-  large: 'h-16 w-16',
-  xlarge: 'h-24 w-24',
+  small: 32,
+  medium: 48,
+  large: 64,
+  xlarge: 96,
+}
+
+const fontSizeMap = {
+  small: '$2',
+  medium: '$4',
+  large: '$6',
+  xlarge: '$8',
 }
 
 type UserAvatarProps = {
@@ -73,7 +80,8 @@ export function UserAvatar({
   }, [avatarUrl, imageError])
   
   // Use nullish coalescing for safety with size
-  const sizeClass = size ? sizeMap[size] : sizeMap.medium
+  const sizeValue = size ? sizeMap[size] : sizeMap.medium
+  const fontSize = size ? fontSizeMap[size] : fontSizeMap.medium
   
   // Get a consistent gradient based on user identifier
   const identifier = React.useMemo(() => {
@@ -83,11 +91,6 @@ export function UserAvatar({
   const gradientIndex = React.useMemo(() => {
     return getGradientIndex(identifier)
   }, [identifier])
-  
-  // Get font size class based on initials length and avatar size
-  const fontSizeClass = React.useMemo(() => {
-    return getFontSizeClass(size, initials.length)
-  }, [size, initials.length])
   
   // Get gradient colors - ensure we have a valid gradient pair and fallback if not
   const gradientColors = React.useMemo(() => {
@@ -101,13 +104,17 @@ export function UserAvatar({
   }, [gradientIndex])
   
   return (
-    <View
-      className={`overflow-hidden rounded-full ${sizeClass} ${className}`}
+    <YStack
+      overflow="hidden"
+      borderRadius="$10"
+      height={sizeValue}
+      width={sizeValue}
+      className={className}
     >
       {processedAvatarUrl && !imageError ? (
         <Image
           source={{ uri: processedAvatarUrl }}
-          className="h-full w-full"
+          style={{ height: '100%', width: '100%' }}
           alt={displayName || 'User avatar'}
           onError={() => {
             // Mark this image as failed so we show the placeholder
@@ -116,8 +123,12 @@ export function UserAvatar({
           }}
         />
       ) : (
-        <View 
-          className="flex h-full w-full items-center justify-center"
+        <YStack 
+          flex={1}
+          height="100%"
+          width="100%"
+          alignItems="center"
+          justifyContent="center"
           style={{
             backgroundColor: gradientColors[0],
             ...(Platform.OS === 'web' ? {
@@ -127,13 +138,14 @@ export function UserAvatar({
           }}
         >
           <Text 
-            className={`font-medium ${fontSizeClass}`}
-            style={{ color: textColor }}
+            fontWeight="500"
+            fontSize={fontSize}
+            color={textColor}
           >
             {initials}
           </Text>
-        </View>
+        </YStack>
       )}
-    </View>
+    </YStack>
   )
 }

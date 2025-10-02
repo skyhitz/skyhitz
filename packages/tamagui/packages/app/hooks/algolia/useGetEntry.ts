@@ -1,3 +1,4 @@
+'use client'
 import { Entry } from 'app/api/graphql/types'
 import { useEffect } from 'react'
 import { getEntry } from './getEntry'

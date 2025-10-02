@@ -1,7 +1,8 @@
 'use client'
 import * as React from 'react'
-import { TextInput, View, Text, TextInputProps } from 'react-native'
+import { TextInput, TextInputProps } from 'react-native'
 import { useField, FieldHookConfig } from 'formik'
+import { YStack, XStack, Input, Text, styled } from 'tamagui'
 
 type FormInputWithIconProps = TextInputProps & {
   name?: string
@@ -14,6 +15,31 @@ type FormInputWithIconProps = TextInputProps & {
   onChangeText?: (text: string) => void
   onBlur?: (e: any) => void
 }
+
+const StyledInput = styled(Input, {
+  flex: 1,
+  borderRadius: '$3',
+  paddingVertical: '$3',
+  paddingHorizontal: '$3',
+  backgroundColor: '$background',
+  borderColor: '$borderColor',
+  color: '$color12',
+  focusStyle: {
+    borderColor: '$blue9',
+  },
+  variants: {
+    hasError: {
+      true: {
+        borderColor: '$red9',
+      },
+    },
+    hasIcon: {
+      true: {
+        paddingLeft: '$10',
+      },
+    },
+  },
+})
 
 export function FormInputWithIcon({
   name,
@@ -33,33 +59,59 @@ export function FormInputWithIcon({
   const errorMessage = propError || (meta?.touched ? meta?.error : undefined)
 
   return (
-    <View className={`mb-4 ${className}`}>
+    <YStack marginBottom="$4" className={className}>
       {label && (
-        <Text className="mb-1 text-sm font-medium text-gray-300">{label}</Text>
+        <Text
+          marginBottom="$1"
+          fontSize="$3"
+          fontWeight="500"
+          color="$gray10"
+        >
+          {label}
+        </Text>
       )}
 
-      <View className="relative flex flex-row items-center rounded-lg border bg-[--bg-color] focus-within:border-[--primary-color]">
+      <XStack
+        position="relative"
+        flexDirection="row"
+        alignItems="center"
+        borderRadius="$3"
+        borderWidth={1}
+        backgroundColor="$background"
+        borderColor={hasError ? '$red9' : '$borderColor'}
+        focusWithinStyle={{ borderColor: '$blue9' }}
+      >
         {icon && (
-          <View className="absolute left-3 z-10 text-[--text-color]">
+          <YStack
+            position="absolute"
+            left="$3"
+            zIndex={10}
+          >
             {icon}
-          </View>
+          </YStack>
         )}
 
-        <TextInput
+        <StyledInput
           value={field?.value !== undefined ? field.value : props.value}
           onChangeText={helpers?.setValue || props.onChangeText}
           onBlur={field ? () => helpers.setTouched(true) : props.onBlur}
-          placeholderTextColor="#6b7280"
-          className={`flex-1 rounded-lg py-3 px-3 text-[--text-color] outline-none ${
-            icon ? 'pl-10' : 'pl-3'
-          } ${inputClassName} ${hasError ? 'border-red' : ''}`}
+          placeholderTextColor="$gray9"
+          hasError={hasError}
+          hasIcon={!!icon}
+          className={inputClassName}
           {...props}
         />
-      </View>
+      </XStack>
 
       {hasError && (
-        <Text className="mt-1 text-xs text-red">{errorMessage}</Text>
+        <Text
+          marginTop="$1"
+          fontSize="$2"
+          color="$red9"
+        >
+          {errorMessage}
+        </Text>
       )}
-    </View>
+    </YStack>
   )
 }

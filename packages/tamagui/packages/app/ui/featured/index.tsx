@@ -7,11 +7,11 @@ import { SolitoImage } from 'app/design/solito-image'
 export function Featured({ title, subtitle, features = [], imgUrl }: any) {
   return (
     <YStack paddingVertical="$16" backgroundColor="$background" overflow="hidden">
-      <YStack marginHorizontal="auto" maxWidth={1280} paddingHorizontal="$6" $gtLg={{ paddingHorizontal: '$8' }}>
+      <YStack marginHorizontal="auto" maxWidth={1280} paddingHorizontal="$6" $lg={{ paddingHorizontal: '$8' }}>
         <XStack
           flexDirection="column"
           gap="$14"
-          $gtLg={{
+          $lg={{
             flexDirection: 'row',
             alignItems: 'center',
             gap: '$8',
@@ -19,7 +19,7 @@ export function Featured({ title, subtitle, features = [], imgUrl }: any) {
         >
           <YStack
             paddingHorizontal="$6"
-            $gtLg={{
+            $lg={{
               paddingHorizontal: 0,
               paddingRight: '$4',
               paddingTop: '$4',
@@ -28,7 +28,7 @@ export function Featured({ title, subtitle, features = [], imgUrl }: any) {
             <YStack
               marginHorizontal="auto"
               maxWidth={640}
-              $gtLg={{
+              $lg={{
                 marginHorizontal: 0,
                 maxWidth: 512,
               }}
@@ -49,12 +49,12 @@ export function Featured({ title, subtitle, features = [], imgUrl }: any) {
                 fontSize="$9"
                 fontWeight="bold"
                 letterSpacing={-1}
-                $gtSm={{ fontSize: '$10' }}
+                $sm={{ fontSize: '$10' }}
               >
                 {title}
               </H2>
 
-              <YStack marginTop="$10" maxWidth={576} gap="$8" $gtLg={{ maxWidth: 'auto' }}>
+              <YStack marginTop="$10" maxWidth={576} gap="$8" $lg={{ maxWidth: 'auto' }}>
                 {features.map((feature: any) => (
                   <XStack
                     key={feature.name}
@@ -92,7 +92,7 @@ export function Featured({ title, subtitle, features = [], imgUrl }: any) {
             aspectRatio={1}
             width="100%"
             maxWidth={512}
-            $gtLg={{
+            $lg={{
               aspectRatio: 9 / 14,
               paddingHorizontal: 0,
             }}

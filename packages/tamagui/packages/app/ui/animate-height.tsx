@@ -1,12 +1,7 @@
 import React from 'react'
-import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native'
-import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-  WithTimingConfig,
-} from 'react-native-reanimated'
+import { StyleProp, ViewStyle } from 'react-native'
+import { YStack, AnimatePresence } from 'tamagui'
+import type { WithTimingConfig } from 'react-native-reanimated'
 
 type Props = {
   children?: React.ReactNode
@@ -40,96 +35,23 @@ type Props = {
   style?: StyleProp<ViewStyle>
 }
 
-const styles = StyleSheet.create({
-  autoBottom: {
-    bottom: 'auto',
-  },
-  hidden: {
-    overflow: 'hidden',
-  },
-})
-
-const defaultTransition: WithTimingConfig = {
-  duration: 200,
-} as const
-
 /**
- * Animates the height change of its children
+ * Simplified Tamagui AnimateHeight using AnimatePresence
  */
 export function AnimateHeight({
   children,
-  heightTransition = defaultTransition,
-  childrenTransition = defaultTransition,
   hide = false,
-  initialHeight = 0,
-  onHeightDidAnimate,
   style,
-  shouldAnimateInitialHeight = false,
 }: Props) {
-  // as long as we should animate the initial height (or the content is hidden), we can animate the next height change
-  const canAnimateNext = React.useRef(hide || shouldAnimateInitialHeight)
-
-  const measuredHeight = useSharedValue(initialHeight)
-
-  const childStyle = useAnimatedStyle(
-    () => ({
-      opacity: withTiming(
-        !measuredHeight.value || hide ? 0 : 1,
-        childrenTransition,
-      ),
-    }),
-    [hide, measuredHeight],
-  )
-
-  const containerStyle = useAnimatedStyle(() => {
-    return {
-      height: withTiming(
-        hide ? 0 : measuredHeight.value,
-        heightTransition,
-        () => {
-          if (onHeightDidAnimate) {
-            runOnJS(onHeightDidAnimate)(measuredHeight.value)
-          }
-        },
-      ),
-    }
-  }, [hide, measuredHeight])
-
-  // just return a normal View with the children if we shouldn't animate yet
-  if (!canAnimateNext.current) {
-    return (
-      <View
-        style={[styles.hidden, style]}
-        onLayout={({ nativeEvent }) => {
-          // once we have a height, we can animate the next height changes
-          if (nativeEvent.layout.height > 0) {
-            // make sure we set the correct height so the children don't jump
-            // on the first animation
-            measuredHeight.value = Math.ceil(nativeEvent.layout.height)
-            // give it a render loop since we need the containerStyle to update to the
-            // starting height or it'll animate initially still if a re-render is triggered
-            // (eg. this can happen if this is within a scrollview in a screen that is being pushed onto the stack.)
-            setTimeout(() => {
-              canAnimateNext.current = true
-            })
-          }
-        }}
-      >
-        {children}
-      </View>
-    )
-  }
-
   return (
-    <Animated.View style={[styles.hidden, style, containerStyle]}>
-      <Animated.View
-        style={[StyleSheet.absoluteFill, styles.autoBottom, childStyle]}
-        onLayout={({ nativeEvent }) => {
-          measuredHeight.value = Math.ceil(nativeEvent.layout.height)
-        }}
-      >
-        {children}
-      </Animated.View>
-    </Animated.View>
+    <YStack
+      overflow="hidden"
+      animation="quick"
+      height={hide ? 0 : 'auto'}
+      opacity={hide ? 0 : 1}
+      style={style as any}
+    >
+      {children}
+    </YStack>
   )
 }
