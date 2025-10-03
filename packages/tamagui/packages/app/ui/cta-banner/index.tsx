@@ -2,7 +2,7 @@
 import { H2, P } from 'app/design/typography'
 import { YStack, XStack } from 'tamagui'
 import { SolitoImage } from 'app/design/solito-image'
-import { TextLink } from 'solito/link'
+import { TextLink } from 'app/navigation'
 import { Button } from 'app/design/button'
 
 export default function CtaBanner({

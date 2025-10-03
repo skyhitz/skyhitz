@@ -2,7 +2,7 @@
 import { Entry } from 'app/api/graphql/types'
 import { videoSrc } from 'app/utils/entry'
 import { MICRO_SPEND_DOWNLOAD_XLM } from 'app/constants/constants'
-import { useRouter } from 'solito/navigation'
+import { useRouter } from 'app/navigation'
 import { useUserStore } from 'app/state/user'
 import { useMutation } from '@apollo/client'
 import { INVEST_ENTRY } from 'app/api/graphql/operations'

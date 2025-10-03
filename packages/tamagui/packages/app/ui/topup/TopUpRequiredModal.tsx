@@ -2,7 +2,7 @@
 import { Modal } from 'app/design/modal'
 import { H1, P } from 'app/design/typography'
 import { Button } from 'app/design/button'
-import { useRouter } from 'solito/navigation'
+import { useRouter } from 'app/navigation'
 import { useTopUpModalStore } from 'app/state/topup'
 import { useUserStore } from 'app/state/user'
 import { YStack, XStack } from 'tamagui'

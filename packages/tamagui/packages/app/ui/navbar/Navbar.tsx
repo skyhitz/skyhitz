@@ -2,7 +2,7 @@ import { P } from 'app/design/typography'
 import { SkyhitzLogo } from 'app/ui/logo'
 import { useUserState } from 'app/state/user/hooks'
 import { XStack, YStack, GetProps } from 'tamagui'
-import { TextLink } from 'solito/link'
+import { TextLink } from 'app/navigation'
 
 export const Navbar = (props: GetProps<typeof XStack>) => {
   const { user, loading: userLoading } = useUserState()

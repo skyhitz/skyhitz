@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { YStack } from 'tamagui'
 import { P, H3, ActivityIndicator } from 'app/design/typography'
 import { useSignInWithTokenMutation } from 'app/api/graphql/mutations'
-import { useRouter } from 'solito/navigation'
+import { useRouter } from 'app/navigation'
 
 interface SignInWithTokenProps {
   uid: string

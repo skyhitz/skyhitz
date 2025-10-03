@@ -8,7 +8,7 @@ import { useCreateUserWithEmailMutation, useRequestTokenMutation } from 'app/api
 import { signUpFormSchema } from 'app/validation'
 import { A, P } from 'app/design/typography'
 import { SignUpForm as FormData } from 'app/types'
-import { useRouter } from 'solito/navigation'
+import { useRouter } from 'app/navigation'
 import { useUserState } from 'app/state/user/hooks'
 import { useToast } from 'app/provider/toast'
 import { trackSignUp } from 'app/utils/analytics'

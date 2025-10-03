@@ -6690,7 +6690,6 @@ __metadata:
     graphql: "npm:^16.11.0"
     ramda: "npm:^0.30.1"
     react-native-safe-area-context: "npm:5.4.0"
-    solito: "npm:^4.2.2"
     swr: "npm:^2.3.3"
     yup: "npm:^1.4.0"
     zustand: "npm:^5.0.3"
@@ -15773,15 +15772,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"solito@npm:^4.2.2":
-  version: 4.3.0
-  resolution: "solito@npm:4.3.0"
-  dependencies:
-    typescript: "npm:^5.0.4"
-  checksum: 10/b58eb9b0ec6a027042ebf68bd218534c620b2f420f81460416a064402cfd7b2ce2fbc6a6dae2c74443e69b064104e5288a426b8155a2ccdabc0c29b4ff637786
-  languageName: node
-  linkType: hard
-
 "sonner@npm:^0.3.5":
   version: 0.3.5
   resolution: "sonner@npm:0.3.5"
@@ -16912,7 +16902,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@npm:^5.0.4, typescript@npm:^5.8.2, typescript@npm:~5.8.3":
+"typescript@npm:^5.8.2, typescript@npm:~5.8.3":
   version: 5.8.3
   resolution: "typescript@npm:5.8.3"
   bin:
@@ -16932,7 +16922,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@patch:typescript@npm%3A^5.0.4#optional!builtin<compat/typescript>, typescript@patch:typescript@npm%3A^5.8.2#optional!builtin<compat/typescript>, typescript@patch:typescript@npm%3A~5.8.3#optional!builtin<compat/typescript>":
+"typescript@patch:typescript@npm%3A^5.8.2#optional!builtin<compat/typescript>, typescript@patch:typescript@npm%3A~5.8.3#optional!builtin<compat/typescript>":
   version: 5.8.3
   resolution: "typescript@patch:typescript@npm%3A5.8.3#optional!builtin<compat/typescript>::version=5.8.3&hash=8c6c40"
   bin:

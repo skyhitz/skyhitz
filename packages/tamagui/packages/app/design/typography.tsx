@@ -1,7 +1,7 @@
 import { ComponentProps } from 'react'
 import { Text as TamaguiText, H1 as TamaguiH1, H2 as TamaguiH2, H3 as TamaguiH3, Spinner } from 'tamagui'
 import { Pressable, ActivityIndicator as NativeActivityIndicator } from 'react-native'
-import { TextLink } from 'solito/link'
+import { TextLink } from 'app/navigation'
 
 /**
  * Basic text component with default styles
@@ -109,7 +109,7 @@ export function A({
 }: AProps) {
   if (variant === 'button') {
     return (
-      <TextLink href={href} target={target}>
+    <TextLink href={href} target={target}>
         <Pressable>
           <TamaguiText
             color="$blue9"

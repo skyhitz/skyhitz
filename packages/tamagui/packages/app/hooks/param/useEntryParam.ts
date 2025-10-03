@@ -1,4 +1,4 @@
-import { useParams } from 'solito/navigation'
+import { useParams } from 'app/navigation'
 
 export function useEntryParam() {
   const { id } = useParams<{ id: string }>()

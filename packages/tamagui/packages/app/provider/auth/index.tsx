@@ -5,7 +5,7 @@ import { useUserStore } from 'app/state/user'
 import { AuthService } from 'app/services/auth'
 import { ActivityIndicator } from 'app/design/typography'
 import { YStack } from 'tamagui'
-import { useRouter } from 'solito/navigation'
+import { useRouter } from 'app/navigation'
 import { trackSignIn, trackSignOut } from 'app/utils/analytics'
 
 export function AuthProvider({ children }: { children: ReactNode }) {

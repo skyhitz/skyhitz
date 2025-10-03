@@ -2,7 +2,7 @@
 import { P } from 'app/design/typography'
 import { SkyhitzLogo } from 'app/ui/logo'
 import { useUserState } from 'app/state/user/hooks'
-import { TextLink } from 'solito/link'
+import { TextLink } from 'app/navigation'
 import { XStack, YStack, Button, GetProps } from 'tamagui'
 
 const Navbar = (props: GetProps<typeof XStack>) => {

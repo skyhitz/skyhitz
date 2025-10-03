@@ -1,4 +1,4 @@
-import { useSearchParams } from 'solito/navigation'
+import { useSearchParams } from 'app/navigation'
 import { useMemo } from 'react'
 
 export type SignInParam = {

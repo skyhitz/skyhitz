@@ -2,7 +2,7 @@
  * Core navigation hook that provides type-safe navigation capabilities
  * across both web and mobile platforms using Solito
  */
-import { useRouter, usePathname } from 'solito/navigation'
+import { useRouter, usePathname } from 'app/navigation'
 import { ROUTES } from 'app/constants/routes'
 
 export type RouteParams = {

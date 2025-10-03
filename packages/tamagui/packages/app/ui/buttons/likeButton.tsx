@@ -2,7 +2,7 @@
 import { Heart } from '@tamagui/lucide-icons'
 import { Entry } from 'app/api/graphql/types'
 import { useUserStore } from 'app/state/user'
-import { useRouter } from 'solito/navigation'
+import { useRouter } from 'app/navigation'
 import { useMutation, useQuery } from '@apollo/client'
 import useLikeCache from 'app/hooks/useLikeCache'
 import { lumensToStroops } from 'app/utils'

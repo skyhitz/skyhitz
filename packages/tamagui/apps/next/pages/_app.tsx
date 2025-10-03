@@ -5,7 +5,7 @@ import 'raf/polyfill'
 
 import type React from 'react'
 import Head from 'next/head'
-import type { SolitoAppProps } from 'solito'
+import type { AppProps } from 'next/app'
 import { NextTamaguiProvider } from 'app/provider/NextTamaguiProvider'
 import { config } from '@my/config'
 
@@ -13,7 +13,7 @@ if (process.env.NODE_ENV === 'production') {
   require('../public/tamagui.css')
 }
 
-function MyApp({ Component, pageProps }: SolitoAppProps) {
+function MyApp({ Component, pageProps }: AppProps) {
   return (
     <>
       <Head>

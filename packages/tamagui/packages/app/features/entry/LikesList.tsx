@@ -6,7 +6,7 @@ import { Entry } from 'app/api/graphql/types'
 import { gql, useQuery } from '@apollo/client'
 import { CollapsableView } from 'app/ui/CollapsableView'
 import { UserAvatar } from 'app/ui/user-avatar'
-import { useRouter } from 'solito/router'
+import { useRouter } from 'app/navigation'
 
 // Query to fetch users who liked the entry
 const ENTRY_LIKES = gql`

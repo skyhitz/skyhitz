@@ -2,7 +2,7 @@
 import { Entry } from 'app/api/graphql/types'
 import { P } from 'app/design/typography'
 import { imageUrlSmall } from 'app/utils/entry'
-import { useRouter } from 'solito/navigation'
+import { useRouter } from 'app/navigation'
 import { SolitoImage } from 'app/design/solito-image'
 import { MoreVertical } from '@tamagui/lucide-icons'
 import LikeButton from 'app/ui/buttons/likeButton'

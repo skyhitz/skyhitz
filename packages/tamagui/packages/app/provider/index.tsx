@@ -1,6 +1,6 @@
 'use client'
 import { SafeArea } from 'app/provider/safe-area'
-import { SolitoImageProvider } from 'solito/image'
+import { ImageProvider } from '../provider/image'
 import { ToastProvider } from './toast'
 import { AuthProvider } from './auth'
 import { GraphQLProvider } from './apollo'
@@ -19,10 +19,10 @@ export function Provider({ children }: Props) {
         <SafeArea>
           <AuthProvider>
             <ToastProvider>
-              <SolitoImageProvider nextJsURL="https://skyhitz.io">
+              <ImageProvider>
                 {children}
                 <TopUpRequiredModal />
-              </SolitoImageProvider>
+              </ImageProvider>
             </ToastProvider>
           </AuthProvider>
         </SafeArea>

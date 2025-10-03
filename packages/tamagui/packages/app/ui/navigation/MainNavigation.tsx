@@ -1,7 +1,7 @@
 'use client'
 import { YStack, XStack } from 'tamagui'
 import { useMemo } from 'react'
-import { usePathname } from 'solito/navigation'
+import { usePathname } from 'app/navigation'
 import MainTabBar from 'app/ui/navigation/MainTabBar'
 import { MobileTabBarWrapper } from './MobileTabBarWrapper'
 import { Navbar } from '../navbar/Navbar'

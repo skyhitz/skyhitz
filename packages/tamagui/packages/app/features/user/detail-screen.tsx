@@ -1,5 +1,5 @@
 import { View, Text, Pressable } from 'react-native'
-import { useRouter } from 'solito/navigation'
+import { useRouter } from 'app/navigation'
 
 export function UserDetailScreen() {
   const router = useRouter()

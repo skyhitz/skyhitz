@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { Formik, FormikProps } from 'formik'
 import * as Yup from 'yup'
-import { useRouter } from 'solito/navigation'
+import { useRouter } from 'app/navigation'
 import { useToast } from 'app/provider/toast'
 import { Button } from 'app/design/button'
 import { P, H2, Text } from 'app/design/typography'

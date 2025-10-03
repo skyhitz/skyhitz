@@ -1,6 +1,6 @@
 'use client'
 import { PropsWithChildren, useEffect } from 'react'
-import { useRouter } from 'solito/navigation'
+import { useRouter } from 'app/navigation'
 import { useUserState, useIsAuthenticated } from 'app/state/user/hooks'
 import { ActivityIndicator } from 'app/design/typography'
 import { YStack } from 'tamagui'

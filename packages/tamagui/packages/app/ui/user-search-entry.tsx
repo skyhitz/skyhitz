@@ -2,7 +2,7 @@
 import * as React from 'react';
 import { Image } from 'react-native';
 import { User } from 'app/api/graphql/types';
-import { useRouter } from 'solito/navigation';
+import { useRouter } from 'app/navigation';
 import { YStack, XStack, Text } from 'tamagui';
 
 type UserSearchEntryProps = {

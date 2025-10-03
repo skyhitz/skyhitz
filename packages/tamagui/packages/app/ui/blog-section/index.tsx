@@ -1,6 +1,6 @@
 import { H2, A } from 'app/design/typography'
 import Card from 'app/ui/card'
-import { TextLink } from 'solito/link'
+import { TextLink } from 'app/navigation'
 import { YStack, XStack } from 'tamagui'
 
 export default function BlogSection({ posts = [] }: { posts?: any[] }) {

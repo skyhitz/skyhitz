@@ -2,7 +2,7 @@
 import { A, H1, P } from 'app/design/typography'
 import { YStack, XStack } from 'tamagui'
 import { SolitoImage } from 'app/design/solito-image'
-import { TextLink } from 'solito/link'
+import { TextLink } from 'app/navigation'
 import { useUserState } from 'app/state/user/hooks'
 import { Button } from 'app/design/button'
 
