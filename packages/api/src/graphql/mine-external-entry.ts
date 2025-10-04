@@ -82,52 +82,69 @@ export const mineExternalEntryResolver = async (_: any, { input }: { input: Exte
   const metaCid = await storage.pinJSON(metadata);
 
   // 5) Compute mining partition and perform transfers
-  // Highest APR -> investedEscrow = min(1 * apr% , 0.3)
+  // NEW CONTRACT: We need to create the entry first, then perform actions
+  const userSeed = await encryption.decrypt(user.seed);
+  const toStroops = (lumens: number) => Math.round(lumens * 10_000_000);
+  
+  // STEP 1: Create entry in contract (required before any actions)
+  try {
+    console.log('⛏️  Creating entry in contract:', metaCid);
+    await contract.createEntry(metaCid);
+  } catch (e: any) {
+    console.error('❌ Entry creation failed:', e);
+    throw new GraphQLError('ENTRY_CREATION_FAILED');
+  }
+
+  // Calculate mining partition based on top APR
   const topApr = await algolia.getTopApr().catch(() => 0);
   const investEscrow = Math.min((ONE_XLM * topApr) / 100, 0.3);
   const remaining = ONE_XLM - investEscrow;
   const half = remaining / 2;
-  console.log('mine: partition', { topApr, investEscrow, half, user: user.publicKey, entry: metaCid, network: env.STELLAR_NETWORK });
+  
+  console.log('⛏️  Mining partition:', { 
+    topApr, 
+    investEscrow: investEscrow.toFixed(2), 
+    platformFee: half.toFixed(2),
+    mineStake: half.toFixed(2),
+    user: user.publicKey, 
+    entry: metaCid 
+  });
 
-  // Escrow invest (no equity if <= 0.3 per contract rules)
-  const userSeed = await encryption.decrypt(user.seed);
-  const toStroops = (lumens: number) => Math.round(lumens * 10_000_000);
-  try {
-    console.log('mine: invest escrow', { amount: toStroops(investEscrow) });
-    await contract.invest(userSeed, metaCid, toStroops(investEscrow));
-  } catch (e: any) {
+  // STEP 2: Escrow investment (adds to entry.escrow_xlm, no stake)
+  // This goes to the escrow pool for performance-based rewards
+  if (investEscrow > 0) {
     try {
+      console.log('📊 Recording escrow invest:', toStroops(investEscrow), 'stroops');
+      await contract.recordAction(userSeed, metaCid, 'invest', toStroops(investEscrow));
+    } catch (e: any) {
       const msg = (e && (e.message || e.toString())) || 'unknown';
-      console.log('First invest failed', msg);
-      console.log('First invest error detail', JSON.stringify(e, Object.getOwnPropertyNames(e)));
-    } catch {}
-    throw new GraphQLError('INVEST_ESCROW_FAILED');
+      console.error('❌ Escrow invest failed:', msg);
+      throw new GraphQLError('INVEST_ESCROW_FAILED');
+    }
   }
 
-  // Pay ISSUER_ID half
+  // STEP 3: Pay platform fee to ISSUER_ID
   try {
-    console.log('mine: user pay', { to: env.ISSUER_ID, amount: half });
+    console.log('💰 Paying platform fee:', half, 'XLM to', env.ISSUER_ID);
     await stellar.userPay(env.ISSUER_ID, half, userSeed);
   } catch (e: any) {
-    try {
-      const msg = (e && (e.message || e.toString())) || 'unknown';
-      console.log('User payment failed', msg);
-      console.log('User payment error detail', JSON.stringify(e, Object.getOwnPropertyNames(e)));
-    } catch {}
+    const msg = (e && (e.message || e.toString())) || 'unknown';
+    console.error('❌ Platform payment failed:', msg);
     throw new GraphQLError('USER_PAYMENT_FAILED');
   }
 
-  // Invest for equity with remaining half
+  // STEP 4: Mine action (adds to entry.tvl_xlm, creates stake, earns HITZ rewards)
+  // This is the key action that gives the user ownership and rewards
   try {
-    console.log('mine: invest equity', { amount: toStroops(half) });
-    await contract.invest(userSeed, metaCid, toStroops(half));
+    console.log('⛏️  Recording mine action (stake):', toStroops(half), 'stroops');
+    // Note: mine action has difficulty 10, which with base_fee 0.01 XLM = 0.1 XLM fee
+    // But we're investing 'half' amount which should be ~0.35 XLM
+    // So we use 'invest' with the half amount instead
+    await contract.recordAction(userSeed, metaCid, 'invest', toStroops(half));
   } catch (e: any) {
-    try {
-      const msg = (e && (e.message || e.toString())) || 'unknown';
-      console.log('Equity invest failed', msg);
-      console.log('Equity invest error detail', JSON.stringify(e, Object.getOwnPropertyNames(e)));
-    } catch {}
-    throw new GraphQLError('INVEST_EQUITY_FAILED');
+    const msg = (e && (e.message || e.toString())) || 'unknown';
+    console.error('❌ Mine/stake action failed:', msg);
+    throw new GraphQLError('MINE_STAKE_FAILED');
   }
 
   // After successful on-chain ops, persist entry in Algolia
@@ -147,31 +164,43 @@ export const mineExternalEntryResolver = async (_: any, { input }: { input: Exte
 
   await algolia.saveEntry(entry);
 
-  // Update Algolia shares for the user based on on-chain state
+  // Update Algolia with on-chain data (NEW CONTRACT INTERFACE)
   try {
+    console.log('📈 Updating Algolia with on-chain data...');
+    
+    // Get entry data from contract
     const chainEntry = await contract.getEntry(metaCid);
+    
+    // Get entry stats (apr, reward pool, total staked)
+    const stats = await contract.getEntryStats(metaCid);
+    
+    // Get user's stake (replaces old "shares" concept)
+    const userStake = await contract.getStake(metaCid, user.publicKey);
+    
+    // Update user's stake in Algolia
     try {
-      let userShares = 0;
-      const rawShares: any = (chainEntry as any)?.shares;
-      if (Array.isArray(rawShares)) {
-        const pair = rawShares.find((s: any) => s && s[0] === user.publicKey);
-        userShares = pair ? Number(pair[1] || 0) : 0;
-      } else if (rawShares && typeof rawShares.get === 'function') {
-        const val = rawShares.get(user.publicKey);
-        userShares = val ? Number(val) : 0;
-      }
-      await algolia.updateShares(metaCid, user.id, Number(userShares || 0));
+      await algolia.updateShares(metaCid, user.id, Number(userStake));
+      console.log('✅ User stake updated:', userStake, 'stroops');
     } catch (e) {
-      console.log('update shares failed', e);
+      console.error('❌ Failed to update user stake:', e);
     }
+    
+    // Update entry metrics in Algolia
     await algolia.partialUpdateEntry({
       objectID: metaCid,
-      tvl: chainEntry.tvl,
-      apr: chainEntry.apr,
-      escrow: chainEntry.escrow,
+      tvl: Number(chainEntry.tvl_xlm) / 10_000_000,      // NEW: tvl_xlm field
+      escrow: Number(chainEntry.escrow_xlm) / 10_000_000, // NEW: escrow_xlm field
+      apr: Number(stats.apr) / 100,                        // APR in basis points -> percentage
+    });
+    
+    console.log('✅ Algolia updated:', {
+      tvl: (Number(chainEntry.tvl_xlm) / 10_000_000).toFixed(2),
+      escrow: (Number(chainEntry.escrow_xlm) / 10_000_000).toFixed(2),
+      apr: (Number(stats.apr) / 100).toFixed(2) + '%',
     });
   } catch (e) {
-    console.log('Post-index update failed', e);
+    console.error('❌ Post-index update failed:', e);
+    // Don't fail the whole operation if Algolia update fails
   }
 
   return entry;

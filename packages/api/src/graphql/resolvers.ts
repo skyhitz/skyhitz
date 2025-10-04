@@ -22,13 +22,18 @@ import { claimEarningsResolver } from './claim-earnings';
 import { searchExternalMusicResolver, externalAudioUrlResolver } from './search-external-music';
 import { claimEarningsPreviewResolver } from './xlm-price';
 import { mineExternalEntryResolver } from './mine-external-entry';
-import { sellSharesResolver } from './sell-shares';
 import { mergeEntriesResolver } from './merge-entries';
+import { unstakeEntryResolver } from './unstake-entry';
+import { recordActionResolver } from './record-action';
+import { userHitzBalanceResolver } from './user-hitz-balance';
+import { withdrawHitzResolver } from './withdraw-hitz';
+// REMOVED: sellSharesResolver - no longer supported in new contract
 
 const Query = {
 	entry: entryByIdResolver,
 	entryLikes: entryLikesResolver,
 	userCredits: userCreditsResolver,
+	userHitzBalance: userHitzBalanceResolver,
 	userEntries: userEntriesResolver,
 	userLikes: userLikesResolver,
 	xlmPrice: XLMPriceResolver,
@@ -52,7 +57,10 @@ const Mutation = {
 	submitLink: submitLinkResolver,
 	claimEarnings: claimEarningsResolver,
 	mineExternalEntry: mineExternalEntryResolver,
-	sellShares: sellSharesResolver,
+	unstakeEntry: unstakeEntryResolver,
+	withdrawHitz: withdrawHitzResolver,
+	recordAction: recordActionResolver,
+	// REMOVED: sellShares - no longer supported
 	mergeEntries: mergeEntriesResolver,
 	updateUser: updateUserResolver,
 	withdrawToExternalWallet: withdrawToExternalAddressResolver,

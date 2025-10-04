@@ -268,6 +268,40 @@ export class AlgoliaClient {
 		});
 	}
 
+	/**
+	 * Sync entry data from contract to Algolia
+	 * Handles conversion from stroops to XLM and basis points to percentage
+	 * 
+	 * @param entryId - The entry ID to update
+	 * @param contractData - Data from contract (tvl_xlm, escrow_xlm in stroops, apr in basis points)
+	 */
+	async syncEntryFromContract(entryId: string, contractData: {
+		tvl_xlm: number | bigint;
+		escrow_xlm: number | bigint;
+		apr: number;
+	}) {
+		return this.partialUpdateEntry({
+			objectID: entryId,
+			tvl: Number(contractData.tvl_xlm) / 10_000_000,
+			escrow: Number(contractData.escrow_xlm) / 10_000_000,
+			apr: Number(contractData.apr) / 100, // basis points to percentage
+		});
+	}
+
+	/**
+	 * Update user stake (formerly "shares") for an entry
+	 * Converts from stroops to HITZ tokens
+	 * 
+	 * @param entryId - The entry ID
+	 * @param userId - The user's Algolia ID (not publicKey)
+	 * @param stakeInStroops - User's stake in stroops (1 HITZ = 10^7 stroops)
+	 */
+	async syncUserStake(entryId: string, userId: string, stakeInStroops: number | bigint) {
+		// Store stakes in stroops (raw contract value) for precision
+		// Frontend will convert to HITZ when displaying
+		return this.updateShares(entryId, userId, Number(stakeInStroops));
+	}
+
 	async getSharesByEntry(entryId: string) {
 		const res = await this.indices.sharesIndex.search<Share>('', {
 			filters: `entryId:${entryId}`,

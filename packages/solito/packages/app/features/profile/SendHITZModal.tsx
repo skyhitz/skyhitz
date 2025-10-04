@@ -2,35 +2,53 @@
 import { View, KeyboardAvoidingView, Platform } from 'react-native'
 import { useCallback, useEffect } from 'react'
 import Wallet from 'app/ui/icons/wallet'
-import Stellar from 'app/ui/icons/stellar'
 import { Formik, FormikProps } from 'formik'
 import { FormInputWithIcon } from 'app/ui/inputs/FormInputWithIcon'
-import { useWithdrawToExternalWalletMutation } from 'app/api/graphql/mutations'
-import { withdrawFormSchema } from 'app/validation'
 import { useToast } from 'app/provider/toast'
 import { Button } from 'app/design/button'
 import { H1, P } from 'app/design/typography'
 import { Modal } from 'app/design/modal'
+import { useMutation } from '@apollo/client'
+import { WITHDRAW_HITZ } from 'app/api/graphql/operations'
+import * as Yup from 'yup'
 
-// Define WithdrawalForm type locally to match schema expectations
+// Define WithdrawalForm type
 type WithdrawalForm = {
   address: string
   amount: number
 }
 
-type SendXLMModalProps = {
+type SendHITZModalProps = {
   visible: boolean
   onClose: () => void
   currentBalance: number
 }
 
-export function SendXLMModal({
+// Validation schema for HITZ withdrawals
+const withdrawHitzSchema = (currentBalance: number) =>
+  Yup.object().shape({
+    address: Yup.string()
+      .required('Stellar address is required')
+      .matches(/^G[A-Z0-9]{55}$/, 'Invalid Stellar address format')
+      .min(56, 'Stellar address must be 56 characters')
+      .max(56, 'Stellar address must be 56 characters'),
+    amount: Yup.number()
+      .required('Amount is required')
+      .positive('Amount must be positive')
+      .max(currentBalance, `Amount cannot exceed ${currentBalance.toFixed(2)} HITZ`)
+      .test(
+        'min-amount',
+        'Minimum withdrawal is 1 HITZ',
+        (value) => !value || value >= 1
+      ),
+  })
+
+export function SendHITZModal({
   visible,
   onClose,
   currentBalance,
-}: SendXLMModalProps) {
-  const [withdraw, { data, loading, error }] =
-    useWithdrawToExternalWalletMutation()
+}: SendHITZModalProps) {
+  const [withdrawHitz, { data, loading, error }] = useMutation(WITHDRAW_HITZ)
   const toast = useToast()
 
   const initialValues: WithdrawalForm = {
@@ -39,28 +57,33 @@ export function SendXLMModal({
   }
 
   useEffect(() => {
-    if (data?.withdrawToExternalWallet) {
+    if (data?.withdrawHitz?.success) {
       onClose()
-      toast.show('Amount successfully transferred to your external wallet', {
-        type: 'success',
-      })
+      toast.show(
+        `Successfully sent ${data.withdrawHitz.amount.toFixed(2)} HITZ to external wallet`,
+        { type: 'success' }
+      )
     }
   }, [data, toast, onClose])
 
   const onSubmit = useCallback(
     async ({ address, amount }: WithdrawalForm): Promise<void> => {
       try {
-        await withdraw({
+        await withdrawHitz({
           variables: {
             address,
             amount,
           },
         })
-      } catch (_) {
-        // no-op, just to catch error
+      } catch (err) {
+        console.error('HITZ withdrawal error:', err)
+        toast.show(
+          error?.message || 'Failed to send HITZ. Please try again.',
+          { type: 'danger' }
+        )
       }
     },
-    [withdraw]
+    [withdrawHitz, error, toast]
   )
 
   return (
@@ -72,23 +95,23 @@ export function SendXLMModal({
         <View className="flex w-full items-center rounded-xl border border-[--border-color] bg-[--bg-color] p-6">
           <View className="flex w-full items-center">
             <H1 className="text-xl font-bold font-unbounded text-[--text-color]">
-              Send XLM
+              Send HITZ
             </H1>
             <P className="mt-2 text-xs text-[--text-secondary-color] text-center">
-              Send XLM to any Stellar address
+              Send HITZ tokens to any Stellar address
             </P>
 
             <View className="mt-8 w-full flex flex-row items-center justify-center">
-              <Stellar size={18} className="mr-2" />
+              <View className="h-[18px] w-[18px] rounded-full bg-gradient-to-r from-[--primary-color] to-[--accent-color] mr-2" />
               <P className="font-unbounded text-[--text-color] ml-2">
-                Current Balance: {currentBalance.toFixed(2)} XLM
+                Current Balance: {currentBalance.toFixed(2)} HITZ
               </P>
             </View>
 
             <Formik
               initialValues={initialValues}
               onSubmit={onSubmit}
-              validationSchema={withdrawFormSchema(currentBalance)}
+              validationSchema={withdrawHitzSchema(currentBalance)}
               validateOnMount
             >
               {({
@@ -114,8 +137,10 @@ export function SendXLMModal({
 
                   <FormInputWithIcon
                     value={values.amount > 0 ? values.amount.toString() : ''}
-                    placeholder="XLM to send"
-                    icon={<Stellar size={20} />}
+                    placeholder="HITZ to send (min 1 HITZ)"
+                    icon={
+                      <View className="h-[20px] w-[20px] rounded-full bg-gradient-to-r from-[--primary-color] to-[--accent-color]" />
+                    }
                     className="py-1 mb-6 w-full"
                     onChangeText={(text) => {
                       if (text === '') {
@@ -141,7 +166,7 @@ export function SendXLMModal({
                   )}
 
                   <Button
-                    text="Send XLM"
+                    text="Send HITZ"
                     onPress={handleSubmit}
                     disabled={!isValid}
                     loading={loading}

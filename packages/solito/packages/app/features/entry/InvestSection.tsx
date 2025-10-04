@@ -6,19 +6,18 @@ import Stellar from 'app/ui/icons/stellar'
 import { FormInputWithIcon } from 'app/ui/inputs/FormInputWithIcon'
 import { useCallback, useState, useEffect } from 'react'
 import { useToast } from 'app/provider/toast'
+import { lumensToStroops, stroopsToLumens } from 'app/utils'
 import { useUserStore } from 'app/state/user'
 import { useRouter } from 'solito/navigation'
 import { P } from 'app/design/typography'
 import { useMutation, useQuery } from '@apollo/client'
 import { useGetEntry } from 'app/hooks/algolia/useGetEntry'
 import { sharesIndex } from 'app/api/algolia'
-import { INVEST_ENTRY, USER_CREDITS } from 'app/api/graphql/operations'
+import { INVEST_ENTRY, UNSTAKE_ENTRY, USER_CREDITS, USER_HITZ_BALANCE } from 'app/api/graphql/operations'
 import { INVEST_MIN_XLM } from 'app/constants/constants'
-import { trackInvest } from 'app/utils/analytics'
+import { stroopsToToken } from 'app/types/asset'
+import { AssetType } from 'app/types/asset'
 
-// Helper functions for XLM conversion
-const lumensToStroops = (lumens: number) => (lumens * 10000000).toString()
-const stroopsToLumens = (stroops: string) => parseInt(stroops) / 10000000
 
 type Share = { shares: number }
 
@@ -29,14 +28,17 @@ type Props = {
 export function InvestSection({ entry }: Props) {
   const [amountToInvest, setAmountToInvest] = useState('')
   const [shares, setShares] = useState(0)
+  const user = useUserStore((state) => state.user)
 
   const [invest, { loading: investLoading }] = useMutation(INVEST_ENTRY)
+  const [unstake, { loading: unstakeLoading }] = useMutation(UNSTAKE_ENTRY)
   const { data: creditsData, refetch: refetchCredits } = useQuery(USER_CREDITS)
+  const { data: hitzBalanceData } = useQuery(USER_HITZ_BALANCE, { skip: !user })
 
   const [equityToBuy, setEquityToBuy] = useState('')
+  const [amountToUnstake, setAmountToUnstake] = useState('')
   const toast = useToast()
   const [loading, setLoading] = useState<boolean>(false)
-  const user = useUserStore((state) => state.user)
   const { push } = useRouter()
   const { refetch } = useGetEntry({
     id: entry.id,
@@ -77,10 +79,7 @@ export function InvestSection({ entry }: Props) {
       return
     }
 
-    const amountInStroops = parseInt(
-      lumensToStroops(parseFloat(amountToInvest)),
-      10
-    )
+    const amountInStroops = Math.trunc(lumensToStroops(parseFloat(amountToInvest)))
     const entryTvl = Number(entry.tvl)
     const newTvl = entryTvl + amountInStroops
     const currentOwnershipPercentage =
@@ -121,14 +120,11 @@ export function InvestSection({ entry }: Props) {
       const { data } = await invest({
         variables: {
           id: entry.id,
-          amount: parseFloat(lumensToStroops(parseFloat(amountToInvest))),
+          amount: lumensToStroops(parseFloat(amountToInvest)),
         },
       })
 
       if (data?.investEntry?.success) {
-        // Track invest event
-        trackInvest(entry.id, numAmount, 'XLM', entry.title, entry.artist)
-        
         const credits = await refetchCredits()
         const newBal = Number(credits?.data?.userCredits ?? 0).toFixed(2)
         await refetch() // Refresh entry (tvl/apr)
@@ -160,7 +156,7 @@ export function InvestSection({ entry }: Props) {
             TVL:{' '}
           </P>
           <P className="font-unbounded text-xs">
-            {`${stroopsToLumens(entry.tvl?.toString() || '0')} XLM`}
+            {`${stroopsToLumens(Number(entry.tvl || 0))} XLM`}
           </P>
         </View>
         <View className="flex-row">
@@ -187,13 +183,31 @@ export function InvestSection({ entry }: Props) {
           </View>
         )}
         {user && (
-          <View className="flex-row">
-            <P className="text-[--text-secondary-color] text-xs font-unbounded">
-              Your balance:{' '}
-            </P>
-            <P className="text-[--text-color] text-xs font-unbounded">
-              {`${userCredits} XLM`}
-            </P>
+          <View className="flex-col gap-1">
+            <View className="flex-row">
+              <P className="text-[--text-secondary-color] text-xs font-unbounded">
+                XLM balance:{' '}
+              </P>
+              <P className="text-[--text-color] text-xs font-unbounded">
+                {`${userCredits} XLM`}
+              </P>
+            </View>
+            <View className="flex-row">
+              <P className="text-[--text-secondary-color] text-xs font-unbounded">
+                HITZ balance:{' '}
+              </P>
+              <P className="text-[--text-color] text-xs font-unbounded">
+                {`${(hitzBalanceData?.userHitzBalance || 0).toFixed(2)} HITZ`}
+              </P>
+            </View>
+            <View className="flex-row">
+              <P className="text-[--text-secondary-color] text-xs font-unbounded">
+                Your stake:{' '}
+              </P>
+              <P className="text-[--text-color] text-xs font-unbounded">
+                {`${stroopsToToken(shares, AssetType.HITZ).toFixed(2)} HITZ`}
+              </P>
+            </View>
           </View>
         )}
 
@@ -229,6 +243,83 @@ export function InvestSection({ entry }: Props) {
         By investing, you are purchasing shares in this creation's future
         earnings.
       </P>
+
+      {user && shares > 0 ? (
+        <View className="mt-8 border-t border-[--divider-color] pt-6">
+          <P className="mb-2 text-center font-unbounded text-xs text-[--text-secondary-color]">
+            Unstake HITZ
+          </P>
+          <FormInputWithIcon
+            icon={<Stellar size={18} />}
+            value={amountToUnstake}
+            onChangeText={setAmountToUnstake}
+            placeholder={`Amount to unstake (max ${stroopsToLumens(shares)} HITZ)`}
+            keyboardType="numeric"
+            className="my-4"
+          />
+          <P className="text-center text-xs text-[--text-secondary-color] italic mt-1 mb-3">
+            Withdraw your staked HITZ back to your wallet. You'll lose future rewards from this entry.
+          </P>
+
+          <Button
+            onPress={async () => {
+              if (!user) return push('/sign-in')
+              if (!amountToUnstake || isNaN(parseFloat(amountToUnstake))) {
+                toast.show('Please enter a valid amount', { type: 'error' })
+                return
+              }
+              const asStroops = Math.trunc(lumensToStroops(parseFloat(amountToUnstake)))
+              if (asStroops <= 0) {
+                toast.show('Amount must be greater than 0', { type: 'error' })
+                return
+              }
+              if (asStroops > shares) {
+                toast.show('Amount exceeds your stake', { type: 'error' })
+                return
+              }
+
+              try {
+                setLoading(true)
+                const { data } = await unstake({
+                  variables: {
+                    id: entry.id,
+                    amount: asStroops,
+                  },
+                })
+                if (data?.unstakeEntry?.success) {
+                  await refetch()
+                  await fetchShares()
+                  const amount = data.unstakeEntry.unstakedAmount.toFixed(2)
+                  toast.show(`Successfully unstaked ${amount} HITZ`, { type: 'success' })
+                  setAmountToUnstake('')
+                } else {
+                  toast.show('Failed to unstake', { type: 'error' })
+                }
+              } catch (e) {
+                console.error('Unstake error:', e)
+                toast.show('Error processing unstake', { type: 'error' })
+              } finally {
+                setLoading(false)
+              }
+            }}
+            loading={unstakeLoading || loading}
+            disabled={
+              !user ||
+              !amountToUnstake ||
+              isNaN(parseFloat(amountToUnstake)) ||
+              Math.trunc(lumensToStroops(parseFloat(amountToUnstake))) <= 0 ||
+              Math.trunc(lumensToStroops(parseFloat(amountToUnstake))) > shares ||
+              unstakeLoading ||
+              loading
+            }
+            text="Unstake Now"
+            className="w-full bg-orange-500 hover:bg-orange-600 border-0 font-semibold"
+          />
+          <P className="mt-4 text-center text-xs text-[--text-secondary-color]">
+            Your HITZ will be returned to your wallet. You can then transfer them out or re-stake elsewhere.
+          </P>
+        </View>
+      ) : null}
     </View>
   )
 }

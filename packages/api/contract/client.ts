@@ -33,7 +33,7 @@ if (typeof window !== 'undefined') {
 
 
 
-export type DataKey = {tag: "HalvingStartTs", values: void} | {tag: "HalvingIntervalSec", values: void} | {tag: "Epoch0Reward", values: void} | {tag: "ReleasedTotal", values: void};
+export type HitzTokenDataKey = {tag: "HalvingStartTs", values: void} | {tag: "HalvingIntervalSec", values: void} | {tag: "Epoch0Reward", values: void} | {tag: "ReleasedTotal", values: void};
 
 export type DataKey = {tag: "Admin", values: void} | {tag: "Treasury", values: void} | {tag: "HitzToken", values: void} | {tag: "XlmToken", values: void} | {tag: "StakeUnitHitz", values: void} | {tag: "BaseFee", values: void} | {tag: "Entry", values: readonly [string]} | {tag: "Stake", values: readonly [readonly [string, string]]} | {tag: "StakeTotal", values: readonly [string]} | {tag: "RewardPool", values: readonly [string]} | {tag: "Claimed", values: readonly [readonly [string, string]]} | {tag: "EntryAt", values: readonly [u32]} | {tag: "EntryCount", values: void};
 
@@ -1031,6 +1031,43 @@ export interface Client {
   }) => Promise<AssembledTransaction<i128>>
 
   /**
+   * Construct and simulate a unstake transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Unstake HITZ tokens from an entry
+   * 
+   * Allows users to withdraw their staked HITZ back to their wallet.
+   * User loses their stake percentage and future rewards from this entry.
+   * 
+   * # Arguments
+   * * `entry_id` - The entry to unstake from
+   * * `caller` - The user unstaking (must have stake)
+   * * `amount` - Amount of HITZ to unstake (in stroops)
+   * 
+   * # Returns
+   * Amount unstaked
+   * 
+   * # Panics
+   * - If user has no stake
+   * - If amount exceeds user's stake
+   * - If amount <= 0
+   */
+  unstake: ({entry_id, caller, amount}: {entry_id: string, caller: string, amount: i128}, options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<i128>>
+
+  /**
    * Construct and simulate a get_claimable_rewards transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    * Get claimable HITZ rewards for a user
    */
@@ -1159,7 +1196,7 @@ export class Client extends ContractClient {
   }
   constructor(public readonly options: ContractClientOptions) {
     super(
-      new ContractSpec([ "AAAAAgAAAAAAAAAAAAAAB0RhdGFLZXkAAAAABAAAAAAAAAAAAAAADkhhbHZpbmdTdGFydFRzAAAAAAAAAAAAAAAAABJIYWx2aW5nSW50ZXJ2YWxTZWMAAAAAAAAAAAAAAAAADEVwb2NoMFJld2FyZAAAAAAAAAAAAAAADVJlbGVhc2VkVG90YWwAAAA=",
+      new ContractSpec([ "AAAAAgAAAAAAAAAAAAAAEEhpdHpUb2tlbkRhdGFLZXkAAAAEAAAAAAAAAAAAAAAOSGFsdmluZ1N0YXJ0VHMAAAAAAAAAAAAAAAAAEkhhbHZpbmdJbnRlcnZhbFNlYwAAAAAAAAAAAAAAAAAMRXBvY2gwUmV3YXJkAAAAAAAAAAAAAAANUmVsZWFzZWRUb3RhbAAAAA==",
         "AAAAAAAAAS5Jbml0aWFsaXplIHRoZSBISVRaIHRva2VuCgojIEFyZ3VtZW50cwoqIGBvd25lcmAgLSBBZG1pbiBhZGRyZXNzIHdpdGggcHJpdmlsZWdlZCByaWdodHMKKiBgaGFsdmluZ19zdGFydF90c2AgLSBVbml4IHRpbWVzdGFtcCB3aGVuIGhhbHZpbmcgc2NoZWR1bGUgYmVnaW5zCiogYGhhbHZpbmdfaW50ZXJ2YWxfc2VjYCAtIFNlY29uZHMgcGVyIGVwb2NoICgxMjYsMTQ0LDAwMCA9IDQgeWVhcnMpCiogYGVwb2NoMF91bml0X3Jld2FyZGAgLSBJbml0aWFsIHVuaXQgcmV3YXJkIGluIHN0cm9vcHMgKDMsMDAwLDAwMCA9IDAuMyBISVRaKQAAAAAADV9fY29uc3RydWN0b3IAAAAAAAAEAAAAAAAAAAVvd25lcgAAAAAAABMAAAAAAAAAEGhhbHZpbmdfc3RhcnRfdHMAAAAGAAAAAAAAABRoYWx2aW5nX2ludGVydmFsX3NlYwAAAAYAAAAAAAAAEmVwb2NoMF91bml0X3Jld2FyZAAAAAAACwAAAAA=",
         "AAAAAAAAAVRNaW50IHJld2FyZCB0b2tlbnMgYmFzZWQgb24gZGlmZmljdWx0eQoKQ2FsY3VsYXRlcyByZXdhcmQgdXNpbmcgaGFsdmluZyBzY2hlZHVsZSBhbmQgZW5mb3JjZXMgbWF4IHN1cHBseSBjYXAuCk9ubHkgY2FsbGFibGUgYnkgb3duZXIgKFNreWhpdHogQ29yZSBjb250cmFjdCkuCgojIEFyZ3VtZW50cwoqIGB0b2AgLSBSZWNpcGllbnQgYWRkcmVzcwoqIGBkaWZmaWN1bHR5YCAtIERpZmZpY3VsdHkgbXVsdGlwbGllciBmb3IgcmV3YXJkIGNhbGN1bGF0aW9uCgojIFJldHVybnMKQWN0dWFsIGFtb3VudCBtaW50ZWQgKG1heSBiZSBsZXNzIHRoYW4gY2FsY3VsYXRlZCBpZiBuZWFyIG1heCBzdXBwbHkpAAAAC21pbnRfcmV3YXJkAAAAAAMAAAAAAAAAB19jYWxsZXIAAAAAEwAAAAAAAAACdG8AAAAAABMAAAAAAAAACmRpZmZpY3VsdHkAAAAAAAsAAAABAAAACw==",
         "AAAAAAAAAFdHZXQgZW1pc3Npb24gaW5mbzogKGVwb2NoX2luZGV4LCBjdXJyZW50X3VuaXRfcmV3YXJkLCByZWxlYXNlZF90b3RhbCwgcmVtYWluaW5nX3N1cHBseSkAAAAADWVtaXNzaW9uX2luZm8AAAAAAAAAAAAAAQAAA+0AAAAEAAAABgAAAAsAAAALAAAACw==",
@@ -1182,8 +1219,8 @@ export class Client extends ContractClient {
         "AAAAAAAAAAAAAAAScmVub3VuY2Vfb3duZXJzaGlwAAAAAAAAAAAAAA==",
         "AAAAAgAAAAAAAAAAAAAAB0RhdGFLZXkAAAAADQAAAAAAAAAAAAAABUFkbWluAAAAAAAAAAAAAAAAAAAIVHJlYXN1cnkAAAAAAAAAAAAAAAlIaXR6VG9rZW4AAAAAAAAAAAAAAAAAAAhYbG1Ub2tlbgAAAAAAAAAAAAAADVN0YWtlVW5pdEhpdHoAAAAAAAAAAAAAAAAAAAdCYXNlRmVlAAAAAAEAAAAAAAAABUVudHJ5AAAAAAAAAQAAABAAAAABAAAAAAAAAAVTdGFrZQAAAAAAAAEAAAPtAAAAAgAAABAAAAATAAAAAQAAAAAAAAAKU3Rha2VUb3RhbAAAAAAAAQAAABAAAAABAAAAAAAAAApSZXdhcmRQb29sAAAAAAABAAAAEAAAAAEAAAAAAAAAB0NsYWltZWQAAAAAAQAAA+0AAAACAAAAEAAAABMAAAABAAAAAAAAAAdFbnRyeUF0AAAAAAEAAAAEAAAAAAAAAAAAAAAKRW50cnlDb3VudAAA",
         "AAAAAQAAAAAAAAAAAAAABUVudHJ5AAAAAAAAAwAAAAAAAAAKY3JlYXRlZF9hdAAAAAAABgAAAAAAAAAKZXNjcm93X3hsbQAAAAAACwAAAAAAAAAHdHZsX3hsbQAAAAAL",
-        "AAAAAAAAAalJbml0aWFsaXplIHRoZSBjb250cmFjdCAob25lLXRpbWUgb25seSkKCiMgQXJndW1lbnRzCiogYGFkbWluYCAtIEFkbWluIGFkZHJlc3Mgd2l0aCBwcml2aWxlZ2VkIHJpZ2h0cwoqIGB0cmVhc3VyeWAgLSBUcmVhc3VyeSBhZGRyZXNzIHJlY2VpdmluZyBhbGwgWExNIGZlZXMKKiBgaGl0el90b2tlbmAgLSBISVRaIHRva2VuIGNvbnRyYWN0IGFkZHJlc3MgKE9wZW5aZXBwZWxpbiB0b2tlbikKKiBgeGxtX3Rva2VuYCAtIFhMTSB0b2tlbiBjb250cmFjdCBhZGRyZXNzIChTQUMpCiogYHN0YWtlX3VuaXRfaGl0emAgLSBISVRaIGFtb3VudCBwZXIgZGlmZmljdWx0eSB1bml0IGZvciBhdXRvLXN0YWtlCiogYGJhc2VfZmVlYCAtIEJhc2UgZmVlIHBlciBkaWZmaWN1bHR5IHVuaXQgaW4gc3Ryb29wcyAoZGVmYXVsdCAxLDAwMCwwMDAgPSAwLjEgWExNKQAAAAAAAARpbml0AAAABgAAAAAAAAAFYWRtaW4AAAAAAAATAAAAAAAAAAh0cmVhc3VyeQAAABMAAAAAAAAACmhpdHpfdG9rZW4AAAAAABMAAAAAAAAACXhsbV90b2tlbgAAAAAAABMAAAAAAAAAD3N0YWtlX3VuaXRfaGl0egAAAAALAAAAAAAAAAhiYXNlX2ZlZQAAAAsAAAAA",
-        "AAAAAAAAAIRVcGRhdGUgYmFzZSBmZWUgKGFkbWluLW9ubHkpCgojIEFyZ3VtZW50cwoqIGBuZXdfYmFzZV9mZWVgIC0gTmV3IGJhc2UgZmVlIHBlciBkaWZmaWN1bHR5IHVuaXQgaW4gc3Ryb29wcyAoZS5nLiwgMSwwMDAsMDAwID0gMC4xIFhMTSkAAAAMc2V0X2Jhc2VfZmVlAAAAAQAAAAAAAAAMbmV3X2Jhc2VfZmVlAAAACwAAAAA=",
+        "AAAAAAAAAahJbml0aWFsaXplIHRoZSBjb250cmFjdCAob25lLXRpbWUgb25seSkKCiMgQXJndW1lbnRzCiogYGFkbWluYCAtIEFkbWluIGFkZHJlc3Mgd2l0aCBwcml2aWxlZ2VkIHJpZ2h0cwoqIGB0cmVhc3VyeWAgLSBUcmVhc3VyeSBhZGRyZXNzIHJlY2VpdmluZyBhbGwgWExNIGZlZXMKKiBgaGl0el90b2tlbmAgLSBISVRaIHRva2VuIGNvbnRyYWN0IGFkZHJlc3MgKE9wZW5aZXBwZWxpbiB0b2tlbikKKiBgeGxtX3Rva2VuYCAtIFhMTSB0b2tlbiBjb250cmFjdCBhZGRyZXNzIChTQUMpCiogYHN0YWtlX3VuaXRfaGl0emAgLSBISVRaIGFtb3VudCBwZXIgZGlmZmljdWx0eSB1bml0IGZvciBhdXRvLXN0YWtlCiogYGJhc2VfZmVlYCAtIEJhc2UgZmVlIHBlciBkaWZmaWN1bHR5IHVuaXQgaW4gc3Ryb29wcyAoZGVmYXVsdCAxMDAsMDAwID0gMC4wMSBYTE0pAAAABGluaXQAAAAGAAAAAAAAAAVhZG1pbgAAAAAAABMAAAAAAAAACHRyZWFzdXJ5AAAAEwAAAAAAAAAKaGl0el90b2tlbgAAAAAAEwAAAAAAAAAJeGxtX3Rva2VuAAAAAAAAEwAAAAAAAAAPc3Rha2VfdW5pdF9oaXR6AAAAAAsAAAAAAAAACGJhc2VfZmVlAAAACwAAAAA=",
+        "AAAAAAAAAINVcGRhdGUgYmFzZSBmZWUgKGFkbWluLW9ubHkpCgojIEFyZ3VtZW50cwoqIGBuZXdfYmFzZV9mZWVgIC0gTmV3IGJhc2UgZmVlIHBlciBkaWZmaWN1bHR5IHVuaXQgaW4gc3Ryb29wcyAoZS5nLiwgMTAwLDAwMCA9IDAuMDEgWExNKQAAAAAMc2V0X2Jhc2VfZmVlAAAAAQAAAAAAAAAMbmV3X2Jhc2VfZmVlAAAACwAAAAA=",
         "AAAAAAAAABRHZXQgY3VycmVudCBiYXNlIGZlZQAAAAxnZXRfYmFzZV9mZWUAAAAAAAAAAQAAAAs=",
         "AAAAAAAAAB9DcmVhdGUgYSBuZXcgZW50cnkgKGFkbWluLW9ubHkpAAAAAAxjcmVhdGVfZW50cnkAAAABAAAAAAAAAAhlbnRyeV9pZAAAABAAAAAA",
         "AAAAAAAAAMtSZWNvcmQgYSB1c2VyIGFjdGlvbiAobWFpbiBlbnRyeXBvaW50KQoKSGFuZGxlcyBmZWUgdHJhbnNmZXIsIHJld2FyZCBjYWxjdWxhdGlvbiwgYW5kIG9wdGlvbmFsIGF1dG8tc3Rha2luZwpGb3IgaW52ZXN0IGFjdGlvbiwgYW1vdW50X3hsbSBzcGVjaWZpZXMgdGhlIGludmVzdG1lbnQgKG1pbiAwLjMgWExNKSwgaWdub3JlZCBmb3Igb3RoZXIgYWN0aW9ucwAAAAANcmVjb3JkX2FjdGlvbgAAAAAAAAQAAAAAAAAABmNhbGxlcgAAAAAAEwAAAAAAAAAIZW50cnlfaWQAAAAQAAAAAAAAAARraW5kAAAAEQAAAAAAAAAKYW1vdW50X3hsbQAAAAAD6AAAAAsAAAAA",
@@ -1195,6 +1232,7 @@ export class Client extends ContractClient {
         "AAAAAAAAAIVBbGxvY2F0ZSBISVRaIHJld2FyZHMgdG8gYSBzcGVjaWZpYyBlbnRyeSdzIHJld2FyZCBwb29sCgpBZG1pbi1vbmx5IGZ1bmN0aW9uIGZvciBtYW51YWwgcmV3YXJkIGFsbG9jYXRpb24gKGUuZy4sIHByb21vdGlvbnMsIGJvbnVzZXMpAAAAAAAAEGFsbG9jYXRlX3Jld2FyZHMAAAACAAAAAAAAAAhlbnRyeV9pZAAAABAAAAAAAAAAC2hpdHpfYW1vdW50AAAAAAsAAAAA",
         "AAAAAAAAAHdCYXRjaCBhbGxvY2F0ZSByZXdhcmRzIHRvIG11bHRpcGxlIGVudHJpZXMKCkFkbWluLW9ubHkgZnVuY3Rpb24gZm9yIG1hbnVhbCBiYXRjaCBhbGxvY2F0aW9uIChlLmcuLCBjYW1wYWlnbnMsIGFpcmRyb3BzKQAAAAAWYmF0Y2hfYWxsb2NhdGVfcmV3YXJkcwAAAAAAAgAAAAAAAAAJZW50cnlfaWRzAAAAAAAD6gAAABAAAAAAAAAAB2Ftb3VudHMAAAAD6gAAAAsAAAAA",
         "AAAAAAAAALRDbGFpbSBISVRaIHJld2FyZHMgZnJvbSBhbiBlbnRyeSdzIHJld2FyZCBwb29sCgpTdGFrZXJzIHJlY2VpdmUgcmV3YXJkcyBwcm9wb3J0aW9uYWwgdG8gdGhlaXIgc3Rha2UKRm9ybXVsYTogY2xhaW1hYmxlID0gKHJld2FyZF9wb29sIMOXIHVzZXJfc3Rha2UpIC8gdG90YWxfc3Rha2UgLSBhbHJlYWR5X2NsYWltZWQAAAANY2xhaW1fcmV3YXJkcwAAAAAAAAIAAAAAAAAACGVudHJ5X2lkAAAAEAAAAAAAAAAHY2xhaW1lcgAAAAATAAAAAQAAAAs=",
+        "AAAAAAAAAbNVbnN0YWtlIEhJVFogdG9rZW5zIGZyb20gYW4gZW50cnkKCkFsbG93cyB1c2VycyB0byB3aXRoZHJhdyB0aGVpciBzdGFrZWQgSElUWiBiYWNrIHRvIHRoZWlyIHdhbGxldC4KVXNlciBsb3NlcyB0aGVpciBzdGFrZSBwZXJjZW50YWdlIGFuZCBmdXR1cmUgcmV3YXJkcyBmcm9tIHRoaXMgZW50cnkuCgojIEFyZ3VtZW50cwoqIGBlbnRyeV9pZGAgLSBUaGUgZW50cnkgdG8gdW5zdGFrZSBmcm9tCiogYGNhbGxlcmAgLSBUaGUgdXNlciB1bnN0YWtpbmcgKG11c3QgaGF2ZSBzdGFrZSkKKiBgYW1vdW50YCAtIEFtb3VudCBvZiBISVRaIHRvIHVuc3Rha2UgKGluIHN0cm9vcHMpCgojIFJldHVybnMKQW1vdW50IHVuc3Rha2VkCgojIFBhbmljcwotIElmIHVzZXIgaGFzIG5vIHN0YWtlCi0gSWYgYW1vdW50IGV4Y2VlZHMgdXNlcidzIHN0YWtlCi0gSWYgYW1vdW50IDw9IDAAAAAAB3Vuc3Rha2UAAAAAAwAAAAAAAAAIZW50cnlfaWQAAAAQAAAAAAAAAAZjYWxsZXIAAAAAABMAAAAAAAAABmFtb3VudAAAAAAACwAAAAEAAAAL",
         "AAAAAAAAACVHZXQgY2xhaW1hYmxlIEhJVFogcmV3YXJkcyBmb3IgYSB1c2VyAAAAAAAAFWdldF9jbGFpbWFibGVfcmV3YXJkcwAAAAAAAAIAAAAAAAAACGVudHJ5X2lkAAAAEAAAAAAAAAAEdXNlcgAAABMAAAABAAAACw==",
         "AAAAAAAAACFHZXQgcmV3YXJkIHBvb2wgc2l6ZSBmb3IgYW4gZW50cnkAAAAAAAAPZ2V0X3Jld2FyZF9wb29sAAAAAAEAAAAAAAAACGVudHJ5X2lkAAAAEAAAAAEAAAAL",
         "AAAAAAAAAKxDYWxjdWxhdGUgQVBSIGZvciBhbiBlbnRyeSBiYXNlZCBvbiBISVRaIHJld2FyZHMKCkFQUiA9ICgocmV3YXJkX3Bvb2wgLyB0b3RhbF9zdGFrZSkgLyBkYXlzX3NpbmNlX2NyZWF0aW9uKSDDlyAzNjUgw5cgMTAwClJldHVybnMgQVBSIGFzIGJhc2lzIHBvaW50cyAoMSUgPSAxMDAsIDEwJSA9IDEwMDApAAAADWNhbGN1bGF0ZV9hcHIAAAAAAAABAAAAAAAAAAhlbnRyeV9pZAAAABAAAAABAAAACw==",
@@ -1261,6 +1299,7 @@ export class Client extends ContractClient {
         allocate_rewards: this.txFromJSON<null>,
         batch_allocate_rewards: this.txFromJSON<null>,
         claim_rewards: this.txFromJSON<i128>,
+        unstake: this.txFromJSON<i128>,
         get_claimable_rewards: this.txFromJSON<i128>,
         get_reward_pool: this.txFromJSON<i128>,
         calculate_apr: this.txFromJSON<i128>,

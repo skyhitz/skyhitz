@@ -8,10 +8,25 @@ import Encryption from 'src/util/encryption';
 // 24 hours in milliseconds
 const COOLDOWN_PERIOD_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * Claim Earnings Resolver - NEW CONTRACT INTERFACE
+ * 
+ * How Rewards Work:
+ * 1. Users stake HITZ tokens in entries (via invest/mine actions)
+ * 2. Treasury bot distributes HITZ rewards to entry pools
+ * 3. Users earn proportional to their stake percentage
+ * 4. This function claims accumulated rewards from all staked entries
+ * 
+ * Example:
+ * - Entry A has 1000 HITZ in reward pool
+ * - You staked 100 HITZ (10% of total stakes)
+ * - You can claim 100 HITZ (10% of reward pool)
+ */
 export const claimEarningsResolver = async (_: any, __: any, context: Context) => {
 	const algolia = new AlgoliaClient(context.env);
 	const user = await requireAuth(context);
 	const encryption = new Encryption(context.env);
+	const contractClient = new ContractClient(context.env);
 
 	// Check if user has claimed earnings recently
 	const claimCacheKey = `user_claim_${user.id}`;
@@ -40,54 +55,86 @@ export const claimEarningsResolver = async (_: any, __: any, context: Context) =
 			}
 		}
 	} catch (error) {
-		console.error('Error checking claim timestamp:', error);
+		console.error('❌ Error checking claim timestamp:', error);
 		// Continue with claiming if there's an issue with the timestamp
 	}
 
-	const contractClient = new ContractClient(context.env);
+	console.log('💰 Starting claim process for user:', user.publicKey);
 
+	// Get all entries where user has invested/staked
+	// NOTE: You might need to update Algolia to track which entries users have stakes in
+	// For now, we'll use the user's collection as a proxy
 	const entries = await algolia.getCollection(user.id);
-	let totalClaimedAmount = 0;
+	
+	let totalClaimedAmount = 0; // In stroops (1 HITZ = 10^7 stroops)
 	const claimedEntries = [];
+	const userSecret = await encryption.decrypt(user.seed);
+
+	console.log(`📊 Checking ${entries.length} entries for claimable rewards`);
 
 	for (let i = 0; i < entries.length; i++) {
 		const entry = entries[i];
+		
 		try {
-			const result = await contractClient.claimEarnings(user.publicKey, entry.entryId, await encryption.decrypt(user.seed));
+			// STEP 1: Check if there are any claimable rewards (saves gas if nothing to claim)
+			const claimableAmount = await contractClient.getClaimableRewards(
+				entry.entryId,
+				user.publicKey
+			);
 
-			// Add the claimed amount to our running total
-			if (result && result.claimedAmount) {
-				totalClaimedAmount += result.claimedAmount;
+			if (claimableAmount > 0) {
+				console.log(`💎 Entry ${entry.entryId} has ${claimableAmount / 10_000_000} HITZ to claim`);
+				
+				// STEP 2: Claim the rewards using the NEW claimRewards method
+				const result = await contractClient.claimRewards(
+					userSecret,
+					entry.entryId
+				);
 
-				// Only add entries with non-zero claimed amounts
-				if (result.claimedAmount > 0) {
+				// STEP 3: Track the claimed amount
+				if (result && result.claimedAmount) {
+					totalClaimedAmount += result.claimedAmount;
+
 					claimedEntries.push({
 						entryId: entry.entryId,
-						amount: result.claimedAmount,
+						amount: result.claimedAmount / 10_000_000, // Convert to HITZ (from stroops)
 					});
+					
+					console.log(`✅ Claimed ${result.claimedAmount / 10_000_000} HITZ from ${entry.entryId}`);
 				}
+			} else {
+				console.log(`⏭️  Entry ${entry.entryId} has no rewards to claim`);
 			}
 		} catch (e) {
-			console.error('Failed to claim earnings for entry:', entry.entryId, e);
+			console.error(`❌ Failed to claim from entry ${entry.entryId}:`, e);
+			// Continue with other entries even if one fails
 		}
 	}
 
 	// Store the claim timestamp regardless of the claimed amount
 	// This prevents users with no earnings from repeatedly hitting the contract
 	try {
-		// Store the current timestamp in Algolia
 		await algolia.indices.distributionTimestampsIndex.saveObject({
 			objectID: claimCacheKey,
 			timestamp: Date.now(),
 		});
+		console.log('✅ Claim timestamp stored');
 	} catch (error) {
-		console.error('Error storing claim timestamp:', error);
+		console.error('❌ Error storing claim timestamp:', error);
 		// Continue even if storage fails
 	}
 
+	const totalInHitz = totalClaimedAmount / 10_000_000;
+	
+	console.log(`🎉 Total claimed: ${totalInHitz} HITZ from ${claimedEntries.length} entries`);
+
 	return {
 		success: true,
-		totalClaimedAmount: totalClaimedAmount / 10 ** 7, // Convert from stroops to lumens
+		totalClaimedAmount: totalInHitz,
 		claimedEntries,
+		message: totalInHitz > 0 
+			? `Successfully claimed ${totalInHitz.toFixed(2)} HITZ` 
+			: 'No rewards available to claim at this time',
+		lastClaimTime: new Date().toISOString(),
 	};
 };

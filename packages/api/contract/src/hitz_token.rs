@@ -13,7 +13,6 @@
 //! - Reward halves every epoch: unit_reward = epoch0_reward / (2^epoch_index)
 //!
 //! Security: security@skyhitz.io
-#![no_std]
 
 use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, String, BytesN};
 use stellar_access::ownable::{self as ownable, Ownable};
@@ -31,7 +30,7 @@ const MAX_SUPPLY: i128 = 210_000_000_000_000; // 21M HITZ * 10^7
 // ============================================================================
 
 #[contracttype]
-pub enum DataKey {
+pub enum HitzTokenDataKey {
     HalvingStartTs,
     HalvingIntervalSec,
     Epoch0Reward,
@@ -64,10 +63,10 @@ impl SkyhitzToken {
         ownable::set_owner(e, &owner);
 
         // Initialize emission parameters
-        e.storage().persistent().set(&DataKey::HalvingStartTs, &halving_start_ts);
-        e.storage().persistent().set(&DataKey::HalvingIntervalSec, &halving_interval_sec);
-        e.storage().persistent().set(&DataKey::Epoch0Reward, &epoch0_unit_reward);
-        e.storage().persistent().set(&DataKey::ReleasedTotal, &0i128);
+        e.storage().persistent().set(&HitzTokenDataKey::HalvingStartTs, &halving_start_ts);
+        e.storage().persistent().set(&HitzTokenDataKey::HalvingIntervalSec, &halving_interval_sec);
+        e.storage().persistent().set(&HitzTokenDataKey::Epoch0Reward, &epoch0_unit_reward);
+        e.storage().persistent().set(&HitzTokenDataKey::ReleasedTotal, &0i128);
     }
 
     /// Mint reward tokens based on difficulty
@@ -88,7 +87,7 @@ impl SkyhitzToken {
         let mut reward = unit_reward.saturating_mul(difficulty);
 
         // Cap by remaining supply and extend TTL
-        let released_key = DataKey::ReleasedTotal;
+        let released_key = HitzTokenDataKey::ReleasedTotal;
         e.storage().persistent().extend_ttl(&released_key, 100, 535_680); // Extend to ~6 months
         let released_total: i128 = e.storage().persistent()
             .get(&released_key)
@@ -99,7 +98,7 @@ impl SkyhitzToken {
         if reward > 0 {
             // Mint tokens
             Base::mint(e, &to, reward);
-
+            
             // Update released total
             let new_released = released_total.saturating_add(reward);
             e.storage().persistent().set(&released_key, &new_released);
@@ -113,7 +112,7 @@ impl SkyhitzToken {
         let epoch = compute_epoch_index(e);
         let unit_reward = compute_unit_reward(e);
         let released: i128 = e.storage().persistent()
-            .get(&DataKey::ReleasedTotal)
+            .get(&HitzTokenDataKey::ReleasedTotal)
             .unwrap_or(0);
         let remaining = MAX_SUPPLY.saturating_sub(released);
         (epoch, unit_reward, released, remaining)
@@ -127,7 +126,7 @@ impl SkyhitzToken {
     /// Get released total
     pub fn released_total(e: &Env) -> i128 {
         e.storage().persistent()
-            .get(&DataKey::ReleasedTotal)
+            .get(&HitzTokenDataKey::ReleasedTotal)
             .unwrap_or(0)
     }
 
@@ -140,7 +139,7 @@ impl SkyhitzToken {
         }
 
         let released_total: i128 = e.storage().persistent()
-            .get(&DataKey::ReleasedTotal)
+            .get(&HitzTokenDataKey::ReleasedTotal)
             .unwrap_or(0);
         let remaining = MAX_SUPPLY.saturating_sub(released_total);
         
@@ -151,7 +150,7 @@ impl SkyhitzToken {
         Base::mint(e, &account, amount);
         
         let new_released = released_total.saturating_add(amount);
-        e.storage().persistent().set(&DataKey::ReleasedTotal, &new_released);
+        e.storage().persistent().set(&HitzTokenDataKey::ReleasedTotal, &new_released);
     }
 
     /// Upgrade contract to new WASM code
@@ -187,10 +186,10 @@ impl Ownable for SkyhitzToken {}
 /// Compute current epoch index
 fn compute_epoch_index(e: &Env) -> u64 {
     let start_ts: u64 = e.storage().persistent()
-        .get(&DataKey::HalvingStartTs)
+        .get(&HitzTokenDataKey::HalvingStartTs)
         .unwrap_or(0);
     let interval: u64 = e.storage().persistent()
-        .get(&DataKey::HalvingIntervalSec)
+        .get(&HitzTokenDataKey::HalvingIntervalSec)
         .unwrap_or(126_144_000);
     let now = e.ledger().timestamp();
 
@@ -205,7 +204,7 @@ fn compute_epoch_index(e: &Env) -> u64 {
 fn compute_unit_reward(e: &Env) -> i128 {
     let epoch = compute_epoch_index(e);
     let epoch0_reward: i128 = e.storage().persistent()
-        .get(&DataKey::Epoch0Reward)
+        .get(&HitzTokenDataKey::Epoch0Reward)
         .unwrap_or(3_000_000);
 
     if epoch >= 64 {

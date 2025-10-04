@@ -11,7 +11,7 @@ import { videoSrc } from 'app/utils/entry'
 import { useErrorReport } from 'app/hooks/useErrorReport'
 import { useUserStore } from 'app/state/user'
 import { PlaybackState, usePlayerStore } from 'app/state/player'
-import { INVEST_ENTRY, SET_LAST_PLAYED_ENTRY, USER_CREDITS } from 'app/api/graphql/operations'
+import { RECORD_ACTION, SET_LAST_PLAYED_ENTRY, USER_CREDITS } from 'app/api/graphql/operations'
 import { useMutation, useQuery } from '@apollo/client'
 import { useTopUpModalStore } from 'app/state/topup'
 import { useEffect } from 'react'
@@ -36,7 +36,7 @@ export function usePlayback() {
 
   // GraphQL mutations
   const [setLastPlayedEntry] = useMutation(SET_LAST_PLAYED_ENTRY)
-  const [invest, { loading: investLoading }] = useMutation(INVEST_ENTRY)
+  const [recordAction, { loading: recordActionLoading }] = useMutation(RECORD_ACTION)
   const { data: creditsData } = useQuery(USER_CREDITS, { skip: !user, fetchPolicy: 'network-only' })
   const openTopUpModal = useTopUpModalStore((s) => s.openTopUpModal)
   const reportError = useErrorReport()
@@ -112,7 +112,7 @@ export function usePlayback() {
     }
   };
 
-  // Handle track completion and investing
+  // Handle track completion - record stream action
   const onDidJustFinish = async () => {
     if (!entry || !user) return;
 
@@ -121,12 +121,23 @@ export function usePlayback() {
       openTopUpModal({ action: 'playback', requiredXLM: MICRO_SPEND_PLAYBACK_COMPLETE_XLM, availableXLM: available })
       return
     }
-    await invest({
-      variables: {
-        id: entry.id,
-        amount: lumensToStroops(MICRO_SPEND_PLAYBACK_COMPLETE_XLM),
-      },
-    });
+    
+    // Record stream action (charges fee automatically)
+    try {
+      const result = await recordAction({
+        variables: {
+          id: entry.id,
+          action: 'stream',
+        },
+      });
+      
+      if (result?.data?.recordAction?.success) {
+        console.log('[usePlayback] Stream recorded successfully, fee:', result.data.recordAction.fee, 'XLM')
+      }
+    } catch (error) {
+      console.error('[usePlayback] Failed to record stream:', error)
+      reportError('Failed to record stream')
+    }
   };
 
   // Skip to previous track
@@ -194,6 +205,7 @@ export function usePlayback() {
     skipBackward,
     toggleLoop,
     toggleShuffle,
+    recordActionLoading,
 
     // Event handlers
     onPlaybackStatusUpdate,

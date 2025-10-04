@@ -13,6 +13,7 @@ import Send from 'app/ui/icons/send'
 import { useState, useEffect, useRef } from 'react'
 import { LowBalanceModal } from './LowBalanceModal'
 import { SendXLMModal } from './SendXLMModal'
+import { SendHITZModal } from './SendHITZModal'
 import { User } from 'app/api/graphql/types'
 import {
   useUserCollectionQuery,
@@ -20,28 +21,41 @@ import {
   useUserLikesQuery,
   useClaimEarningsMutation,
 } from 'app/api/graphql/mutations'
-import { useLazyQuery } from '@apollo/client'
-import { CLAIMABLE_EARNINGS_PREVIEW } from 'app/api/graphql/operations'
+import { useLazyQuery, useQuery } from '@apollo/client'
+import { CLAIMABLE_EARNINGS_PREVIEW, USER_HITZ_BALANCE } from 'app/api/graphql/operations'
 import { P, ActivityIndicator } from 'app/design/typography'
 import { useToast } from 'app/provider/toast'
 import Stellar from 'app/ui/icons/stellar'
+import { AssetSelector } from 'app/ui/AssetSelector'
+import { useAssetStore } from 'app/state/asset'
+import { AssetType, ASSET_INFO } from 'app/types/asset'
 
 const MIN_WITHDRAWAL_AMOUNT = 3
 
 export function ProfileScreen({ user }: { user: User }) {
   const [lowBalanceModalVisible, setLowBalanceModalVisible] =
     useState<boolean>(false)
-  const [sendModalVisible, setSendModalVisible] = useState<boolean>(false)
+  const [sendXlmModalVisible, setSendXlmModalVisible] = useState<boolean>(false)
+  const [sendHitzModalVisible, setSendHitzModalVisible] = useState<boolean>(false)
   const [isClaimingEarnings, setIsClaimingEarnings] = useState(false)
   const { data: credits, refetch: refetchUserCredits } = useUserCreditsQuery()
+  const { data: hitzBalanceData } = useQuery(USER_HITZ_BALANCE, { skip: !user })
   const { data: userLikesData } = useUserLikesQuery()
   const { data: userCollectionData } = useUserCollectionQuery(user.id)
   const [claimEarnings] = useClaimEarningsMutation()
   const [loadPreview] = useLazyQuery(CLAIMABLE_EARNINGS_PREVIEW)
   const toast = useToast()
+  const { selectedAsset } = useAssetStore()
 
   // Use a ref to track if we've already attempted to claim earnings
   const hasAttemptedClaim = useRef(false)
+  
+  // Get balance based on selected asset
+  const displayBalance = selectedAsset === AssetType.XLM 
+    ? (credits?.userCredits || 0)
+    : (hitzBalanceData?.userHitzBalance || 0)
+  
+  const assetInfo = ASSET_INFO[selectedAsset]
 
   // Attempt to claim earnings when the profile screen loads, but only once
   useEffect(() => {
@@ -105,10 +119,16 @@ export function ProfileScreen({ user }: { user: User }) {
   }, [claimEarnings, refetchUserCredits, toast])
 
   const handleWithdraw = () => {
-    if (credits?.userCredits && credits.userCredits < MIN_WITHDRAWAL_AMOUNT) {
-      setLowBalanceModalVisible(true)
+    if (selectedAsset === AssetType.XLM) {
+      // XLM withdrawal
+      if (credits?.userCredits && credits.userCredits < MIN_WITHDRAWAL_AMOUNT) {
+        setLowBalanceModalVisible(true)
+      } else {
+        setSendXlmModalVisible(true)
+      }
     } else {
-      setSendModalVisible(true)
+      // HITZ withdrawal
+      setSendHitzModalVisible(true)
     }
   }
 
@@ -129,17 +149,28 @@ export function ProfileScreen({ user }: { user: User }) {
         />
 
         <View className="mt-8 w-full items-center justify-center px-4">
+          {/* Asset Selector */}
+          <View className="mb-4 w-full flex-row items-center justify-center">
+            <AssetSelector />
+          </View>
+
+          {/* Balance Display */}
           <View className="mb-0.5 flex w-full flex-row items-center justify-between">
             <View className="ml-2 flex flex-row items-center gap-2">
-                <P className="flex flex-row items-center font-bold font-unbounded text-[--text-color] gap-2">
+              <P className="flex flex-row items-center font-bold font-unbounded text-[--text-color] gap-2">
+                {selectedAsset === AssetType.XLM ? (
                   <Stellar size={18} />
-                  {`${credits?.userCredits || 0} XLM`}
-                </P>
+                ) : (
+                  <View className="h-[18px] w-[18px] rounded-full bg-gradient-to-r from-[--primary-color] to-[--accent-color]" />
+                )}
+                {`${displayBalance.toFixed(2)} ${assetInfo.ticker}`}
+              </P>
 
               {isClaimingEarnings ? (
                 <ActivityIndicator size="small" />
               ) : null}
             </View>
+            {/* Send button for both XLM and HITZ */}
             <View className="mr-2">
               <P
                 className="cursor-pointer flex flex-row items-center font-bold decoration-2 font-unbounded text-[--text-color]"
@@ -196,12 +227,21 @@ export function ProfileScreen({ user }: { user: User }) {
       />
 
       <SendXLMModal
-        visible={sendModalVisible}
+        visible={sendXlmModalVisible}
         onClose={() => {
-          setSendModalVisible(false)
+          setSendXlmModalVisible(false)
           refetchUserCredits()
         }}
         currentBalance={credits?.userCredits || 0}
+      />
+
+      <SendHITZModal
+        visible={sendHitzModalVisible}
+        onClose={() => {
+          setSendHitzModalVisible(false)
+          // Refetch HITZ balance after sending
+        }}
+        currentBalance={displayBalance}
       />
     </SafeAreaView>
   )

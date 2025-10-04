@@ -29,25 +29,43 @@ export const mergeEntriesResolver = async (_: any, { fromId, toId }: any, ctx: C
 		// Update destination entry numeric fields from chain
 		try {
 			const onchainTo = await contract.getEntry(toId);
+			const stats = await contract.getEntryStats(toId);
+			
+			// Convert stroops to XLM for Algolia
 			await algolia.partialUpdateEntry({
 				objectID: toId,
-				tvl: onchainTo.tvl,
-				apr: onchainTo.apr,
-				escrow: onchainTo.escrow,
+				tvl: Number(onchainTo.tvl_xlm) / 10_000_000,
+				apr: Number(stats.apr) / 100,
+				escrow: Number(onchainTo.escrow_xlm) / 10_000_000,
 			});
-			// Update per-user shares objects for destination based on on-chain map
+			
+			// Update per-user stakes (formerly "shares") based on on-chain data
 			const updates: Array<{ entryId: string; userId: string; shares: number }> = [];
+			
+			// Get all shares from Algolia for this entry
 			try {
-				const sharesArray = (onchainTo.shares as any) as Array<[string, number]>;
-				for (const [publicKey, shares] of sharesArray as any) {
+				const existingShares = await algolia.getSharesByEntry(toId);
+				
+				// Update each user's stake from the contract
+				for (const share of existingShares) {
 					try {
-						const holder = await algolia.getUserByPublicKey(publicKey);
-						updates.push({ entryId: toId, userId: holder.id, shares: Number(shares) });
-					} catch (_) {}
+						const user = await algolia.getUser(share.userId);
+						if (user && user.publicKey) {
+							const userStake = await contract.getStake(toId, user.publicKey);
+							updates.push({ 
+								entryId: toId, 
+								userId: user.id, 
+								shares: Number(userStake) 
+							});
+						}
+					} catch (e) {
+						console.log('merge-entries: failed to update stake for user', share.userId, e);
+					}
 				}
 			} catch (e) {
-				console.log('merge-entries: shares sync skipped', e);
+				console.log('merge-entries: stakes sync skipped', e);
 			}
+			
 			await algolia.bulkUpdateShares(updates);
 		} catch (e) {
 			console.log('merge-entries: update destination failed', e);
