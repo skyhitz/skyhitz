@@ -98,7 +98,7 @@ contract.init(
     hitz_token: hitz_token_id,
     xlm_token: xlm_token_id,
     stake_unit_hitz: 50_000_000,
-    base_fee: 1_000_000
+    base_fee: 100_000
 );
 ```
 

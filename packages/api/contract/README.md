@@ -65,7 +65,7 @@ upgrade(new_wasm_hash)
 
 ### Base Fee
 
-- Default: 0.1 XLM (1,000,000 stroops)
+- Default: 0.01 XLM (100,000 stroops)
 - Admin can update via `set_base_fee()`
 - All action fees scale proportionally
 
@@ -168,7 +168,7 @@ soroban contract invoke \
   --hitz-token HITZ_TOKEN_ID \
   --xlm-token XLM_TOKEN_ID \
   --stake-unit-hitz 50000000 \
-  --base-fee 1000000
+  --base-fee 100000
 ```
 
 ### 4. Set Skyhitz Core as HITZ Token Owner

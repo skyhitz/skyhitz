@@ -130,12 +130,12 @@ Year 8-12:  0.075 HITZ per unit (Epoch 2)
 
 | Action | Fee | Reward | Stake | ROI (Epoch 0) |
 |--------|-----|--------|-------|---------------|
-| Stream | 0.1 XLM | 0.3 HITZ | 0 | Instant positive |
-| Like | 0.2 XLM | 0.6 HITZ | 0 | Instant positive |
-| Download | 0.3 XLM | 0.9 HITZ | 0 | Instant positive |
-| Mine | 1.0 XLM | 3.0 HITZ | 50 HITZ | Break-even + equity |
-| Invest (1 XLM) | 1.0 XLM | 3.0 HITZ | 50 HITZ | Break-even + equity |
-| Invest (10 XLM) | 10 XLM | 30 HITZ | 500 HITZ | Break-even + equity |
+| Stream | 0.01 XLM | 0.3 HITZ | 0 | Instant positive |
+| Like | 0.02 XLM | 0.6 HITZ | 0 | Instant positive |
+| Download | 0.03 XLM | 0.9 HITZ | 0 | Instant positive |
+| Mine | 0.1 XLM | 3.0 HITZ | 50 HITZ | Break-even + equity |
+| Invest (1 XLM) | 1.0 XLM | 30 HITZ | 150 HITZ | Break-even + equity |
+| Invest (10 XLM) | 10 XLM | 300 HITZ | 1500 HITZ | Break-even + equity |
 
 **Validation**: ✅ All actions provide positive expected value
 

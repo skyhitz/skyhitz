@@ -47,10 +47,10 @@ Epoch 3: 0.0375000 HITZ per unit (Years 12-16)
 
 | Action | Difficulty | Default Fee | HITZ Reward (Epoch 0) | Stake Required | TVL/Escrow |
 |--------|-----------|-------------|---------------------|----------------|------------|
-| **Stream** | 1 | 0.1 XLM | 0.3 HITZ | No | Escrow |
-| **Like** | 2 | 0.2 XLM | 0.6 HITZ | No | Escrow |
-| **Download** | 3 | 0.3 XLM | 0.9 HITZ | No | Escrow |
-| **Mine** | 10 | 1.0 XLM | 3.0 HITZ | Yes (50 HITZ) | TVL |
+| **Stream** | 1 | 0.01 XLM | 0.3 HITZ | No | Escrow |
+| **Like** | 2 | 0.02 XLM | 0.6 HITZ | No | Escrow |
+| **Download** | 3 | 0.03 XLM | 0.9 HITZ | No | Escrow |
+| **Mine** | 10 | 0.1 XLM | 3.0 HITZ | Yes (50 HITZ) | TVL |
 | **Invest** | 10-1000+ | 0.3-100+ XLM | 3.0-300+ HITZ | Yes (variable) | TVL |
 
 ### Invest Action (Dynamic)

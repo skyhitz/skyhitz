@@ -105,7 +105,7 @@ stellar contract invoke \
   --hitz-token $HITZ_TOKEN_ID \
   --xlm-token $XLM_TOKEN \
   --stake-unit-hitz 50000000 \
-  --base-fee 1000000
+  --base-fee 100000
 ```
 
 ### 3. Verify Deployment

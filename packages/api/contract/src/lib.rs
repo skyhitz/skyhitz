@@ -15,14 +15,14 @@
 //! - Contract does not swap or interact with AMMs
 //!
 //! Action Kinds & Parameters (fees calculated as base_fee * difficulty):
-//! - stream:   difficulty 1,  fee = base_fee × 1  (default 0.1 XLM), adds to escrow
-//! - like:     difficulty 2,  fee = base_fee × 2  (default 0.2 XLM), adds to escrow
-//! - download: difficulty 3,  fee = base_fee × 3  (default 0.3 XLM), adds to escrow
-//! - mine:     difficulty 10, fee = base_fee × 10 (default 1.0 XLM), adds to TVL, auto-stakes
+//! - stream:   difficulty 1,  fee = base_fee × 1  (default 0.01 XLM), adds to escrow
+//! - like:     difficulty 2,  fee = base_fee × 2  (default 0.02 XLM), adds to escrow
+//! - download: difficulty 3,  fee = base_fee × 3  (default 0.03 XLM), adds to escrow
+//! - mine:     difficulty 10, fee = base_fee × 10 (default 0.1 XLM), adds to TVL, auto-stakes
 //! - invest:   DYNAMIC fee (min 0.3 XLM), proportional difficulty (10 per 1 XLM), adds to TVL, auto-stakes
 //!
 //! Base Fee:
-//! - Default: 0.1 XLM (1,000,000 stroops)
+//! - Default: 0.01 XLM (100,000 stroops)
 //! - Admin can update via set_base_fee() to adjust all action fees proportionally
 //!
 //! Auto-stake (invest/mine only):
@@ -49,7 +49,7 @@ pub enum DataKey {
     HitzToken,
     XlmToken,
     StakeUnitHitz,
-    BaseFee,                            // Base fee per difficulty unit (default 0.1 XLM)
+    BaseFee,                            // Base fee per difficulty unit (default 0.01 XLM)
     
     // Persistent storage
     Entry(String),                      // Entry data
@@ -86,7 +86,7 @@ impl SkyhitzCore {
     /// * `hitz_token` - HITZ token contract address (OpenZeppelin token)
     /// * `xlm_token` - XLM token contract address (SAC)
     /// * `stake_unit_hitz` - HITZ amount per difficulty unit for auto-stake
-    /// * `base_fee` - Base fee per difficulty unit in stroops (default 1,000,000 = 0.1 XLM)
+    /// * `base_fee` - Base fee per difficulty unit in stroops (default 100,000 = 0.01 XLM)
     pub fn init(
         e: Env,
         admin: Address,
@@ -112,7 +112,7 @@ impl SkyhitzCore {
     /// Update base fee (admin-only)
     ///
     /// # Arguments
-    /// * `new_base_fee` - New base fee per difficulty unit in stroops (e.g., 1,000,000 = 0.1 XLM)
+    /// * `new_base_fee` - New base fee per difficulty unit in stroops (e.g., 100,000 = 0.01 XLM)
     pub fn set_base_fee(e: Env, new_base_fee: i128) {
         let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
         admin.require_auth();
@@ -634,8 +634,8 @@ fn get_action_params(e: &Env, kind: &Symbol, amount_xlm: Option<i128>) -> (i128,
     let mine = symbol_short!("mine");
     let invest = symbol_short!("invest");
 
-    // Get base fee from storage (default 0.1 XLM)
-    let base_fee: i128 = e.storage().instance().get(&DataKey::BaseFee).unwrap_or(1_000_000);
+    // Get base fee from storage (default 0.01 XLM)
+    let base_fee: i128 = e.storage().instance().get(&DataKey::BaseFee).unwrap_or(100_000);
 
     if kind == &stream {
         let difficulty = 1;
@@ -719,7 +719,7 @@ mod test {
             &hitz_addr,
             &xlm_addr,
             &50_000_000i128,    // stake_unit_hitz
-            &1_000_000i128,     // base_fee: 0.1 XLM
+            &100_000i128,       // base_fee: 0.01 XLM
         );
 
         let hitz_client = SkyhitzTokenClient::new(&e, &hitz_addr);
@@ -743,7 +743,7 @@ mod test {
             &hitz_addr,
             &xlm_addr,
             &50_000_000i128,    // stake_unit_hitz
-            &1_000_000i128,     // base_fee: 0.1 XLM
+            &100_000i128,       // base_fee: 0.01 XLM
         );
 
         let entry_id = String::from_str(&e, "song123");
@@ -775,7 +775,7 @@ mod test {
             &hitz_addr,
             &xlm_addr,
             &50_000_000i128,    // stake_unit_hitz
-            &1_000_000i128,     // base_fee: 0.1 XLM
+            &100_000i128,       // base_fee: 0.01 XLM
         );
 
         let entry_id = String::from_str(&e, "song123");
@@ -786,12 +786,12 @@ mod test {
 
         // Check entry updated
         let entry = client.get_entry(&entry_id).unwrap();
-        assert_eq!(entry.escrow_xlm, 1_000_000); // 0.1 XLM fee added to escrow
+        assert_eq!(entry.escrow_xlm, 100_000); // 0.01 XLM fee added to escrow
         assert_eq!(entry.tvl_xlm, 0);
 
         // Check XLM transferred to treasury
         let treasury_xlm = token::Client::new(&e, &xlm_addr).balance(&treasury);
-        assert_eq!(treasury_xlm, 1_000_000);
+        assert_eq!(treasury_xlm, 100_000);
 
         // Check HITZ reward (difficulty 1 * 3M unit reward)
         let user_hitz = token::Client::new(&e, &hitz_addr).balance(&user);
@@ -825,7 +825,7 @@ mod test {
             &hitz_addr,
             &xlm_addr,
             &50_000_000i128, // 5 HITZ stake unit
-            &1_000_000i128, // base_fee: 0.1 XLM
+            &100_000i128,   // base_fee: 0.01 XLM
         );
 
         let entry_id = String::from_str(&e, "song123");
@@ -871,7 +871,7 @@ mod test {
             &hitz_addr,
             &xlm_addr,
             &50_000_000i128,    // stake_unit_hitz
-            &1_000_000i128,     // base_fee: 0.1 XLM
+            &100_000i128,       // base_fee: 0.01 XLM
         );
 
         let entry_id = String::from_str(&e, "song123");
@@ -917,7 +917,7 @@ mod test {
             &hitz_addr,
             &xlm_addr,
             &0i128,             // No stake for simplicity
-            &1_000_000i128,     // base_fee: 0.1 XLM
+            &100_000i128,       // base_fee: 0.01 XLM
         );
 
         let entry_id = String::from_str(&e, "song123");
@@ -943,7 +943,7 @@ mod test {
             &hitz_addr,
             &xlm_addr,
             &50_000_000i128,    // stake_unit_hitz
-            &1_000_000i128,     // base_fee: 0.1 XLM
+            &100_000i128,       // base_fee: 0.01 XLM
         );
 
         client.create_entry(&String::from_str(&e, "song1"));
@@ -976,7 +976,7 @@ mod test {
             &hitz_addr,
             &xlm_addr,
             &50_000_000i128,    // stake_unit_hitz
-            &1_000_000i128,     // base_fee: 0.1 XLM
+            &100_000i128,       // base_fee: 0.01 XLM
         );
 
         let entry_id = String::from_str(&e, "song123");
@@ -1005,7 +1005,7 @@ mod test {
             &hitz_addr,
             &xlm_addr,
             &50_000_000i128,    // stake_unit_hitz
-            &1_000_000i128,     // base_fee: 0.1 XLM
+            &100_000i128,       // base_fee: 0.01 XLM
         );
 
         let entry_id = String::from_str(&e, "song123");
@@ -1049,7 +1049,7 @@ mod test {
             &hitz_addr,
             &xlm_addr,
             &50_000_000i128, // 5 HITZ stake unit
-            &1_000_000i128, // base_fee: 0.1 XLM
+            &100_000i128,   // base_fee: 0.01 XLM
         );
 
         let entry_id = String::from_str(&e, "song123");
@@ -1110,7 +1110,7 @@ mod test {
             &hitz_addr,
             &xlm_addr,
             &50_000_000i128,    // stake_unit_hitz
-            &1_000_000i128,     // base_fee: 0.1 XLM
+            &100_000i128,       // base_fee: 0.01 XLM
         );
 
         let entry_id = String::from_str(&e, "song123");
@@ -1127,8 +1127,8 @@ mod test {
         let contract_id = e.register(SkyhitzCore, ());
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
-        let hitz_admin = token::StellarAssetClient::new(&e, &hitz_addr);
-        hitz_admin.mint(&contract_id, &1_000_000_000i128);
+        let hitz_admin = SkyhitzTokenClient::new(&e, &hitz_addr);
+        hitz_admin.admin_mint(&admin, &contract_id, &1_000_000_000i128);
 
         let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
         xlm_admin.mint(&user, &100_000_000i128);
@@ -1139,43 +1139,43 @@ mod test {
             &hitz_addr,
             &xlm_addr,
             &50_000_000i128,    // stake_unit_hitz
-            &1_000_000i128,     // base_fee: 0.1 XLM
+            &100_000i128,       // base_fee: 0.01 XLM
         );
 
         let entry_id = String::from_str(&e, "song123");
         client.create_entry(&entry_id);
 
-        // Test 1: Default base fee (0.1 XLM)
-        assert_eq!(client.get_base_fee(), 1_000_000);
+        // Test 1: Default base fee (0.01 XLM)
+        assert_eq!(client.get_base_fee(), 100_000);
 
-        // Record a stream action with default base fee (0.1 XLM * 1 difficulty = 0.1 XLM)
+        // Record a stream action with default base fee (0.01 XLM * 1 difficulty = 0.01 XLM)
         client.record_action(&user, &entry_id, &symbol_short!("stream"), &None);
         let entry = client.get_entry(&entry_id).unwrap();
-        assert_eq!(entry.escrow_xlm, 1_000_000); // 0.1 XLM
+        assert_eq!(entry.escrow_xlm, 100_000); // 0.01 XLM
 
-        // Test 2: Update base fee to 0.2 XLM
-        client.set_base_fee(&2_000_000i128);
-        assert_eq!(client.get_base_fee(), 2_000_000);
+        // Test 2: Update base fee to 0.02 XLM
+        client.set_base_fee(&200_000i128);
+        assert_eq!(client.get_base_fee(), 200_000);
 
-        // Record another stream action (0.2 XLM * 1 difficulty = 0.2 XLM)
+        // Record another stream action (0.02 XLM * 1 difficulty = 0.02 XLM)
         client.record_action(&user, &entry_id, &symbol_short!("stream"), &None);
         let entry = client.get_entry(&entry_id).unwrap();
-        assert_eq!(entry.escrow_xlm, 3_000_000); // 0.1 + 0.2 = 0.3 XLM
+        assert_eq!(entry.escrow_xlm, 300_000); // 0.01 + 0.02 = 0.03 XLM
 
-        // Test 3: Update base fee to 0.05 XLM
-        client.set_base_fee(&500_000i128);
-        assert_eq!(client.get_base_fee(), 500_000);
+        // Test 3: Update base fee to 0.005 XLM
+        client.set_base_fee(&50_000i128);
+        assert_eq!(client.get_base_fee(), 50_000);
 
-        // Record a like action (0.05 XLM * 2 difficulty = 0.1 XLM)
+        // Record a like action (0.005 XLM * 2 difficulty = 0.01 XLM)
         client.record_action(&user, &entry_id, &symbol_short!("like"), &None);
         let entry = client.get_entry(&entry_id).unwrap();
-        assert_eq!(entry.escrow_xlm, 4_000_000); // 0.3 + 0.1 = 0.4 XLM
+        assert_eq!(entry.escrow_xlm, 400_000); // 0.03 + 0.01 = 0.04 XLM
 
-        // Verify mine action also respects new base fee (0.05 XLM * 10 difficulty = 0.5 XLM)
-        hitz_admin.mint(&user, &1_000_000_000i128);
+        // Verify mine action also respects new base fee (0.005 XLM * 10 difficulty = 0.05 XLM)
+        hitz_admin.admin_mint(&admin, &user, &1_000_000_000i128);
         client.record_action(&user, &entry_id, &symbol_short!("mine"), &None);
         let entry = client.get_entry(&entry_id).unwrap();
-        assert_eq!(entry.tvl_xlm, 5_000_000); // 0.5 XLM in TVL
+        assert_eq!(entry.tvl_xlm, 50_000); // 0.05 XLM in TVL
     }
 
     #[test]
@@ -1192,7 +1192,7 @@ mod test {
             &hitz_addr,
             &xlm_addr,
             &50_000_000i128,    // stake_unit_hitz
-            &1_000_000i128,     // base_fee: 0.1 XLM
+            &100_000i128,       // base_fee: 0.01 XLM
         );
 
         // Should panic: negative fee

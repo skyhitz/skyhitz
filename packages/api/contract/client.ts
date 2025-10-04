@@ -734,7 +734,7 @@ export interface Client {
    * * `hitz_token` - HITZ token contract address (OpenZeppelin token)
    * * `xlm_token` - XLM token contract address (SAC)
    * * `stake_unit_hitz` - HITZ amount per difficulty unit for auto-stake
-   * * `base_fee` - Base fee per difficulty unit in stroops (default 1,000,000 = 0.1 XLM)
+   * * `base_fee` - Base fee per difficulty unit in stroops (default 100,000 = 0.01 XLM)
    */
   init: ({admin, treasury, hitz_token, xlm_token, stake_unit_hitz, base_fee}: {admin: string, treasury: string, hitz_token: string, xlm_token: string, stake_unit_hitz: i128, base_fee: i128}, options?: {
     /**
@@ -758,7 +758,7 @@ export interface Client {
    * Update base fee (admin-only)
    * 
    * # Arguments
-   * * `new_base_fee` - New base fee per difficulty unit in stroops (e.g., 1,000,000 = 0.1 XLM)
+   * * `new_base_fee` - New base fee per difficulty unit in stroops (e.g., 100,000 = 0.01 XLM)
    */
   set_base_fee: ({new_base_fee}: {new_base_fee: i128}, options?: {
     /**
