@@ -1,17 +1,15 @@
- #!/bin/bash
+#!/bin/bash
 
 set -e
 
-cd ./contract
- 
 CTR="contract-mainnet"
 
- stellar contract bindings typescript \
-    --wasm ./target/wasm32-unknown-unknown/release/skyhitz.wasm \
-    --output-dir ./client \
-    --network mainnnet \
-    --overwrite
+stellar contract bindings typescript \
+   --wasm ./target/wasm32-unknown-unknown/release/skyhitz.wasm \
+   --output-dir ./client \
+   --network mainnet \
+   --overwrite
 
- cp ./client/src/index.ts ./client.ts
+cp ./client/src/index.ts ./client.ts
 
 rm -rf ./client

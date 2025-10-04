@@ -1,698 +1,1585 @@
 #![no_std]
 
-//! Skyhitz Soroban smart contract
+//! Skyhitz Core V1 - Soroban Smart Contract
 //!
-//! This contract manages media entries, user investments, and earnings
-//! distribution on Stellar (Soroban). It stores entries with tracked
-//! Total Value Locked (TVL), escrow, and per-user equity shares, and it
-//! computes claimable earnings proportionally to user shares.
+//! Purpose: Record user actions for music entries, reward users with HITZ tokens,
+//! attribute XLM fees to entries, and manage HITZ staking for invest/mine actions.
 //!
-//! Key concepts:
-//! - Entries: Identified by a string `id`. Each entry tracks `apr`, `tvl`,
-//!   `escrow`, a map of `shares` per user, and `withdrawn_earnings` per user.
-//! - TVL: Sum of equity-bearing amounts invested in an entry.
-//! - Escrow: Total funds held by the contract for the entry (may exceed TVL
-//!   when earnings accumulate).
-//! - Earnings: The portion of `escrow` that exceeds `tvl`. Users can claim a
-//!   proportional share of earnings based on their equity fraction.
+//! HITZ Token:
+//! - OpenZeppelin SEP-41 compatible fungible token with fixed cap: 21,000,000 HITZ
+//! - Token handles its own emission logic with Bitcoin-style halving schedule
+//! - This contract requests rewards from the token based on action difficulty
 //!
-//! Storage layout (see `DataKey`):
-//! - `Index`: Vector of all entry ids.
-//! - `Entries(String)`: The stored `Entry` for the given id.
-//! - `Network`: Selected Stellar network ("testnet" or "public").
-//! - `Admin`: Address authorized to initialize, set, remove, and upgrade.
+//! XLM Fees:
+//! - All XLM fees are transferred to Treasury address (market-making bot for liquidity)
+//! - Contract does not swap or interact with AMMs
 //!
-//! Token transfer:
-//! - Native token contract address is selected by network in `get_xlm_address`.
-//! - `transfer` handles token movements for invest and claim flows.
+//! Action Kinds & Parameters (fees calculated as base_fee * difficulty):
+//! - stream:   difficulty 1,  fee = base_fee × 1  (default 0.1 XLM), adds to escrow
+//! - like:     difficulty 2,  fee = base_fee × 2  (default 0.2 XLM), adds to escrow
+//! - download: difficulty 3,  fee = base_fee × 3  (default 0.3 XLM), adds to escrow
+//! - mine:     difficulty 10, fee = base_fee × 10 (default 1.0 XLM), adds to TVL, auto-stakes
+//! - invest:   DYNAMIC fee (min 0.3 XLM), proportional difficulty (10 per 1 XLM), adds to TVL, auto-stakes
 //!
-//! Precision:
-//! - Uses a fixed `SCALE` of 1_000_000 for 6-decimal arithmetic when
-//!   computing proportional earnings.
+//! Base Fee:
+//! - Default: 0.1 XLM (1,000,000 stroops)
+//! - Admin can update via set_base_fee() to adjust all action fees proportionally
 //!
-//! Main flows:
-//! - init(admin, network, ids): one-time initialization, sets admin, network,
-//!   and optionally bootstraps entries for provided ids.
-//! - invest(user, id, amount): transfers tokens to the contract, updates
-//!   `escrow`, and if `amount` is greater than a download threshold adds to
-//!   user equity shares and TVL.
-//! - claim_earnings(user, id): calculates the user’s claimable portion of
-//!   the earnings (escrow - tvl minus previously withdrawn), transfers it to
-//!   the user, and persists updated state.
+//! Auto-stake (invest/mine only):
+//! - stake_amount = StakeUnitHitz * difficulty
+//! - Pulls HITZ from caller to contract
+//! - Updates per-user and total stake for entry
 
-use soroban_sdk::{contract, contracttype, Map, contractimpl, Env, BytesN, String, Address, token, log, Vec, vec };
+mod hitz_token;
+
+use soroban_sdk::{
+    contract, contractimpl, contracttype, Address, Env, String, Symbol, Vec, symbol_short, token, log,
+};
+use crate::hitz_token::SkyhitzTokenClient;
+
+// ============================================================================
+// Data Types
+// ============================================================================
 
 #[contracttype]
 pub enum DataKey {
-    Index,
-    Entries(String),
-    Network,
+    // Instance storage (singleton config)
     Admin,
+    Treasury,
+    HitzToken,
+    XlmToken,
+    StakeUnitHitz,
+    BaseFee,                            // Base fee per difficulty unit (default 0.1 XLM)
+    
+    // Persistent storage
+    Entry(String),                      // Entry data
+    Stake((String, Address)),           // Per-user stake: (entry_id, owner) -> amount
+    StakeTotal(String),                 // Total staked per entry
+    RewardPool(String),                 // HITZ rewards allocated to entry
+    Claimed((String, Address)),         // HITZ rewards claimed by user
+    EntryAt(u32),                       // Index -> entry_id for pagination
+    EntryCount,                         // Total entry count
 }
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Entry {
-    pub id: String,
-    pub apr: i128,
-    pub tvl: i128,
-    pub escrow: i128,
-    pub shares: Map<Address, i128>,
-    pub withdrawn_earnings: Map<Address, i128>,
-    pub share_since: Map<Address, i128>,
+    pub tvl_xlm: i128,      // Total Value Locked (equity-bearing)
+    pub escrow_xlm: i128,   // Non-equity revenue
+    pub created_at: u64,    // Timestamp
 }
 
- // Use scale factor of 1_000_000 for 6 decimal precision
- const SCALE: i128 = 1_000_000;
-
 #[contract]
-pub struct Contract;
+pub struct SkyhitzCore;
+
+// ============================================================================
+// Implementation
+// ============================================================================
 
 #[contractimpl]
-impl Contract {
-    /// Stores or replaces an `Entry` by id and appends the id to the global
-    /// index. Only callable by `Admin`.
-    pub fn set_entry(e: Env, entry: Entry) {
-        let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
-        admin.require_auth();
-
-        let key = DataKey::Entries(entry.id.clone());
-        e.storage().persistent().set(&key, &entry);
-
-        let mut index: Vec<String> = e.storage().persistent().get(&DataKey::Index).unwrap_or(vec![&e]);
-        index.push_back(entry.id.clone());
-        e.storage().persistent().set(&DataKey::Index, &index);
-    }
-
-    /// Removes an `Entry` by id and updates the global index. Only callable
-    /// by `Admin`. Panics if the entry does not exist.
-    pub fn remove_entry(e: Env, id: String) {
-        let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
-        admin.require_auth();
-
-        let key = DataKey::Entries(id.clone());
-        if !e.storage().persistent().has(&key) {
-            panic!("Entry not found");
-        }
-        e.storage().persistent().remove(&key);
-
-        let index: Vec<String> = e.storage().persistent().get(&DataKey::Index).unwrap_or(vec![&e]);
-    
-        let mut new_index = Vec::new(&e);
-        for i in index.iter() {
-            if i != id {
-                new_index.push_back(i.clone());
-            }
-        }
-
-        e.storage().persistent().set(&DataKey::Index, &new_index);
-    }
-
-    /// Returns an `Entry` by id. Panics if the entry does not exist.
-    pub fn get_entry(e: &Env, id: String) -> Entry {
-        let key = DataKey::Entries(id.clone());
-        if !e.storage().persistent().has(&key) {
-            panic!("Entry not found");
-        }
-        e.storage().persistent().get(&key).unwrap()
-    }
-
-    /// Bumps when contract logic changes in a way that clients may care about.
-    pub fn version() -> u32 {
-        23
-    }
-
-    /// One-time initialization of admin, network, and optional entry ids.
+impl SkyhitzCore {
+    /// Initialize the contract (one-time only)
     ///
-    /// - `admin`: Address with privileged rights (set/remove/upgrade).
-    /// - `network`: Must be "public" or "testnet".
-    /// - `ids`: Optional seed list of entry ids to create with zeroed values.
-    ///
-    /// Panics if called more than once or if network is invalid.
-    pub fn init(e: Env, admin: Address, network: String, ids: Vec<String>) {
+    /// # Arguments
+    /// * `admin` - Admin address with privileged rights
+    /// * `treasury` - Treasury address receiving all XLM fees
+    /// * `hitz_token` - HITZ token contract address (OpenZeppelin token)
+    /// * `xlm_token` - XLM token contract address (SAC)
+    /// * `stake_unit_hitz` - HITZ amount per difficulty unit for auto-stake
+    /// * `base_fee` - Base fee per difficulty unit in stroops (default 1,000,000 = 0.1 XLM)
+    pub fn init(
+        e: Env,
+        admin: Address,
+        treasury: Address,
+        hitz_token: Address,
+        xlm_token: Address,
+        stake_unit_hitz: i128,
+        base_fee: i128,
+    ) {
         if e.storage().instance().has(&DataKey::Admin) {
             panic!("Already initialized");
         }
+
         e.storage().instance().set(&DataKey::Admin, &admin);
-
-        if network == String::from_str(&e, "public") || network == String::from_str(&e, "testnet") {
-            e.storage().instance().set(&DataKey::Network, &network);
-        } else {
-            panic!("Invalid network");
-        }
-
-        let mut index: Vec<String> = e.storage().persistent().get(&DataKey::Index).unwrap_or(vec![&e]);
-        
-        for id in ids {
-            if !index.contains(&id) {
-                // Entry does not exist, create it with default values
-                let entry = Entry {
-                    id: id.clone(),
-                    apr: 0,
-                    tvl: 0,
-                    escrow: 0,
-                    shares: Map::new(&e),
-                    withdrawn_earnings: Map::new(&e),
-                    share_since: Map::new(&e),
-                };
-                
-                // Add the new entry to storage
-                let key = DataKey::Entries(id.clone());
-                e.storage().persistent().set(&key, &entry);
-                
-                // Append the new entry's ID to the index
-                index.push_back(id);
-            }
-        }
-        
-        // Update the index in storage
-        e.storage().persistent().set(&DataKey::Index, &index);
+        e.storage().instance().set(&DataKey::Treasury, &treasury);
+        e.storage().instance().set(&DataKey::HitzToken, &hitz_token);
+        e.storage().instance().set(&DataKey::XlmToken, &xlm_token);
+        e.storage().instance().set(&DataKey::StakeUnitHitz, &stake_unit_hitz);
+        e.storage().instance().set(&DataKey::BaseFee, &base_fee);
+        e.storage().instance().set(&DataKey::EntryCount, &0u32);
     }
 
-    /// Upgrades the contract code. Only callable by `Admin`.
-    pub fn upgrade(e: Env, new_wasm_hash: BytesN<32>) {
+    /// Update base fee (admin-only)
+    ///
+    /// # Arguments
+    /// * `new_base_fee` - New base fee per difficulty unit in stroops (e.g., 1,000,000 = 0.1 XLM)
+    pub fn set_base_fee(e: Env, new_base_fee: i128) {
         let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
         admin.require_auth();
 
-        e.deployer().update_current_contract_wasm(new_wasm_hash);
+        if new_base_fee < 0 {
+            panic!("Base fee must be non-negative");
+        }
+
+        e.storage().instance().set(&DataKey::BaseFee, &new_base_fee);
     }
-     
-    /// Invest tokens into an entry.
+
+    /// Get current base fee
+    pub fn get_base_fee(e: Env) -> i128 {
+        e.storage().instance().get(&DataKey::BaseFee).unwrap_or(100_000)
+    }
+
+    /// Create a new entry (admin-only)
+    pub fn create_entry(e: Env, entry_id: String) {
+        let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
+        admin.require_auth();
+
+        let entry_key = DataKey::Entry(entry_id.clone());
+        if e.storage().persistent().has(&entry_key) {
+            panic!("Entry already exists");
+        }
+
+        let now = e.ledger().timestamp();
+        let entry = Entry {
+            tvl_xlm: 0,
+            escrow_xlm: 0,
+            created_at: now,
+        };
+
+        e.storage().persistent().set(&entry_key, &entry);
+
+        // Add to index
+        let count: u32 = e.storage().instance().get(&DataKey::EntryCount).unwrap_or(0);
+        e.storage().persistent().set(&DataKey::EntryAt(count), &entry_id);
+        e.storage().instance().set(&DataKey::EntryCount, &(count + 1));
+    }
+
+    /// Record a user action (main entrypoint)
     ///
-    /// Behavior:
-    /// - Transfers `amount` from `user` to the contract.
-    /// - Always increases `escrow` by `amount`.
-    /// - If `amount` > `download_amount` threshold, increases user equity
-    ///   shares and `tvl` by `amount`.
-    /// - Recomputes APR.
-    /// - Lazily creates the entry if it does not exist, and ensures it’s
-    ///   listed in the global index.
-    pub fn invest(e: Env, user: Address, id: String, amount: i128) {
-        user.require_auth();
-        let download_amount = 3000000; 
-        let key = DataKey::Entries(id.clone());
+    /// Handles fee transfer, reward calculation, and optional auto-staking
+    /// For invest action, amount_xlm specifies the investment (min 0.3 XLM), ignored for other actions
+    pub fn record_action(e: Env, caller: Address, entry_id: String, kind: Symbol, amount_xlm: Option<i128>) {
+        caller.require_auth();
 
-        // Check if entry exists, create if not
-        let mut entry: Entry = if !e.storage().persistent().has(&key) {
-            log!(&e, "Entry not found, creating default: {}", id);
-            // Entry does not exist, create it with default values
-            let new_entry = Entry {
-                id: id.clone(),
-                apr: 0,
-                tvl: 0,
-                escrow: 0,
-                shares: Map::new(&e),
-                withdrawn_earnings: Map::new(&e), // Ensure new field is initialized
-                share_since: Map::new(&e),
-            };
+        // Get action parameters
+        let (fee, difficulty, adds_to_tvl, requires_stake) = get_action_params(&e, &kind, amount_xlm);
 
-            // Add the new entry to storage
-            e.storage().persistent().set(&key, &new_entry);
+        // Load entry
+        let entry_key = DataKey::Entry(entry_id.clone());
+        let mut entry: Entry = e
+            .storage()
+            .persistent()
+            .get(&entry_key)
+            .unwrap_or_else(|| panic!("Entry not found"));
 
-            // Add the new entry's ID to the index
-            // Fetch index, add ID if not present, save index
-            let mut index: Vec<String> = e.storage().persistent().get(&DataKey::Index).unwrap_or(vec![&e]);
-            if !index.contains(&id) { 
-                 index.push_back(id.clone());
-                 e.storage().persistent().set(&DataKey::Index, &index);
+        // Transfer XLM fee from caller to Treasury
+        let treasury: Address = e.storage().instance().get(&DataKey::Treasury).unwrap();
+        let xlm_token: Address = e.storage().instance().get(&DataKey::XlmToken).unwrap();
+        let xlm_client = token::Client::new(&e, &xlm_token);
+        xlm_client.transfer(&caller, &treasury, &fee);
+
+        // Attribute fee to entry
+        if adds_to_tvl {
+            entry.tvl_xlm = entry.tvl_xlm.saturating_add(fee);
+        } else {
+            entry.escrow_xlm = entry.escrow_xlm.saturating_add(fee);
+        }
+
+        // Request HITZ reward from token contract (handles emission logic)
+        let hitz_token: Address = e.storage().instance().get(&DataKey::HitzToken).unwrap();
+        let hitz_token_client = SkyhitzTokenClient::new(&e, &hitz_token);
+        let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
+        let reward = hitz_token_client.mint_reward(&admin, &caller, &difficulty);
+
+        // Auto-stake for invest/mine
+        if requires_stake {
+            let stake_unit: i128 = e.storage().instance().get(&DataKey::StakeUnitHitz).unwrap();
+            let stake_amt = stake_unit.saturating_mul(difficulty);
+
+            if stake_amt > 0 {
+                // Pull HITZ from caller to contract
+                let hitz_client = token::Client::new(&e, &hitz_token);
+                hitz_client.transfer(&caller, &e.current_contract_address(), &stake_amt);
+
+                // Update stake maps
+                let stake_key = DataKey::Stake((entry_id.clone(), caller.clone()));
+                let current_stake: i128 = e.storage().persistent().get(&stake_key).unwrap_or(0);
+                e.storage()
+                    .persistent()
+                    .set(&stake_key, &current_stake.saturating_add(stake_amt));
+
+                let total_key = DataKey::StakeTotal(entry_id.clone());
+                let current_total: i128 = e.storage().persistent().get(&total_key).unwrap_or(0);
+                e.storage()
+                    .persistent()
+                    .set(&total_key, &current_total.saturating_add(stake_amt));
+
+                log!(
+                    &e,
+                    "Stake: {} staked {} HITZ for entry {}",
+                    caller,
+                    stake_amt,
+                    entry_id
+                );
             }
-            // Use the newly created entry for the subsequent investment logic
-            new_entry 
-        } else {
-            // Entry exists, fetch it
-            e.storage().persistent().get(&key).unwrap() // Safe to unwrap now
-        };
+        }
 
-        // Update equity share
-        let past_user_equity = entry.shares.get(user.clone()).unwrap_or(0);
+        // Save entry
+        e.storage().persistent().set(&entry_key, &entry);
 
-        if amount > download_amount {
-            entry.shares.set(user.clone(), past_user_equity + amount);
-             log!(&e, "Got equity!");
-            entry.tvl += amount;
-            // Track the earliest holding timestamp
-            let now_ts: i128 = e.ledger().timestamp() as i128;
-            let prev_since = entry.share_since.get(user.clone()).unwrap_or(now_ts);
-            let since = if prev_since == 0 { now_ts } else { if prev_since < now_ts { prev_since } else { now_ts } };
-            entry.share_since.set(user.clone(), since);
-        } 
-        
-        entry.escrow += amount;
-        entry.apr = get_apr(&e, entry.clone());
-
-        // Save updated entry
-        e.storage().persistent().set(&key, &entry);
-        transfer(&e, &user, &e.current_contract_address(), amount);
+        log!(
+            &e,
+            "Action: {} - {} - fee: {} XLM, reward: {} HITZ",
+            kind,
+            entry_id,
+            fee,
+            reward
+        );
     }
 
-    /// Claim the caller's proportional earnings for an entry.
-    ///
-    /// Earnings are defined as `escrow - tvl` when positive. The user's
-    /// proportional share is `(user_shares / tvl) * total_earnings`, adjusted
-    /// by previously withdrawn amounts. Transfers the claimable amount to the
-    /// user and persists updated accounting. Returns the claimed amount.
-    pub fn claim_earnings(e: Env, user: Address, id: String) -> i128 {
-        user.require_auth();
+    // ========================================================================
+    // View Functions
+    // ========================================================================
 
-        let key = DataKey::Entries(id.clone());
-        let mut entry: Entry = e.storage().persistent().get(&key).unwrap_or_else(|| panic!("Entry not found"));
-
-        let user_share = entry.shares.get(user.clone()).unwrap_or(0);
-        if user_share == 0 {
-            panic!("User has no shares in this entry");
-        }
-
-        // Total earnings accumulated in the escrow beyond the initial TVL
-        let total_earnings = if entry.escrow > entry.tvl {
-            entry.escrow - entry.tvl
-        } else {
-            0 // No earnings if escrow hasn't surpassed TVL
-        };
-
-        if total_earnings == 0 {
-             log!(&e, "No earnings available to claim yet.");
-            return 0; // Nothing to claim
-        }
-
-        // Calculate user's proportional share of total earnings
-        // Scale up share before division to maintain precision
-        let scaled_user_earning_share: i128 = if entry.tvl > 0 {
-            (user_share * SCALE) / entry.tvl
-        } else {
-            0 // Handle the case where TVL is zero
-        };
-        let user_total_earned = (total_earnings * scaled_user_earning_share) / SCALE;
-
-
-        let previously_withdrawn = entry.withdrawn_earnings.get(user.clone()).unwrap_or(0);
-        let claimable_amount = user_total_earned - previously_withdrawn;
-
-        if claimable_amount <= 0 {
-             log!(&e, "No claimable amount for user or already withdrawn.");
-            return 0; // Nothing to claim or already withdrawn
-        }
-
-        // Update withdrawn earnings for the user
-        entry.withdrawn_earnings.set(user.clone(), previously_withdrawn + claimable_amount);
-
-        // Decrease total escrow by the claimed amount
-        // Note: We don't touch TVL here, only the earnings portion (escrow)
-        entry.escrow -= claimable_amount;
-
-        // Recalculate APR after claim (optional, but good practice)
-        entry.apr = get_apr(&e, entry.clone());
-
-        // Save updated entry state
-        e.storage().persistent().set(&key, &entry);
-
-        // Transfer the claimed amount to the user
-        log!(&e, "Claiming {} for user {}", claimable_amount, user.clone());
-        transfer(&e, &e.current_contract_address(), &user, claimable_amount);
-        
-        // Return the claimed amount
-        claimable_amount
+    /// Get entry data
+    pub fn get_entry(e: Env, entry_id: String) -> Option<Entry> {
+        let key = DataKey::Entry(entry_id);
+        e.storage().persistent().get(&key)
     }
 
-    /// Sell a portion of the caller's equity shares for an entry.
-    ///
-    /// Behavior:
-    /// - Requires the caller to have at least `amount` shares.
-    /// - Decreases user's shares and entry `tvl` by `amount`.
-    /// - Does NOT change this entry's `escrow`.
-    /// - Computes commission based on holding duration and distributes the commission to
-    ///   other entries' `escrow` (entries with `tvl > 0`), proportionally to their `tvl`.
-    /// - Transfers (amount - commission) to the user from the contract balance.
-    /// - Recomputes APR for all affected entries.
-    /// - Returns the amount paid out to the user.
-    pub fn sell_shares(e: Env, user: Address, id: String, amount: i128) -> i128 {
-        user.require_auth();
+    /// List entry IDs with pagination
+    pub fn list_entries(e: Env, start: u32, limit: u32) -> Vec<String> {
+        let count: u32 = e.storage().instance().get(&DataKey::EntryCount).unwrap_or(0);
+        let mut result = Vec::new(&e);
 
-        if amount <= 0 {
+        let end = start.saturating_add(limit).min(count);
+        for i in start..end {
+            if let Some(entry_id) = e.storage().persistent().get::<DataKey, String>(&DataKey::EntryAt(i)) {
+                result.push_back(entry_id);
+            }
+        }
+
+        result
+    }
+
+    /// Get user's stake for an entry
+    pub fn get_stake(e: Env, entry_id: String, owner: Address) -> i128 {
+        let key = DataKey::Stake((entry_id, owner));
+        e.storage().persistent().get(&key).unwrap_or(0)
+    }
+
+    /// Get total stake for an entry
+    pub fn get_stake_total(e: Env, entry_id: String) -> i128 {
+        let key = DataKey::StakeTotal(entry_id);
+        e.storage().persistent().get(&key).unwrap_or(0)
+    }
+
+    /// Contract version
+
+    /// Distribute HITZ rewards proportionally based on escrow performance
+    ///
+    /// Treasury bot calls this after buying HITZ with accumulated XLM fees.
+    /// Contract automatically distributes to entries based on their escrow_xlm.
+    /// 
+    /// # Arguments
+    /// * `caller` - Treasury address that holds the HITZ
+    /// * `hitz_amount` - Total HITZ to distribute across all entries
+    /// 
+    /// # Performance
+    /// Optimized to single loop - O(n) where n = number of entries
+    /// Handles rounding dust by allocating to last entry
+    pub fn distribute_rewards(e: Env, caller: Address, hitz_amount: i128) {
+        caller.require_auth();
+
+        // Verify caller is the Treasury
+        let treasury: Address = e.storage().instance().get(&DataKey::Treasury).unwrap();
+        if caller != treasury {
+            panic!("Only Treasury can distribute rewards");
+        }
+        if hitz_amount <= 0 {
             panic!("Amount must be positive");
         }
 
-        let key = DataKey::Entries(id.clone());
-        if !e.storage().persistent().has(&key) {
+        // Transfer HITZ from Treasury to contract
+        let hitz_token: Address = e.storage().instance().get(&DataKey::HitzToken).unwrap();
+        let hitz_client = token::Client::new(&e, &hitz_token);
+        hitz_client.transfer(&caller, &e.current_contract_address(), &hitz_amount);
+
+        let entry_count: u32 = e.storage().instance().get(&DataKey::EntryCount).unwrap_or(0);
+        
+        // OPTIMIZED: Single-loop algorithm
+        // First pass: collect entries with escrow and calculate total
+        let mut entries_with_escrow: Vec<(String, i128)> = Vec::new(&e);
+        let mut total_escrow: i128 = 0;
+        
+        for i in 0..entry_count {
+            let index_key = DataKey::EntryAt(i);
+            e.storage().persistent().extend_ttl(&index_key, 100, 535_680);
+            
+            if let Some(entry_id) = e.storage().persistent().get::<DataKey, String>(&index_key) {
+                let entry_key = DataKey::Entry(entry_id.clone());
+                e.storage().persistent().extend_ttl(&entry_key, 100, 535_680);
+                
+                if let Some(entry) = e.storage().persistent().get::<DataKey, Entry>(&entry_key) {
+                    if entry.escrow_xlm > 0 {
+                        total_escrow = total_escrow.saturating_add(entry.escrow_xlm);
+                        entries_with_escrow.push_back((entry_id, entry.escrow_xlm));
+                    }
+                }
+            }
+        }
+
+        if total_escrow == 0 {
+            panic!("No escrow to distribute to");
+        }
+
+        // Distribute rewards and track remainder for dust
+        let mut distributed_total: i128 = 0;
+        let entries_len: u32 = entries_with_escrow.len();
+        
+        for (idx, (entry_id, escrow)) in entries_with_escrow.iter().enumerate() {
+            let pool_key = DataKey::RewardPool(entry_id.clone());
+            e.storage().persistent().extend_ttl(&pool_key, 100, 535_680);
+            
+            // Calculate share with rounding
+            let mut entry_share = (hitz_amount.saturating_mul(escrow))
+                .checked_div(total_escrow)
+                .unwrap_or(0);
+            
+            // Give remaining dust to last entry to avoid losing tokens
+            if (idx as u32) == entries_len - 1 {
+                entry_share = entry_share.saturating_add(hitz_amount.saturating_sub(distributed_total).saturating_sub(entry_share));
+            }
+            
+            if entry_share > 0 {
+                let current_pool: i128 = e.storage().persistent().get(&pool_key).unwrap_or(0);
+                e.storage().persistent().set(&pool_key, &current_pool.saturating_add(entry_share));
+                distributed_total = distributed_total.saturating_add(entry_share);
+
+                log!(
+                    &e,
+                    "Distributed {} HITZ to entry {} ({}% of total)",
+                    entry_share,
+                    entry_id,
+                    (escrow * 100) / total_escrow
+                );
+            }
+        }
+    }
+
+    /// Allocate HITZ rewards to a specific entry's reward pool
+    ///
+    /// Admin-only function for manual reward allocation (e.g., promotions, bonuses)
+    pub fn allocate_rewards(e: Env, entry_id: String, hitz_amount: i128) {
+        let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
+        admin.require_auth();
+
+        // Verify entry exists
+        let entry_key = DataKey::Entry(entry_id.clone());
+        if !e.storage().persistent().has(&entry_key) {
             panic!("Entry not found");
         }
 
-        let mut entry: Entry = e.storage().persistent().get(&key).unwrap();
-
-        let user_share = entry.shares.get(user.clone()).unwrap_or(0);
-        if user_share < amount {
-            panic!("Insufficient shares");
+        if hitz_amount <= 0 {
+            panic!("Amount must be positive");
         }
 
-        // Determine holding duration and commission tier
-        let now_ts: i128 = e.ledger().timestamp() as i128;
-        let since_ts: i128 = entry.share_since.get(user.clone()).unwrap_or(now_ts);
-        let held_secs: i128 = if now_ts > since_ts { now_ts - since_ts } else { 0 };
+        // Transfer HITZ from admin/treasury to contract
+        let hitz_token: Address = e.storage().instance().get(&DataKey::HitzToken).unwrap();
+        let hitz_client = token::Client::new(&e, &hitz_token);
+        hitz_client.transfer(&admin, &e.current_contract_address(), &hitz_amount);
 
-        // Thresholds in seconds
-        let six_months: i128 = 6 * 30 * 24 * 60 * 60; // approx
-        let twelve_months: i128 = 12 * 30 * 24 * 60 * 60;
-        let three_years: i128 = 3 * 365 * 24 * 60 * 60;
+        // Add to entry's reward pool
+        let pool_key = DataKey::RewardPool(entry_id.clone());
+        let current_pool: i128 = e.storage().persistent().get(&pool_key).unwrap_or(0);
+        let new_pool = current_pool.saturating_add(hitz_amount);
+        e.storage().persistent().set(&pool_key, &new_pool);
 
-        // Commission percentage (integer percent)
-        let commission_pct: i128 = if held_secs < six_months {
-            10
-        } else if held_secs < twelve_months {
-            7
-        } else if held_secs < three_years {
-            5
-        } else {
-            0
+        log!(
+            &e,
+            "Rewards allocated: {} HITZ added to entry {} pool",
+            hitz_amount,
+            entry_id
+        );
+    }
+
+    /// Batch allocate rewards to multiple entries
+    ///
+    /// Admin-only function for manual batch allocation (e.g., campaigns, airdrops)
+    pub fn batch_allocate_rewards(e: Env, entry_ids: Vec<String>, amounts: Vec<i128>) {
+        let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
+        admin.require_auth();
+
+        let len = entry_ids.len();
+        if len != amounts.len() {
+            panic!("Entry IDs and amounts length mismatch");
+        }
+        
+        // Limit batch size to prevent gas issues
+        if len > 100 {
+            panic!("Batch size limited to 100 entries");
+        }
+
+        let hitz_token: Address = e.storage().instance().get(&DataKey::HitzToken).unwrap();
+        let hitz_client = token::Client::new(&e, &hitz_token);
+
+        for i in 0..len {
+            let entry_id = entry_ids.get(i).unwrap();
+            let hitz_amount = amounts.get(i).unwrap();
+            
+            if hitz_amount <= 0 {
+                continue;
+            }
+
+            // Transfer HITZ to contract
+            hitz_client.transfer(&admin, &e.current_contract_address(), &hitz_amount);
+
+            // Add to reward pool with TTL extension
+            let pool_key = DataKey::RewardPool(entry_id.clone());
+            e.storage().persistent().extend_ttl(&pool_key, 100, 535_680);
+            let current_pool: i128 = e.storage().persistent().get(&pool_key).unwrap_or(0);
+            e.storage().persistent().set(&pool_key, &current_pool.saturating_add(hitz_amount));
+        }
+    }
+
+    /// Claim HITZ rewards from an entry's reward pool
+    ///
+    /// Stakers receive rewards proportional to their stake
+    /// Formula: claimable = (reward_pool × user_stake) / total_stake - already_claimed
+    pub fn claim_rewards(e: Env, entry_id: String, claimer: Address) -> i128 {
+        claimer.require_auth();
+
+        // Get user's stake
+        let stake_key = DataKey::Stake((entry_id.clone(), claimer.clone()));
+        let user_stake: i128 = e.storage().persistent().get(&stake_key).unwrap_or(0);
+
+        if user_stake == 0 {
+            panic!("No stake in this entry");
+        }
+
+        // Get total stake
+        let total_stake_key = DataKey::StakeTotal(entry_id.clone());
+        let total_stake: i128 = e.storage().persistent().get(&total_stake_key).unwrap_or(0);
+
+        if total_stake == 0 {
+            panic!("No total stake found");
+        }
+
+        // Get reward pool
+        let pool_key = DataKey::RewardPool(entry_id.clone());
+        let reward_pool: i128 = e.storage().persistent().get(&pool_key).unwrap_or(0);
+
+        if reward_pool == 0 {
+            panic!("No rewards available");
+        }
+
+        // Calculate total claimable: (pool × user_stake) / total_stake
+        let total_claimable = (reward_pool
+            .saturating_mul(user_stake))
+            .checked_div(total_stake)
+            .unwrap_or(0);
+
+        // Get already claimed
+        let claimed_key = DataKey::Claimed((entry_id.clone(), claimer.clone()));
+        let already_claimed: i128 = e.storage().persistent().get(&claimed_key).unwrap_or(0);
+
+        // Calculate amount to claim
+        let to_claim = total_claimable.saturating_sub(already_claimed);
+
+        if to_claim <= 0 {
+            panic!("No rewards to claim");
+        }
+
+        // Update claimed amount
+        e.storage().persistent().set(&claimed_key, &already_claimed.saturating_add(to_claim));
+
+        // Transfer HITZ rewards to claimer
+        let hitz_token: Address = e.storage().instance().get(&DataKey::HitzToken).unwrap();
+        let hitz_client = token::Client::new(&e, &hitz_token);
+        hitz_client.transfer(&e.current_contract_address(), &claimer, &to_claim);
+
+        log!(
+            &e,
+            "Rewards claimed: {} claimed {} HITZ from entry {}",
+            claimer,
+            to_claim,
+            entry_id
+        );
+
+        to_claim
+    }
+
+    /// Get claimable HITZ rewards for a user
+    pub fn get_claimable_rewards(e: Env, entry_id: String, user: Address) -> i128 {
+        let stake_key = DataKey::Stake((entry_id.clone(), user.clone()));
+        let user_stake: i128 = e.storage().persistent().get(&stake_key).unwrap_or(0);
+
+        if user_stake == 0 {
+            return 0;
+        }
+
+        let total_stake: i128 = e.storage().persistent()
+            .get(&DataKey::StakeTotal(entry_id.clone()))
+            .unwrap_or(0);
+
+        if total_stake == 0 {
+            return 0;
+        }
+
+        let reward_pool: i128 = e.storage().persistent()
+            .get(&DataKey::RewardPool(entry_id.clone()))
+            .unwrap_or(0);
+
+        // Calculate total claimable
+        let total_claimable = (reward_pool
+            .saturating_mul(user_stake))
+            .checked_div(total_stake)
+            .unwrap_or(0);
+
+        // Subtract already claimed
+        let claimed_key = DataKey::Claimed((entry_id.clone(), user.clone()));
+        let already_claimed: i128 = e.storage().persistent().get(&claimed_key).unwrap_or(0);
+
+        total_claimable.saturating_sub(already_claimed)
+    }
+
+    /// Get reward pool size for an entry
+    pub fn get_reward_pool(e: Env, entry_id: String) -> i128 {
+        let pool_key = DataKey::RewardPool(entry_id.clone());
+        e.storage().persistent().get(&pool_key).unwrap_or(0)
+    }
+
+    /// Calculate APR for an entry based on HITZ rewards
+    ///
+    /// APR = ((reward_pool / total_stake) / days_since_creation) × 365 × 100
+    /// Returns APR as basis points (1% = 100, 10% = 1000)
+    pub fn calculate_apr(e: Env, entry_id: String) -> i128 {
+        let entry_key = DataKey::Entry(entry_id.clone());
+        let entry: Entry = match e.storage().persistent().get(&entry_key) {
+            Some(e) => e,
+            None => return 0,
         };
 
-        let commission: i128 = (amount * commission_pct) / 100;
-        let payout: i128 = amount - commission;
+        // Get total stake (denominator)
+        let total_stake: i128 = e.storage().persistent()
+            .get(&DataKey::StakeTotal(entry_id.clone()))
+            .unwrap_or(0);
 
-        // Update user's shares and TVL only
-        let new_share = user_share - amount;
-        entry.shares.set(user.clone(), new_share);
-        entry.tvl -= amount;
-
-        // If user fully exited, clear share_since to 0
-        if new_share == 0 {
-            entry.share_since.set(user.clone(), 0);
+        if total_stake == 0 {
+            return 0;
         }
 
-        // Recompute APR for selling entry (escrow unchanged)
-        entry.apr = get_apr(&e, entry.clone());
+        // Get reward pool (numerator)
+        let reward_pool: i128 = e.storage().persistent()
+            .get(&DataKey::RewardPool(entry_id.clone()))
+            .unwrap_or(0);
 
-        // Persist selling entry first
-        e.storage().persistent().set(&key, &entry);
+        // Calculate days since creation
+        let now = e.ledger().timestamp();
+        let seconds_elapsed = now.saturating_sub(entry.created_at);
+        let days_elapsed = seconds_elapsed / 86_400;
 
-        // Transfer payout to user
-        if payout > 0 {
-            transfer(&e, &e.current_contract_address(), &user, payout);
+        if days_elapsed == 0 {
+            return 0;
         }
 
-        // Distribute commission across all other entries proportionally to tvl
-        if commission > 0 {
-            let index: Vec<String> = e.storage().persistent().get(&DataKey::Index).unwrap_or(vec![&e]);
-            let mut recipients = Vec::new(&e);
-            let mut total_tvl: i128 = 0;
-            // First pass: collect recipients (skip selling id) and sum tvl
-            for i in index.iter() {
-                if i == id { continue; }
-                let k = DataKey::Entries(i.clone());
-                if e.storage().persistent().has(&k) {
-                    let en: Entry = e.storage().persistent().get(&k).unwrap();
-                    if en.tvl > 0 {
-                        recipients.push_back(i.clone());
-                        total_tvl += en.tvl;
-                    }
-                }
-            }
-            if total_tvl > 0 && recipients.len() > 0 {
-                let mut remainder: i128 = commission;
-                let last = (recipients.len() as i32) - 1;
-                for j in 0..recipients.len() {
-                    let rid = recipients.get(j).unwrap();
-                    let rk = DataKey::Entries(rid.clone());
-                    let mut en: Entry = e.storage().persistent().get(&rk).unwrap();
-                    let mut portion = (commission * en.tvl) / total_tvl;
-                    if j as i32 == last { portion = remainder; }
-                    if portion > 0 {
-                        en.escrow += portion;
-                        en.apr = get_apr(&e, en.clone());
-                        e.storage().persistent().set(&rk, &en);
-                        remainder -= portion;
-                    }
-                }
-            }
-        }
+        // APR = (rewards / stake / days) × 365 × 10000 (basis points)
+        // Example: 10% APR = 1000 basis points
+        let daily_return = (reward_pool * 10_000) / total_stake;
+        let annual_return = (daily_return * 365) / days_elapsed as i128;
 
-        payout
+        annual_return
     }
 
-    /// Merge one entry into another. Admin-only.
+    /// Get comprehensive entry statistics for ranking
     ///
-    /// Behavior:
-    /// - Sums `tvl` and `escrow` from `from_id` into `to_id`.
-    /// - Merges `shares` and `withdrawn_earnings` maps by summing per-user values.
-    /// - Recomputes APR for the destination entry.
-    /// - Deletes the source entry and updates the global index accordingly.
-    pub fn merge_entries(e: Env, from_id: String, to_id: String) {
-        // Admin auth
-        let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
-        admin.require_auth();
+    /// Returns: (tvl_xlm, escrow_xlm, total_stake_hitz, reward_pool_hitz, apr_basis_points)
+    pub fn get_entry_stats(e: Env, entry_id: String) -> (i128, i128, i128, i128, i128) {
+        let entry_key = DataKey::Entry(entry_id.clone());
+        let entry: Entry = match e.storage().persistent().get(&entry_key) {
+            Some(e) => e,
+            None => return (0, 0, 0, 0, 0),
+        };
 
-        if from_id == to_id {
-            panic!("from_id and to_id must differ");
-        }
+        let total_stake: i128 = e.storage().persistent()
+            .get(&DataKey::StakeTotal(entry_id.clone()))
+            .unwrap_or(0);
 
-        // Load entries
-        let from_key = DataKey::Entries(from_id.clone());
-        let to_key = DataKey::Entries(to_id.clone());
+        let reward_pool: i128 = e.storage().persistent()
+            .get(&DataKey::RewardPool(entry_id.clone()))
+            .unwrap_or(0);
 
-        if !e.storage().persistent().has(&from_key) {
-            panic!("Source entry not found");
-        }
-        if !e.storage().persistent().has(&to_key) {
-            panic!("Destination entry not found");
-        }
+        let apr = Self::calculate_apr(e.clone(), entry_id);
 
-        let from_entry: Entry = e.storage().persistent().get(&from_key).unwrap();
-        let mut to_entry: Entry = e.storage().persistent().get(&to_key).unwrap();
-
-        // Merge shares
-        let share_keys = from_entry.shares.keys();
-        for k in share_keys.iter() {
-            let addr: Address = k.clone();
-            let from_amt = from_entry.shares.get(addr.clone()).unwrap_or(0);
-            if from_amt == 0 { continue; }
-            let to_amt = to_entry.shares.get(addr.clone()).unwrap_or(0);
-            to_entry.shares.set(addr, to_amt + from_amt);
-        }
-
-        // Merge withdrawn earnings
-        let we_keys = from_entry.withdrawn_earnings.keys();
-        for k in we_keys.iter() {
-            let addr: Address = k.clone();
-            let from_amt = from_entry.withdrawn_earnings.get(addr.clone()).unwrap_or(0);
-            if from_amt == 0 { continue; }
-            let to_amt = to_entry.withdrawn_earnings.get(addr.clone()).unwrap_or(0);
-            to_entry.withdrawn_earnings.set(addr, to_amt + from_amt);
-        }
-
-        // Merge share_since by choosing the earliest timestamp per user
-        let ss_keys = from_entry.share_since.keys();
-        for k in ss_keys.iter() {
-            let addr: Address = k.clone();
-            let from_ts = from_entry.share_since.get(addr.clone()).unwrap_or(0);
-            if from_ts == 0 { continue; }
-            let to_ts = to_entry.share_since.get(addr.clone()).unwrap_or(0);
-            let new_ts = if to_ts == 0 { from_ts } else { if from_ts < to_ts { from_ts } else { to_ts } };
-            to_entry.share_since.set(addr, new_ts);
-        }
-
-        // Merge balances
-        to_entry.tvl += from_entry.tvl;
-        to_entry.escrow += from_entry.escrow;
-        to_entry.apr = get_apr(&e, to_entry.clone());
-
-        // Persist destination entry
-        e.storage().persistent().set(&to_key, &to_entry);
-
-        // Remove source entry
-        e.storage().persistent().remove(&from_key);
-
-        // Update index
-        let index: Vec<String> = e.storage().persistent().get(&DataKey::Index).unwrap_or(vec![&e]);
-        let mut new_index = Vec::new(&e);
-        for i in index.iter() {
-            if i != from_id {
-                new_index.push_back(i.clone());
-            }
-        }
-        e.storage().persistent().set(&DataKey::Index, &new_index);
-
-        // No eligibility tracking required
+        (entry.tvl_xlm, entry.escrow_xlm, total_stake, reward_pool, apr)
     }
 
-    /// Remove legacy entries that have both tvl = 0 and escrow = 0.
-    /// Admin-only. Cleans `Index` and `EligibleIndex` accordingly.
-    pub fn clean_empty_entries(e: Env) -> u32 {
-        let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
-        admin.require_auth();
 
-        let index: Vec<String> = e.storage().persistent().get(&DataKey::Index).unwrap_or(vec![&e]);
-        let mut new_index = Vec::new(&e);
-        let mut removed: u32 = 0;
-
-        for i in index.iter() {
-            let key = DataKey::Entries(i.clone());
-            if e.storage().persistent().has(&key) {
-                let en: Entry = e.storage().persistent().get(&key).unwrap();
-                if en.tvl == 0 && en.escrow == 0 {
-                    e.storage().persistent().remove(&key);
-                    removed += 1;
-                } else {
-                    new_index.push_back(i.clone());
-                }
-            }
-        }
-
-        e.storage().persistent().set(&DataKey::Index, &new_index);
-
-        removed
-    }
-
-    /// Batched variant: remove up to `limit` legacy entries with tvl=0 and escrow=0.
-    /// Returns the number of entries removed in this batch.
-    pub fn clean_empty_entries_batch(e: Env, limit: u32) -> u32 {
-        let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
-        admin.require_auth();
-
-        let index: Vec<String> = e.storage().persistent().get(&DataKey::Index).unwrap_or(vec![&e]);
-        let mut new_index = Vec::new(&e);
-        let mut removed: u32 = 0;
-        let mut remaining: u32 = limit;
-
-        for i in index.iter() {
-            if remaining == 0 { new_index.push_back(i.clone()); continue; }
-            let key = DataKey::Entries(i.clone());
-            if e.storage().persistent().has(&key) {
-                let en: Entry = e.storage().persistent().get(&key).unwrap();
-                if en.tvl == 0 && en.escrow == 0 {
-                    e.storage().persistent().remove(&key);
-                    removed += 1;
-                    remaining -= 1;
-                    continue;
-                }
-            }
-            new_index.push_back(i.clone());
-        }
-
-        e.storage().persistent().set(&DataKey::Index, &new_index);
-        removed
-    }
-
-    /// Paged cleanup: scans only the [start, start+limit) window of Index, removing
-    /// entries with tvl=0 and escrow=0 inside that window. Rebuilds Index while only
-    /// decoding entries in the specified window to avoid heavy host map unpacking.
-    pub fn clean_empty_entries_page(e: Env, start: u32, limit: u32) -> u32 {
-        let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
-        admin.require_auth();
-
-        let index: Vec<String> = e.storage().persistent().get(&DataKey::Index).unwrap_or(vec![&e]);
-        let len: u32 = index.len();
-        let mut new_index = Vec::new(&e);
-        let mut removed: u32 = 0;
-
-        // Copy prefix [0, start)
-        let mut i: u32 = 0;
-        while i < start && i < len {
-            let id = index.get(i).unwrap();
-            new_index.push_back(id);
-            i += 1;
-        }
-
-        // Process window [start, start+limit)
-        let mut processed: u32 = 0;
-        while i < len && processed < limit {
-            let id = index.get(i).unwrap();
-            let key = DataKey::Entries(id.clone());
-            if e.storage().persistent().has(&key) {
-                let en: Entry = e.storage().persistent().get(&key).unwrap();
-                if en.tvl == 0 && en.escrow == 0 {
-                    e.storage().persistent().remove(&key);
-                    removed += 1;
-                } else {
-                    new_index.push_back(id);
-                }
-            } else {
-                // If missing, treat as removed
-                removed += 1;
-            }
-            i += 1;
-            processed += 1;
-        }
-
-        // Copy suffix [start+limit, len)
-        while i < len {
-            let id = index.get(i).unwrap();
-            new_index.push_back(id);
-            i += 1;
-        }
-
-        e.storage().persistent().set(&DataKey::Index, &new_index);
-        removed
-    }
-
-    /// Admin-only: remove specific entries by id without decoding their contents.
-    /// Returns count removed. Safe to use after off-chain verification.
-    pub fn remove_entries(e: Env, ids: Vec<String>) -> u32 {
-        let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
-        admin.require_auth();
-
-        let mut removed: u32 = 0;
-        let mut to_remove = Vec::new(&e);
-        for id in ids.iter() {
-            let key = DataKey::Entries(id.clone());
-            if e.storage().persistent().has(&key) {
-                e.storage().persistent().remove(&key);
-                removed += 1;
-                to_remove.push_back(id.clone());
-            }
-        }
-
-        // Rebuild Index without removed ids
-        let index: Vec<String> = e.storage().persistent().get(&DataKey::Index).unwrap_or(vec![&e]);
-        let mut new_index = Vec::new(&e);
-        for i in index.iter() {
-            if !to_remove.contains(&i) {
-                new_index.push_back(i.clone());
-            }
-        }
-        e.storage().persistent().set(&DataKey::Index, &new_index);
-
-        removed
+    pub fn version() -> u32 {
+        1
     }
 }
 
-/// Returns the configured network string, defaulting to "testnet" when unset.
-fn get_network(e: &Env) -> String {
-    e.storage()
-        .instance()
-        .get(&DataKey::Network)
-        .unwrap_or_else(|| String::from_str(e, "testnet")) 
-}
+// ============================================================================
+// Helper Functions
+// ============================================================================
 
-/// Computes APR as a percentage based on excess escrow over TVL.
-/// Returns 0 if TVL is 0 or escrow <= TVL.
-fn get_apr(_: &Env, entry: Entry) -> i128 {
-    if entry.tvl == 0 || entry.escrow <= entry.tvl {
-        return 0;
-    }
-    ((entry.escrow - entry.tvl) * SCALE * 100) / (entry.tvl * SCALE)
-}
+/// Returns (fee, difficulty, adds_to_tvl, requires_stake) for an action kind
+/// For invest action, amount_xlm determines the fee and proportional difficulty
+/// For other actions, fee = base_fee * difficulty
+fn get_action_params(e: &Env, kind: &Symbol, amount_xlm: Option<i128>) -> (i128, i128, bool, bool) {
+    let stream = symbol_short!("stream");
+    let like = symbol_short!("like");
+    let download = symbol_short!("download");
+    let mine = symbol_short!("mine");
+    let invest = symbol_short!("invest");
 
-/// Transfers `amount` of the native token between two addresses via the token
-/// client determined by the current network.
-fn transfer(e: &Env, from: &Address, to: &Address, amount: i128) {
-    let token_contract_id = &get_xlm_address(e);
-    let client = token::Client::new(e, token_contract_id);
-    client.transfer(from, to, &amount)
-}
+    // Get base fee from storage (default 0.1 XLM)
+    let base_fee: i128 = e.storage().instance().get(&DataKey::BaseFee).unwrap_or(1_000_000);
 
-/// Returns the native token contract address for the configured network.
-/// Panics for unknown networks.
-fn get_xlm_address(e: &Env) -> Address {
-    let network = get_network(e);
-    let testnet = String::from_str(e, "testnet");
-    let public = String::from_str(e, "public");
-    
-    let address_str = if network == testnet {
-        "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC"  // testnet
-    } else if network == public {
-        "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA"  // mainnet
+    if kind == &stream {
+        let difficulty = 1;
+        (base_fee * difficulty, difficulty, false, false)
+    } else if kind == &like {
+        let difficulty = 2;
+        (base_fee * difficulty, difficulty, false, false)
+    } else if kind == &download {
+        let difficulty = 3;
+        (base_fee * difficulty, difficulty, false, false)
+    } else if kind == &mine {
+        let difficulty = 10;
+        (base_fee * difficulty, difficulty, true, true)
+    } else if kind == &invest {
+        // Dynamic investment: user specifies amount (min 0.3 XLM)
+        let investment_amount = amount_xlm.unwrap_or(3_000_000);
+        
+        // Validate minimum investment
+        if investment_amount < 3_000_000 {
+            panic!("Minimum investment is 0.3 XLM (3,000,000 stroops)");
+        }
+        
+        // Calculate proportional difficulty: 10 units per 1 XLM
+        // This maintains reward parity with the original fixed invest action
+        let difficulty = (investment_amount * 10) / 10_000_000;
+        
+        (investment_amount, difficulty, true, true)
     } else {
-        panic!("Unknown network");  // Add futurenet or other networks if needed
-    };
-
-    // Return the corresponding Address
-    Address::from_string(&String::from_str(e, address_str))
+        panic!("Unknown action kind");
+    }
 }
+
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use soroban_sdk::{testutils::{Address as _, Ledger}, Env};
+    use crate::hitz_token::SkyhitzToken;
+
+    fn setup_test() -> (Env, Address, Address, Address, Address, Address) {
+        let e = Env::default();
+        e.mock_all_auths();
+
+        let admin = Address::generate(&e);
+        let treasury = Address::generate(&e);
+        let user = Address::generate(&e);
+        
+        // Deploy OpenZeppelin HITZ token with constructor args
+        let hitz_token_id = e.register(SkyhitzToken, (
+            admin.clone(),
+            0u64,              // halving_start_ts
+            126_144_000u64,    // halving_interval_sec (4 years)
+            3_000_000i128,     // epoch0_unit_reward (0.3 HITZ)
+        ));
+        
+        // Keep XLM as SAC for now (could also migrate to OpenZeppelin later)
+        let xlm_token = e.register_stellar_asset_contract_v2(admin.clone());
+
+        (e, admin, treasury, user, hitz_token_id, xlm_token.address())
+    }
+
+    // Helper function to get OpenZeppelin HITZ token client
+    fn get_hitz_client<'a>(e: &'a Env, hitz_token_id: &'a Address) -> SkyhitzTokenClient<'a> {
+        SkyhitzTokenClient::new(e, hitz_token_id)
+    }
+
+    #[test]
+    fn test_init() {
+        let (e, admin, treasury, _, hitz_addr, xlm_addr) = setup_test();
+
+        let contract_id = e.register(SkyhitzCore, ());
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        client.init(
+            &admin,
+            &treasury,
+            &hitz_addr,
+            &xlm_addr,
+            &50_000_000i128,    // stake_unit_hitz
+            &1_000_000i128,     // base_fee: 0.1 XLM
+        );
+
+        let hitz_client = SkyhitzTokenClient::new(&e, &hitz_addr);
+        let (epoch, unit_reward, released, remaining) = hitz_client.emission_info();
+        assert_eq!(epoch, 0);
+        assert_eq!(unit_reward, 3_000_000);
+        assert_eq!(released, 0);
+        assert_eq!(remaining, 210_000_000_000_000); // 21M HITZ
+    }
+
+    #[test]
+    fn test_create_entry() {
+        let (e, admin, treasury, _, hitz_addr, xlm_addr) = setup_test();
+
+        let contract_id = e.register(SkyhitzCore, ());
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        client.init(
+            &admin,
+            &treasury,
+            &hitz_addr,
+            &xlm_addr,
+            &50_000_000i128,    // stake_unit_hitz
+            &1_000_000i128,     // base_fee: 0.1 XLM
+        );
+
+        let entry_id = String::from_str(&e, "song123");
+        client.create_entry(&entry_id);
+
+        let entry = client.get_entry(&entry_id).unwrap();
+        assert_eq!(entry.tvl_xlm, 0);
+        assert_eq!(entry.escrow_xlm, 0);
+    }
+
+    #[test]
+    fn test_record_action_stream() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr) = setup_test();
+
+        let contract_id = e.register(SkyhitzCore, ());
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        // Fund contract with HITZ using OpenZeppelin token
+        let hitz_client = get_hitz_client(&e, &hitz_addr);
+        hitz_client.admin_mint(&admin, &contract_id, &100_000_000i128);
+
+        // Fund user with XLM
+        let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
+        xlm_admin.mint(&user, &100_000_000i128);
+
+        client.init(
+            &admin,
+            &treasury,
+            &hitz_addr,
+            &xlm_addr,
+            &50_000_000i128,    // stake_unit_hitz
+            &1_000_000i128,     // base_fee: 0.1 XLM
+        );
+
+        let entry_id = String::from_str(&e, "song123");
+        client.create_entry(&entry_id);
+
+        // Record stream action
+        client.record_action(&user, &entry_id, &symbol_short!("stream"), &None);
+
+        // Check entry updated
+        let entry = client.get_entry(&entry_id).unwrap();
+        assert_eq!(entry.escrow_xlm, 1_000_000); // 0.1 XLM fee added to escrow
+        assert_eq!(entry.tvl_xlm, 0);
+
+        // Check XLM transferred to treasury
+        let treasury_xlm = token::Client::new(&e, &xlm_addr).balance(&treasury);
+        assert_eq!(treasury_xlm, 1_000_000);
+
+        // Check HITZ reward (difficulty 1 * 3M unit reward)
+        let user_hitz = token::Client::new(&e, &hitz_addr).balance(&user);
+        assert_eq!(user_hitz, 3_000_000);
+
+        // Check released total
+        let hitz_client = SkyhitzTokenClient::new(&e, &hitz_addr);
+        let (_, _, released, _) = hitz_client.emission_info();
+        assert_eq!(released, 3_000_000);
+    }
+
+    #[test]
+    fn test_record_action_mine_with_stake() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr) = setup_test();
+
+        let contract_id = e.register(SkyhitzCore, ());
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        // Fund contract with HITZ
+        let hitz_admin = token::StellarAssetClient::new(&e, &hitz_addr);
+        hitz_admin.mint(&contract_id, &1_000_000_000i128);
+
+        // Fund user with XLM and HITZ
+        let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
+        xlm_admin.mint(&user, &100_000_000i128);
+        hitz_admin.mint(&user, &1_000_000_000i128);
+
+        client.init(
+            &admin,
+            &treasury,
+            &hitz_addr,
+            &xlm_addr,
+            &50_000_000i128, // 5 HITZ stake unit
+            &1_000_000i128, // base_fee: 0.1 XLM
+        );
+
+        let entry_id = String::from_str(&e, "song123");
+        client.create_entry(&entry_id);
+
+        // Record mine action (difficulty 10, requires stake)
+        client.record_action(&user, &entry_id, &symbol_short!("mine"), &None);
+
+        // Check entry updated (TVL not escrow)
+        let entry = client.get_entry(&entry_id).unwrap();
+        assert_eq!(entry.tvl_xlm, 10_000_000); // 1.0 XLM to TVL
+        assert_eq!(entry.escrow_xlm, 0);
+
+        // Check HITZ reward (difficulty 10 * 3M)
+        let user_hitz = token::Client::new(&e, &hitz_addr).balance(&user);
+        // Initial 1B - stake (500M) + reward (30M) = 530M
+        assert_eq!(user_hitz, 1_000_000_000 - 500_000_000 + 30_000_000);
+
+        // Check stake recorded (10 difficulty * 50M stake unit = 500M)
+        let stake = client.get_stake(&entry_id, &user);
+        assert_eq!(stake, 500_000_000);
+
+        let stake_total = client.get_stake_total(&entry_id);
+        assert_eq!(stake_total, 500_000_000);
+    }
+
+    #[test]
+    fn test_halving() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr) = setup_test();
+
+        let contract_id = e.register(SkyhitzCore, ());
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        let hitz_admin = token::StellarAssetClient::new(&e, &hitz_addr);
+        hitz_admin.mint(&contract_id, &1_000_000_000i128);
+        let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
+        xlm_admin.mint(&user, &100_000_000i128);
+
+        // Start at timestamp 0, 4-year intervals
+        client.init(
+            &admin,
+            &treasury,
+            &hitz_addr,
+            &xlm_addr,
+            &50_000_000i128,    // stake_unit_hitz
+            &1_000_000i128,     // base_fee: 0.1 XLM
+        );
+
+        let entry_id = String::from_str(&e, "song123");
+        client.create_entry(&entry_id);
+
+        // Epoch 0: full reward
+        e.ledger().with_mut(|li| li.timestamp = 0);
+        let hitz_client = SkyhitzTokenClient::new(&e, &hitz_addr);
+        let (epoch, unit_reward, _, _) = hitz_client.emission_info();
+        assert_eq!(epoch, 0);
+        assert_eq!(unit_reward, 3_000_000);
+
+        // Epoch 1: halved reward (after 4 years)
+        e.ledger().with_mut(|li| li.timestamp = 126_144_000);
+        let (epoch, unit_reward, _, _) = hitz_client.emission_info();
+        assert_eq!(epoch, 1);
+        assert_eq!(unit_reward, 1_500_000); // 3M / 2
+
+        // Epoch 2: halved again
+        e.ledger().with_mut(|li| li.timestamp = 2 * 126_144_000);
+        let (epoch, unit_reward, _, _) = hitz_client.emission_info();
+        assert_eq!(epoch, 2);
+        assert_eq!(unit_reward, 750_000); // 3M / 4
+    }
+
+    #[test]
+    fn test_supply_cap() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr) = setup_test();
+
+        let contract_id = e.register(SkyhitzCore, ());
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        // Fund contract with less than reward
+        let hitz_admin = token::StellarAssetClient::new(&e, &hitz_addr);
+        hitz_admin.mint(&contract_id, &1_000_000i128); // Only 1M
+
+        let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
+        xlm_admin.mint(&user, &100_000_000i128);
+
+        client.init(
+            &admin,
+            &treasury,
+            &hitz_addr,
+            &xlm_addr,
+            &0i128,             // No stake for simplicity
+            &1_000_000i128,     // base_fee: 0.1 XLM
+        );
+
+        let entry_id = String::from_str(&e, "song123");
+        client.create_entry(&entry_id);
+
+        client.record_action(&user, &entry_id, &symbol_short!("stream"), &None);
+
+        // Should only get 1M (contract balance cap)
+        let user_hitz = token::Client::new(&e, &hitz_addr).balance(&user);
+        assert_eq!(user_hitz, 1_000_000);
+    }
+
+    #[test]
+    fn test_list_entries() {
+        let (e, admin, treasury, _, hitz_addr, xlm_addr) = setup_test();
+
+        let contract_id = e.register(SkyhitzCore, ());
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        client.init(
+            &admin,
+            &treasury,
+            &hitz_addr,
+            &xlm_addr,
+            &50_000_000i128,    // stake_unit_hitz
+            &1_000_000i128,     // base_fee: 0.1 XLM
+        );
+
+        client.create_entry(&String::from_str(&e, "song1"));
+        client.create_entry(&String::from_str(&e, "song2"));
+        client.create_entry(&String::from_str(&e, "song3"));
+
+        let entries = client.list_entries(&0, &10);
+        assert_eq!(entries.len(), 3);
+        assert_eq!(entries.get(0).unwrap(), String::from_str(&e, "song1"));
+        assert_eq!(entries.get(1).unwrap(), String::from_str(&e, "song2"));
+        assert_eq!(entries.get(2).unwrap(), String::from_str(&e, "song3"));
+
+        // Test pagination
+        let page = client.list_entries(&1, &2);
+        assert_eq!(page.len(), 2);
+        assert_eq!(page.get(0).unwrap(), String::from_str(&e, "song2"));
+    }
+
+    #[test]
+    #[should_panic(expected = "Unknown action kind")]
+    fn test_unknown_action_panics() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr) = setup_test();
+
+        let contract_id = e.register(SkyhitzCore, ());
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        client.init(
+            &admin,
+            &treasury,
+            &hitz_addr,
+            &xlm_addr,
+            &50_000_000i128,    // stake_unit_hitz
+            &1_000_000i128,     // base_fee: 0.1 XLM
+        );
+
+        let entry_id = String::from_str(&e, "song123");
+        client.create_entry(&entry_id);
+
+        client.record_action(&user, &entry_id, &symbol_short!("unknown"), &None);
+    }
+
+    #[test]
+    fn test_multiple_action_kinds() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr) = setup_test();
+
+        let contract_id = e.register(SkyhitzCore, ());
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        let hitz_admin = token::StellarAssetClient::new(&e, &hitz_addr);
+        hitz_admin.mint(&contract_id, &1_000_000_000i128);
+
+        let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
+        xlm_admin.mint(&user, &100_000_000i128);
+        hitz_admin.mint(&user, &1_000_000_000i128);
+
+        client.init(
+            &admin,
+            &treasury,
+            &hitz_addr,
+            &xlm_addr,
+            &50_000_000i128,    // stake_unit_hitz
+            &1_000_000i128,     // base_fee: 0.1 XLM
+        );
+
+        let entry_id = String::from_str(&e, "song123");
+        client.create_entry(&entry_id);
+
+        // Stream, like, download -> escrow
+        client.record_action(&user, &entry_id, &symbol_short!("stream"), &None);
+        client.record_action(&user, &entry_id, &symbol_short!("like"), &None);
+        client.record_action(&user, &entry_id, &symbol_short!("download"), &None);
+
+        let entry = client.get_entry(&entry_id).unwrap();
+        // 0.1 + 0.2 + 0.3 = 0.6 XLM = 6M stroops
+        assert_eq!(entry.escrow_xlm, 6_000_000);
+        assert_eq!(entry.tvl_xlm, 0);
+
+        // Invest -> TVL (default 0.3 XLM)
+        client.record_action(&user, &entry_id, &symbol_short!("invest"), &None);
+
+        let entry = client.get_entry(&entry_id).unwrap();
+        assert_eq!(entry.escrow_xlm, 6_000_000);
+        assert_eq!(entry.tvl_xlm, 3_000_000); // 0.3 XLM
+    }
+
+    #[test]
+    fn test_dynamic_investment() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr) = setup_test();
+
+        let contract_id = e.register(SkyhitzCore, ());
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        let hitz_admin = token::StellarAssetClient::new(&e, &hitz_addr);
+        hitz_admin.mint(&contract_id, &1_000_000_000i128);
+
+        let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
+        xlm_admin.mint(&user, &100_000_000i128);
+        hitz_admin.mint(&user, &10_000_000_000i128);
+
+        client.init(
+            &admin,
+            &treasury,
+            &hitz_addr,
+            &xlm_addr,
+            &50_000_000i128, // 5 HITZ stake unit
+            &1_000_000i128, // base_fee: 0.1 XLM
+        );
+
+        let entry_id = String::from_str(&e, "song123");
+        client.create_entry(&entry_id);
+
+        // Test 1: Minimum investment (0.3 XLM = 3M stroops)
+        // Difficulty = (3M * 10) / 10M = 3
+        // Stake = 50M * 3 = 150M HITZ
+        client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(3_000_000i128));
+        
+        let entry = client.get_entry(&entry_id).unwrap();
+        assert_eq!(entry.tvl_xlm, 3_000_000); // 0.3 XLM
+        
+        let stake1 = client.get_stake(&entry_id, &user);
+        assert_eq!(stake1, 150_000_000); // 50M * 3
+
+        // Test 2: Double investment (0.6 XLM = 6M stroops)
+        // Difficulty = (6M * 10) / 10M = 6
+        // Stake = 50M * 6 = 300M HITZ
+        client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(6_000_000i128));
+        
+        let entry = client.get_entry(&entry_id).unwrap();
+        assert_eq!(entry.tvl_xlm, 9_000_000); // 0.3 + 0.6 = 0.9 XLM
+        
+        let stake2 = client.get_stake(&entry_id, &user);
+        assert_eq!(stake2, 450_000_000); // 150M + 300M
+
+        // Test 3: Large investment (3.0 XLM = 30M stroops)
+        // Difficulty = (30M * 10) / 10M = 30
+        // Stake = 50M * 30 = 1500M HITZ
+        client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(30_000_000i128));
+        
+        let entry = client.get_entry(&entry_id).unwrap();
+        assert_eq!(entry.tvl_xlm, 39_000_000); // 0.9 + 3.0 = 3.9 XLM
+        
+        let stake3 = client.get_stake(&entry_id, &user);
+        assert_eq!(stake3, 1_950_000_000); // 450M + 1500M
+
+        // Verify proportional stakes
+        let total_stake = client.get_stake_total(&entry_id);
+        assert_eq!(total_stake, 1_950_000_000);
+    }
+
+    #[test]
+    #[should_panic(expected = "Minimum investment is 0.3 XLM")]
+    fn test_investment_below_minimum() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr) = setup_test();
+
+        let contract_id = e.register(SkyhitzCore, ());
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
+        xlm_admin.mint(&user, &100_000_000i128);
+
+        client.init(
+            &admin,
+            &treasury,
+            &hitz_addr,
+            &xlm_addr,
+            &50_000_000i128,    // stake_unit_hitz
+            &1_000_000i128,     // base_fee: 0.1 XLM
+        );
+
+        let entry_id = String::from_str(&e, "song123");
+        client.create_entry(&entry_id);
+
+        // Should panic: 0.2 XLM is below minimum
+        client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(2_000_000i128));
+    }
+
+    #[test]
+    fn test_base_fee_modification() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr) = setup_test();
+
+        let contract_id = e.register(SkyhitzCore, ());
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        let hitz_admin = token::StellarAssetClient::new(&e, &hitz_addr);
+        hitz_admin.mint(&contract_id, &1_000_000_000i128);
+
+        let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
+        xlm_admin.mint(&user, &100_000_000i128);
+
+        client.init(
+            &admin,
+            &treasury,
+            &hitz_addr,
+            &xlm_addr,
+            &50_000_000i128,    // stake_unit_hitz
+            &1_000_000i128,     // base_fee: 0.1 XLM
+        );
+
+        let entry_id = String::from_str(&e, "song123");
+        client.create_entry(&entry_id);
+
+        // Test 1: Default base fee (0.1 XLM)
+        assert_eq!(client.get_base_fee(), 1_000_000);
+
+        // Record a stream action with default base fee (0.1 XLM * 1 difficulty = 0.1 XLM)
+        client.record_action(&user, &entry_id, &symbol_short!("stream"), &None);
+        let entry = client.get_entry(&entry_id).unwrap();
+        assert_eq!(entry.escrow_xlm, 1_000_000); // 0.1 XLM
+
+        // Test 2: Update base fee to 0.2 XLM
+        client.set_base_fee(&2_000_000i128);
+        assert_eq!(client.get_base_fee(), 2_000_000);
+
+        // Record another stream action (0.2 XLM * 1 difficulty = 0.2 XLM)
+        client.record_action(&user, &entry_id, &symbol_short!("stream"), &None);
+        let entry = client.get_entry(&entry_id).unwrap();
+        assert_eq!(entry.escrow_xlm, 3_000_000); // 0.1 + 0.2 = 0.3 XLM
+
+        // Test 3: Update base fee to 0.05 XLM
+        client.set_base_fee(&500_000i128);
+        assert_eq!(client.get_base_fee(), 500_000);
+
+        // Record a like action (0.05 XLM * 2 difficulty = 0.1 XLM)
+        client.record_action(&user, &entry_id, &symbol_short!("like"), &None);
+        let entry = client.get_entry(&entry_id).unwrap();
+        assert_eq!(entry.escrow_xlm, 4_000_000); // 0.3 + 0.1 = 0.4 XLM
+
+        // Verify mine action also respects new base fee (0.05 XLM * 10 difficulty = 0.5 XLM)
+        hitz_admin.mint(&user, &1_000_000_000i128);
+        client.record_action(&user, &entry_id, &symbol_short!("mine"), &None);
+        let entry = client.get_entry(&entry_id).unwrap();
+        assert_eq!(entry.tvl_xlm, 5_000_000); // 0.5 XLM in TVL
+    }
+
+    #[test]
+    #[should_panic(expected = "Base fee must be non-negative")]
+    fn test_negative_base_fee() {
+        let (e, admin, treasury, _, hitz_addr, xlm_addr) = setup_test();
+
+        let contract_id = e.register(SkyhitzCore, ());
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        client.init(
+            &admin,
+            &treasury,
+            &hitz_addr,
+            &xlm_addr,
+            &50_000_000i128,    // stake_unit_hitz
+            &1_000_000i128,     // base_fee: 0.1 XLM
+        );
+
+        // Should panic: negative fee
+        client.set_base_fee(&-1_000_000i128);
+    }
+
+    #[test]
+    fn test_allocate_and_claim_rewards() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr) = setup_test();
+
+        let contract_id = e.register(SkyhitzCore, ());
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        let hitz_admin = token::StellarAssetClient::new(&e, &hitz_addr);
+        hitz_admin.mint(&contract_id, &1_000_000_000i128);
+        hitz_admin.mint(&user, &1_000_000_000i128);
+        hitz_admin.mint(&admin, &10_000_000_000i128); // For reward allocation
+
+        let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
+        xlm_admin.mint(&user, &100_000_000i128);
+
+        client.init(
+            &admin,
+            &treasury,
+            &hitz_addr,
+            &xlm_addr,
+            &50_000_000i128,
+            &1_000_000i128,
+        );
+
+        let entry_id = String::from_str(&e, "song123");
+        client.create_entry(&entry_id);
+
+        // User stakes by investing
+        client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(10_000_000i128));
+
+        let user_stake = client.get_stake(&entry_id, &user);
+        assert_eq!(user_stake, 500_000_000); // 50M * 10 difficulty
+
+        // Admin allocates 1000 HITZ as rewards
+        client.allocate_rewards(&entry_id, &1_000_000_000i128);
+
+        // Check reward pool
+        let pool = client.get_reward_pool(&entry_id);
+        assert_eq!(pool, 1_000_000_000);
+
+        // Check claimable rewards (should be 100% since user has all stake)
+        let claimable = client.get_claimable_rewards(&entry_id, &user);
+        assert_eq!(claimable, 1_000_000_000);
+
+        // User claims rewards
+        let claimed = client.claim_rewards(&entry_id, &user);
+        assert_eq!(claimed, 1_000_000_000);
+
+        // Check claimable is now 0
+        let claimable_after = client.get_claimable_rewards(&entry_id, &user);
+        assert_eq!(claimable_after, 0);
+
+        // User should have received HITZ
+        let user_hitz = token::Client::new(&e, &hitz_addr).balance(&user);
+        // Initial 1B - stake (500M) + reward (30M from action) + claimed (1000M) = 1530M
+        assert_eq!(user_hitz, 1_530_000_000);
+    }
+
+    #[test]
+    fn test_proportional_reward_distribution() {
+        let (e, admin, treasury, _, hitz_addr, xlm_addr) = setup_test();
+
+        let contract_id = e.register(SkyhitzCore, ());
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        let hitz_admin = token::StellarAssetClient::new(&e, &hitz_addr);
+        hitz_admin.mint(&contract_id, &10_000_000_000i128);
+        hitz_admin.mint(&admin, &10_000_000_000i128);
+
+        let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
+
+        // Create 3 users
+        let user1 = Address::generate(&e);
+        let user2 = Address::generate(&e);
+        let user3 = Address::generate(&e);
+
+        hitz_admin.mint(&user1, &10_000_000_000i128);
+        hitz_admin.mint(&user2, &10_000_000_000i128);
+        hitz_admin.mint(&user3, &10_000_000_000i128);
+
+        xlm_admin.mint(&user1, &100_000_000i128);
+        xlm_admin.mint(&user2, &100_000_000i128);
+        xlm_admin.mint(&user3, &100_000_000i128);
+
+        client.init(
+            &admin,
+            &treasury,
+            &hitz_addr,
+            &xlm_addr,
+            &50_000_000i128,
+            &1_000_000i128,
+        );
+
+        let entry_id = String::from_str(&e, "song123");
+        client.create_entry(&entry_id);
+
+        // User1 invests 1 XLM (10 difficulty) → 500M HITZ stake
+        client.record_action(&user1, &entry_id, &symbol_short!("invest"), &Some(10_000_000i128));
+        
+        // User2 invests 2 XLM (20 difficulty) → 1000M HITZ stake
+        client.record_action(&user2, &entry_id, &symbol_short!("invest"), &Some(20_000_000i128));
+        
+        // User3 invests 1 XLM (10 difficulty) → 500M HITZ stake
+        client.record_action(&user3, &entry_id, &symbol_short!("invest"), &Some(10_000_000i128));
+
+        // Total stake: 2000M HITZ
+        let total_stake = client.get_stake_total(&entry_id);
+        assert_eq!(total_stake, 2_000_000_000);
+
+        // Admin allocates 2000 HITZ rewards
+        client.allocate_rewards(&entry_id, &2_000_000_000i128);
+
+        // Check proportional claimable amounts
+        let claimable1 = client.get_claimable_rewards(&entry_id, &user1);
+        let claimable2 = client.get_claimable_rewards(&entry_id, &user2);
+        let claimable3 = client.get_claimable_rewards(&entry_id, &user3);
+
+        // User1: 500M / 2000M = 25% → 500M HITZ
+        assert_eq!(claimable1, 500_000_000);
+        
+        // User2: 1000M / 2000M = 50% → 1000M HITZ
+        assert_eq!(claimable2, 1_000_000_000);
+        
+        // User3: 500M / 2000M = 25% → 500M HITZ
+        assert_eq!(claimable3, 500_000_000);
+
+        // Users claim
+        client.claim_rewards(&entry_id, &user1);
+        client.claim_rewards(&entry_id, &user2);
+        client.claim_rewards(&entry_id, &user3);
+
+        // Verify balances
+        let balance1 = token::Client::new(&e, &hitz_addr).balance(&user1);
+        let balance2 = token::Client::new(&e, &hitz_addr).balance(&user2);
+        let balance3 = token::Client::new(&e, &hitz_addr).balance(&user3);
+
+        // Each started with 10B, staked some, got action rewards, and claimed
+        // User1: 10B - 500M stake + 30M action + 500M claim = 10,030M
+        assert_eq!(balance1, 10_030_000_000);
+        
+        // User2: 10B - 1000M stake + 60M action + 1000M claim = 10,060M
+        assert_eq!(balance2, 10_060_000_000);
+        
+        // User3: 10B - 500M stake + 30M action + 500M claim = 10,030M
+        assert_eq!(balance3, 10_030_000_000);
+    }
+
+    #[test]
+    fn test_batch_allocate_rewards() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr) = setup_test();
+
+        let contract_id = e.register(SkyhitzCore, ());
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        let hitz_admin = token::StellarAssetClient::new(&e, &hitz_addr);
+        hitz_admin.mint(&contract_id, &10_000_000_000i128);
+        hitz_admin.mint(&user, &10_000_000_000i128);
+        hitz_admin.mint(&admin, &10_000_000_000i128);
+
+        let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
+        xlm_admin.mint(&user, &100_000_000i128);
+
+        client.init(
+            &admin,
+            &treasury,
+            &hitz_addr,
+            &xlm_addr,
+            &50_000_000i128,
+            &1_000_000i128,
+        );
+
+        // Create 3 entries
+        let entry1 = String::from_str(&e, "song1");
+        let entry2 = String::from_str(&e, "song2");
+        let entry3 = String::from_str(&e, "song3");
+        
+        client.create_entry(&entry1);
+        client.create_entry(&entry2);
+        client.create_entry(&entry3);
+
+        // User stakes in all entries
+        client.record_action(&user, &entry1, &symbol_short!("invest"), &Some(10_000_000i128));
+        client.record_action(&user, &entry2, &symbol_short!("invest"), &Some(10_000_000i128));
+        client.record_action(&user, &entry3, &symbol_short!("invest"), &Some(10_000_000i128));
+
+        // Batch allocate rewards
+        let mut entry_ids = Vec::new(&e);
+        entry_ids.push_back(entry1.clone());
+        entry_ids.push_back(entry2.clone());
+        entry_ids.push_back(entry3.clone());
+
+        let mut amounts = Vec::new(&e);
+        amounts.push_back(100_000_000i128);
+        amounts.push_back(200_000_000i128);
+        amounts.push_back(300_000_000i128);
+
+        client.batch_allocate_rewards(&entry_ids, &amounts);
+
+        // Verify reward pools
+        assert_eq!(client.get_reward_pool(&entry1), 100_000_000);
+        assert_eq!(client.get_reward_pool(&entry2), 200_000_000);
+        assert_eq!(client.get_reward_pool(&entry3), 300_000_000);
+    }
+
+    #[test]
+    fn test_apr_calculation() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr) = setup_test();
+
+        let contract_id = e.register(SkyhitzCore, ());
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        let hitz_admin = token::StellarAssetClient::new(&e, &hitz_addr);
+        hitz_admin.mint(&contract_id, &10_000_000_000i128);
+        hitz_admin.mint(&user, &10_000_000_000i128);
+        hitz_admin.mint(&admin, &10_000_000_000i128);
+
+        let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
+        xlm_admin.mint(&user, &100_000_000i128);
+
+        // Set ledger time to day 0
+        e.ledger().with_mut(|li| li.timestamp = 0);
+
+        client.init(
+            &admin,
+            &treasury,
+            &hitz_addr,
+            &xlm_addr,
+            &50_000_000i128,
+            &1_000_000i128,
+        );
+
+        let entry_id = String::from_str(&e, "song123");
+        client.create_entry(&entry_id);
+
+        // User invests 10 XLM (100 difficulty) → 5000M HITZ stake
+        client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(100_000_000i128));
+
+        let stake = client.get_stake(&entry_id, &user);
+        assert_eq!(stake, 5_000_000_000); // 50M * 100
+
+        // Admin allocates 500M HITZ rewards on day 30
+        e.ledger().with_mut(|li| li.timestamp = 30 * 86_400);
+        client.allocate_rewards(&entry_id, &500_000_000i128);
+
+        // Calculate APR
+        // APR = (500M / 5000M / 30 days) * 365 * 10000
+        // APR = (0.1 / 30) * 365 * 10000
+        // APR = 0.00333 * 365 * 10000 = 12,166 basis points = 121.66%
+        let apr = client.calculate_apr(&entry_id);
+        assert_eq!(apr, 12_166);
+
+        // Test with more rewards on day 60
+        e.ledger().with_mut(|li| li.timestamp = 60 * 86_400);
+        client.allocate_rewards(&entry_id, &500_000_000i128);
+
+        // Total rewards: 1000M over 60 days
+        // APR = (1000M / 5000M / 60 days) * 365 * 10000
+        // APR = (0.2 / 60) * 365 * 10000 = 12,166 basis points
+        let apr2 = client.calculate_apr(&entry_id);
+        assert_eq!(apr2, 12_166);
+    }
+
+    #[test]
+    fn test_get_entry_stats() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr) = setup_test();
+
+        let contract_id = e.register(SkyhitzCore, ());
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        let hitz_admin = token::StellarAssetClient::new(&e, &hitz_addr);
+        hitz_admin.mint(&contract_id, &10_000_000_000i128);
+        hitz_admin.mint(&user, &10_000_000_000i128);
+        hitz_admin.mint(&admin, &10_000_000_000i128);
+
+        let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
+        xlm_admin.mint(&user, &100_000_000i128);
+
+        e.ledger().with_mut(|li| li.timestamp = 0);
+
+        client.init(
+            &admin,
+            &treasury,
+            &hitz_addr,
+            &xlm_addr,
+            &50_000_000i128,
+            &1_000_000i128,
+        );
+
+        let entry_id = String::from_str(&e, "song123");
+        client.create_entry(&entry_id);
+
+        // User invests (adds to TVL)
+        client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(10_000_000i128));
+
+        // Simulate user actions that add to escrow
+        client.record_action(&user, &entry_id, &symbol_short!("stream"), &None);
+        client.record_action(&user, &entry_id, &symbol_short!("like"), &None);
+
+        // Allocate rewards
+        e.ledger().with_mut(|li| li.timestamp = 30 * 86_400);
+        client.allocate_rewards(&entry_id, &100_000_000i128);
+
+        // Get stats
+        let (tvl, escrow, stake, pool, apr) = client.get_entry_stats(&entry_id);
+
+        assert_eq!(tvl, 10_000_000); // 10 XLM invested
+        assert_eq!(escrow, 3_000_000); // 0.1 + 0.2 = 0.3 XLM from stream + like
+        assert_eq!(stake, 500_000_000); // 50M * 10 difficulty
+        assert_eq!(pool, 100_000_000); // 100M HITZ allocated
+        
+        // APR = (100M / 500M / 30 days) * 365 * 10000
+        // APR = (0.2 / 30) * 365 * 10000 = 24,333 basis points
+        assert_eq!(apr, 24_333);
+    }
+
+    #[test]
+    #[should_panic(expected = "No stake in this entry")]
+    fn test_claim_without_stake() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr) = setup_test();
+
+        let contract_id = e.register(SkyhitzCore, ());
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        let hitz_admin = token::StellarAssetClient::new(&e, &hitz_addr);
+        hitz_admin.mint(&admin, &10_000_000_000i128);
+
+        client.init(
+            &admin,
+            &treasury,
+            &hitz_addr,
+            &xlm_addr,
+            &50_000_000i128,
+            &1_000_000i128,
+        );
+
+        let entry_id = String::from_str(&e, "song123");
+        client.create_entry(&entry_id);
+
+        client.allocate_rewards(&entry_id, &100_000_000i128);
+
+        // Should panic: user has no stake
+        client.claim_rewards(&entry_id, &user);
+    }
+
+    #[test]
+    #[should_panic(expected = "No rewards to claim")]
+    fn test_double_claim() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr) = setup_test();
+
+        let contract_id = e.register(SkyhitzCore, ());
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        let hitz_admin = token::StellarAssetClient::new(&e, &hitz_addr);
+        hitz_admin.mint(&contract_id, &10_000_000_000i128);
+        hitz_admin.mint(&user, &10_000_000_000i128);
+        hitz_admin.mint(&admin, &10_000_000_000i128);
+
+        let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
+        xlm_admin.mint(&user, &100_000_000i128);
+
+        client.init(
+            &admin,
+            &treasury,
+            &hitz_addr,
+            &xlm_addr,
+            &50_000_000i128,
+            &1_000_000i128,
+        );
+
+        let entry_id = String::from_str(&e, "song123");
+        client.create_entry(&entry_id);
+
+        client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(10_000_000i128));
+        client.allocate_rewards(&entry_id, &100_000_000i128);
+
+        // First claim succeeds
+        client.claim_rewards(&entry_id, &user);
+
+        // Second claim should panic
+        client.claim_rewards(&entry_id, &user);
+    }
+
+}
+
