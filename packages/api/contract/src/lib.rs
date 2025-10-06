@@ -50,7 +50,6 @@ pub enum DataKey {
     Treasury,
     HitzToken,
     XlmToken,
-    StakeUnitHitz,
     BaseFee,                            // Base fee per difficulty unit (default 0.01 XLM)
     
     // Persistent storage
@@ -87,7 +86,6 @@ impl SkyhitzCore {
     /// * `treasury` - Treasury address receiving all XLM fees
     /// * `hitz_token` - HITZ token contract address (OpenZeppelin token)
     /// * `xlm_token` - XLM token contract address (SAC)
-    /// * `stake_unit_hitz` - HITZ amount per difficulty unit for auto-stake (unused, reserved for future use)
     /// * `base_fee` - Base fee per difficulty unit in stroops (default 100,000 = 0.01 XLM)
     pub fn init(
         e: Env,
@@ -95,7 +93,6 @@ impl SkyhitzCore {
         treasury: Address,
         hitz_token: Address,
         xlm_token: Address,
-        stake_unit_hitz: i128,
         base_fee: i128,
     ) {
         if e.storage().instance().has(&DataKey::Admin) {
@@ -106,7 +103,6 @@ impl SkyhitzCore {
         e.storage().instance().set(&DataKey::Treasury, &treasury);
         e.storage().instance().set(&DataKey::HitzToken, &hitz_token);
         e.storage().instance().set(&DataKey::XlmToken, &xlm_token);
-        e.storage().instance().set(&DataKey::StakeUnitHitz, &stake_unit_hitz);
         e.storage().instance().set(&DataKey::BaseFee, &base_fee);
         e.storage().instance().set(&DataKey::EntryCount, &0u32);
     }
@@ -790,7 +786,6 @@ mod test {
             &treasury,
             &hitz_addr,
             &xlm_addr,
-            &50_000_000i128,    // stake_unit_hitz
             &100_000i128,       // base_fee: 0.01 XLM
         );
 
@@ -814,7 +809,6 @@ mod test {
             &treasury,
             &hitz_addr,
             &xlm_addr,
-            &50_000_000i128,    // stake_unit_hitz
             &100_000i128,       // base_fee: 0.01 XLM
         );
 
@@ -882,9 +876,9 @@ mod test {
         let contract_id = e.register(SkyhitzCore, ());
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
-        // Fund contract with HITZ
-        let hitz_admin = token::StellarAssetClient::new(&e, &hitz_addr);
-        hitz_admin.mint(&contract_id, &1_000_000_000i128);
+        // Fund contract with HITZ using OpenZeppelin token admin mint
+        let hitz_client = SkyhitzTokenClient::new(&e, &hitz_addr);
+        hitz_client.admin_mint(&admin, &contract_id, &1_000_000_000i128);
 
         // Fund user with XLM; HITZ balance not required for staking anymore
         let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
@@ -895,7 +889,6 @@ mod test {
             &treasury,
             &hitz_addr,
             &xlm_addr,
-            &50_000_000i128, // 5 HITZ stake unit
             &100_000i128,   // base_fee: 0.01 XLM
         );
 
@@ -940,7 +933,6 @@ mod test {
             &treasury,
             &hitz_addr,
             &xlm_addr,
-            &50_000_000i128,    // stake_unit_hitz
             &100_000i128,       // base_fee: 0.01 XLM
         );
 
@@ -986,7 +978,6 @@ mod test {
             &treasury,
             &hitz_addr,
             &xlm_addr,
-            &0i128,             // No stake for simplicity
             &100_000i128,       // base_fee: 0.01 XLM
         );
 
@@ -1012,7 +1003,6 @@ mod test {
             &treasury,
             &hitz_addr,
             &xlm_addr,
-            &50_000_000i128,    // stake_unit_hitz
             &100_000i128,       // base_fee: 0.01 XLM
         );
 
@@ -1117,7 +1107,6 @@ mod test {
             &treasury,
             &hitz_addr,
             &xlm_addr,
-            &50_000_000i128, // 5 HITZ stake unit
             &100_000i128,   // base_fee: 0.01 XLM
         );
 
@@ -1178,7 +1167,6 @@ mod test {
             &treasury,
             &hitz_addr,
             &xlm_addr,
-            &50_000_000i128,    // stake_unit_hitz
             &100_000i128,       // base_fee: 0.01 XLM
         );
 
@@ -1207,7 +1195,6 @@ mod test {
             &treasury,
             &hitz_addr,
             &xlm_addr,
-            &50_000_000i128,    // stake_unit_hitz
             &100_000i128,       // base_fee: 0.01 XLM
         );
 
@@ -1288,7 +1275,6 @@ mod test {
             &treasury,
             &hitz_addr,
             &xlm_addr,
-            &50_000_000i128,
             &1_000_000i128,
         );
 
@@ -1357,7 +1343,6 @@ mod test {
             &treasury,
             &hitz_addr,
             &xlm_addr,
-            &50_000_000i128,
             &1_000_000i128,
         );
 
@@ -1435,7 +1420,6 @@ mod test {
             &treasury,
             &hitz_addr,
             &xlm_addr,
-            &50_000_000i128,
             &1_000_000i128,
         );
 
@@ -1668,7 +1652,6 @@ mod test {
             &treasury,
             &hitz_addr,
             &xlm_addr,
-            &50_000_000i128,
             &100_000i128,
         );
 
@@ -1719,7 +1702,6 @@ mod test {
             &treasury,
             &hitz_addr,
             &xlm_addr,
-            &50_000_000i128,
             &100_000i128,
         );
 
@@ -1762,7 +1744,6 @@ mod test {
             &treasury,
             &hitz_addr,
             &xlm_addr,
-            &50_000_000i128,
             &100_000i128,
         );
 
@@ -1793,7 +1774,6 @@ mod test {
             &treasury,
             &hitz_addr,
             &xlm_addr,
-            &50_000_000i128,
             &100_000i128,
         );
 
@@ -1827,7 +1807,6 @@ mod test {
             &treasury,
             &hitz_addr,
             &xlm_addr,
-            &50_000_000i128,
             &100_000i128,
         );
 

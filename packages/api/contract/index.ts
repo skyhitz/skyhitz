@@ -149,21 +149,20 @@ class ContractClient {
 	// - cleanEmptyEntries → not needed in new contract
 	// - cleanEmptyEntriesBatch → not needed in new contract
 
-	/**
-	 * Initialize the contract (admin-only, one-time)
-	 * New signature: (admin, treasury, hitz_token, xlm_token, stake_unit_hitz, base_fee)
-	 */
+    /**
+     * Initialize the contract (admin-only, one-time)
+     * New signature: (admin, treasury, hitz_token, xlm_token, base_fee)
+     */
 	public init = async (
 		admin: string,
 		treasury: string,
 		hitz_token: string,
 		xlm_token: string,
-		stake_unit_hitz: bigint,
 		base_fee: bigint
 	) => {
-		console.log('init', { admin, treasury, hitz_token, xlm_token, stake_unit_hitz, base_fee });
+        console.log('init', { admin, treasury, hitz_token, xlm_token, base_fee });
 		const tx = await this.contract.init(
-			{ admin, treasury, hitz_token, xlm_token, stake_unit_hitz, base_fee },
+            { admin, treasury, hitz_token, xlm_token, base_fee },
 			this.defaultOptions
 		);
 		console.log(tx);

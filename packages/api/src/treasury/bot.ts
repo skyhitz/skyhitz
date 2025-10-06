@@ -194,13 +194,41 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
 			throw new Error(`submitTransaction failed (${response.status}): ${errBody}`);
 		}
         const result: any = await response.json();
-		const spendAmount = toStellarAmount(parseFloat(buyAmountFormatted) * price);
-		return {
-			status: 'submitted',
-			txHash: result?.hash,
-			buyAmount: buyAmountFormatted,
-			spendAmount,
-		};
+        const spendAmount = toStellarAmount(parseFloat(buyAmountFormatted) * price);
+
+        // After buy, distribute HITZ on Soroban using Treasury as caller
+        try {
+            const contract = new ContractClient(env);
+            // Read Treasury's HITZ balance before and after to compute delta; fallback to buyAmountFormatted
+            const treasuryAddress = treasuryKeys.publicKey();
+            const beforeBalance = await contract.getHitzBalance(treasuryAddress);
+            // Small delay to allow offer settlement to reflect in balance endpoints
+            await new Promise((r) => setTimeout(r, 500));
+            const afterBalance = await contract.getHitzBalance(treasuryAddress);
+            const delta = Math.max(0, Number(afterBalance) - Number(beforeBalance));
+            const hitzAmountStroops = BigInt(
+                delta > 0 ? delta : Math.floor(parseFloat(buyAmountFormatted) * 10_000_000)
+            );
+
+            if (hitzAmountStroops > 0n) {
+                // Build and sign distribute call with Treasury keys
+                const treasurySignedClient = contract.getClientForKeypair(treasuryKeys);
+                const distTx = await treasurySignedClient.distribute_rewards(
+                    { caller: treasuryAddress, hitz_amount: hitzAmountStroops },
+                    { timeoutInSeconds: 60 }
+                );
+                await distTx.signAndSend();
+            }
+        } catch (e) {
+            console.log('treasury-bot: distribute_rewards skipped', (e as any)?.message || e);
+        }
+
+        return {
+            status: 'submitted',
+            txHash: result?.hash,
+            buyAmount: buyAmountFormatted,
+            spendAmount,
+        };
 	} catch (error: any) {
 		console.error('Treasury bot failed:', error?.message || error);
 		return {

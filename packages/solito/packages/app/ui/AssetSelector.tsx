@@ -4,6 +4,7 @@ import { P } from 'app/design/typography'
 import { AssetType, ASSET_INFO } from 'app/types/asset'
 import { useAssetStore } from 'app/state/asset'
 import Stellar from 'app/ui/icons/stellar'
+import Hitz from 'app/ui/icons/hitz'
 import { ChevronDown } from 'app/ui/icons/chevron-down'
 import { useState, useRef, useEffect } from 'react'
 import { useQuery } from '@apollo/client'
@@ -57,10 +58,7 @@ export function AssetSelector() {
     if (assetType === AssetType.XLM) {
       return <Stellar size={18} />
     }
-    // HITZ icon (using a simple colored circle for now)
-    return (
-      <View className="h-[18px] w-[18px] rounded-full bg-gradient-to-r from-[--primary-color] to-[--accent-color]" />
-    )
+    return <Hitz size={18} className="text-[--text-color]" />
   }
 
   return (

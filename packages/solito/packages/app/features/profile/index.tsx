@@ -26,6 +26,7 @@ import { CLAIMABLE_EARNINGS_PREVIEW, USER_HITZ_BALANCE } from 'app/api/graphql/o
 import { P, ActivityIndicator } from 'app/design/typography'
 import { useToast } from 'app/provider/toast'
 import Stellar from 'app/ui/icons/stellar'
+import Hitz from 'app/ui/icons/hitz'
 import { AssetSelector } from 'app/ui/AssetSelector'
 import { useAssetStore } from 'app/state/asset'
 import { AssetType, ASSET_INFO } from 'app/types/asset'
@@ -161,7 +162,7 @@ export function ProfileScreen({ user }: { user: User }) {
                 {selectedAsset === AssetType.XLM ? (
                   <Stellar size={18} />
                 ) : (
-                  <View className="h-[18px] w-[18px] rounded-full bg-gradient-to-r from-[--primary-color] to-[--accent-color]" />
+                  <Hitz size={18} className="text-[--text-color]" />
                 )}
                 {`${displayBalance.toFixed(2)} ${assetInfo.ticker}`}
               </P>

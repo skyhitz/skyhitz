@@ -35,7 +35,7 @@ if (typeof window !== 'undefined') {
 
 export type HitzTokenDataKey = {tag: "HalvingStartTs", values: void} | {tag: "HalvingIntervalSec", values: void} | {tag: "Epoch0Reward", values: void} | {tag: "ReleasedTotal", values: void};
 
-export type DataKey = {tag: "Admin", values: void} | {tag: "Treasury", values: void} | {tag: "HitzToken", values: void} | {tag: "XlmToken", values: void} | {tag: "StakeUnitHitz", values: void} | {tag: "BaseFee", values: void} | {tag: "Entry", values: readonly [string]} | {tag: "Stake", values: readonly [readonly [string, string]]} | {tag: "StakeTotal", values: readonly [string]} | {tag: "RewardPool", values: readonly [string]} | {tag: "Claimed", values: readonly [readonly [string, string]]} | {tag: "EntryAt", values: readonly [u32]} | {tag: "EntryCount", values: void};
+export type DataKey = {tag: "Admin", values: void} | {tag: "Treasury", values: void} | {tag: "HitzToken", values: void} | {tag: "XlmToken", values: void} | {tag: "BaseFee", values: void} | {tag: "Entry", values: readonly [string]} | {tag: "Stake", values: readonly [readonly [string, string]]} | {tag: "StakeTotal", values: readonly [string]} | {tag: "RewardPool", values: readonly [string]} | {tag: "Claimed", values: readonly [readonly [string, string]]} | {tag: "EntryAt", values: readonly [u32]} | {tag: "EntryCount", values: void};
 
 
 export interface Entry {
@@ -733,10 +733,9 @@ export interface Client {
    * * `treasury` - Treasury address receiving all XLM fees
    * * `hitz_token` - HITZ token contract address (OpenZeppelin token)
    * * `xlm_token` - XLM token contract address (SAC)
-   * * `stake_unit_hitz` - HITZ amount per difficulty unit for auto-stake
    * * `base_fee` - Base fee per difficulty unit in stroops (default 100,000 = 0.01 XLM)
    */
-  init: ({admin, treasury, hitz_token, xlm_token, stake_unit_hitz, base_fee}: {admin: string, treasury: string, hitz_token: string, xlm_token: string, stake_unit_hitz: i128, base_fee: i128}, options?: {
+  init: ({admin, treasury, hitz_token, xlm_token, base_fee}: {admin: string, treasury: string, hitz_token: string, xlm_token: string, base_fee: i128}, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -1217,9 +1216,9 @@ export class Client extends ContractClient {
         "AAAAAAAAAAAAAAASdHJhbnNmZXJfb3duZXJzaGlwAAAAAAACAAAAAAAAAAluZXdfb3duZXIAAAAAAAATAAAAAAAAABFsaXZlX3VudGlsX2xlZGdlcgAAAAAAAAQAAAAA",
         "AAAAAAAAAAAAAAAQYWNjZXB0X293bmVyc2hpcAAAAAAAAAAA",
         "AAAAAAAAAAAAAAAScmVub3VuY2Vfb3duZXJzaGlwAAAAAAAAAAAAAA==",
-        "AAAAAgAAAAAAAAAAAAAAB0RhdGFLZXkAAAAADQAAAAAAAAAAAAAABUFkbWluAAAAAAAAAAAAAAAAAAAIVHJlYXN1cnkAAAAAAAAAAAAAAAlIaXR6VG9rZW4AAAAAAAAAAAAAAAAAAAhYbG1Ub2tlbgAAAAAAAAAAAAAADVN0YWtlVW5pdEhpdHoAAAAAAAAAAAAAAAAAAAdCYXNlRmVlAAAAAAEAAAAAAAAABUVudHJ5AAAAAAAAAQAAABAAAAABAAAAAAAAAAVTdGFrZQAAAAAAAAEAAAPtAAAAAgAAABAAAAATAAAAAQAAAAAAAAAKU3Rha2VUb3RhbAAAAAAAAQAAABAAAAABAAAAAAAAAApSZXdhcmRQb29sAAAAAAABAAAAEAAAAAEAAAAAAAAAB0NsYWltZWQAAAAAAQAAA+0AAAACAAAAEAAAABMAAAABAAAAAAAAAAdFbnRyeUF0AAAAAAEAAAAEAAAAAAAAAAAAAAAKRW50cnlDb3VudAAA",
+        "AAAAAgAAAAAAAAAAAAAAB0RhdGFLZXkAAAAADAAAAAAAAAAAAAAABUFkbWluAAAAAAAAAAAAAAAAAAAIVHJlYXN1cnkAAAAAAAAAAAAAAAlIaXR6VG9rZW4AAAAAAAAAAAAAAAAAAAhYbG1Ub2tlbgAAAAAAAAAAAAAAB0Jhc2VGZWUAAAAAAQAAAAAAAAAFRW50cnkAAAAAAAABAAAAEAAAAAEAAAAAAAAABVN0YWtlAAAAAAAAAQAAA+0AAAACAAAAEAAAABMAAAABAAAAAAAAAApTdGFrZVRvdGFsAAAAAAABAAAAEAAAAAEAAAAAAAAAClJld2FyZFBvb2wAAAAAAAEAAAAQAAAAAQAAAAAAAAAHQ2xhaW1lZAAAAAABAAAD7QAAAAIAAAAQAAAAEwAAAAEAAAAAAAAAB0VudHJ5QXQAAAAAAQAAAAQAAAAAAAAAAAAAAApFbnRyeUNvdW50AAA=",
         "AAAAAQAAAAAAAAAAAAAABUVudHJ5AAAAAAAAAwAAAAAAAAAKY3JlYXRlZF9hdAAAAAAABgAAAAAAAAAKZXNjcm93X3hsbQAAAAAACwAAAAAAAAAHdHZsX3hsbQAAAAAL",
-        "AAAAAAAAAahJbml0aWFsaXplIHRoZSBjb250cmFjdCAob25lLXRpbWUgb25seSkKCiMgQXJndW1lbnRzCiogYGFkbWluYCAtIEFkbWluIGFkZHJlc3Mgd2l0aCBwcml2aWxlZ2VkIHJpZ2h0cwoqIGB0cmVhc3VyeWAgLSBUcmVhc3VyeSBhZGRyZXNzIHJlY2VpdmluZyBhbGwgWExNIGZlZXMKKiBgaGl0el90b2tlbmAgLSBISVRaIHRva2VuIGNvbnRyYWN0IGFkZHJlc3MgKE9wZW5aZXBwZWxpbiB0b2tlbikKKiBgeGxtX3Rva2VuYCAtIFhMTSB0b2tlbiBjb250cmFjdCBhZGRyZXNzIChTQUMpCiogYHN0YWtlX3VuaXRfaGl0emAgLSBISVRaIGFtb3VudCBwZXIgZGlmZmljdWx0eSB1bml0IGZvciBhdXRvLXN0YWtlCiogYGJhc2VfZmVlYCAtIEJhc2UgZmVlIHBlciBkaWZmaWN1bHR5IHVuaXQgaW4gc3Ryb29wcyAoZGVmYXVsdCAxMDAsMDAwID0gMC4wMSBYTE0pAAAABGluaXQAAAAGAAAAAAAAAAVhZG1pbgAAAAAAABMAAAAAAAAACHRyZWFzdXJ5AAAAEwAAAAAAAAAKaGl0el90b2tlbgAAAAAAEwAAAAAAAAAJeGxtX3Rva2VuAAAAAAAAEwAAAAAAAAAPc3Rha2VfdW5pdF9oaXR6AAAAAAsAAAAAAAAACGJhc2VfZmVlAAAACwAAAAA=",
+        "AAAAAAAAAWNJbml0aWFsaXplIHRoZSBjb250cmFjdCAob25lLXRpbWUgb25seSkKCiMgQXJndW1lbnRzCiogYGFkbWluYCAtIEFkbWluIGFkZHJlc3Mgd2l0aCBwcml2aWxlZ2VkIHJpZ2h0cwoqIGB0cmVhc3VyeWAgLSBUcmVhc3VyeSBhZGRyZXNzIHJlY2VpdmluZyBhbGwgWExNIGZlZXMKKiBgaGl0el90b2tlbmAgLSBISVRaIHRva2VuIGNvbnRyYWN0IGFkZHJlc3MgKE9wZW5aZXBwZWxpbiB0b2tlbikKKiBgeGxtX3Rva2VuYCAtIFhMTSB0b2tlbiBjb250cmFjdCBhZGRyZXNzIChTQUMpCiogYGJhc2VfZmVlYCAtIEJhc2UgZmVlIHBlciBkaWZmaWN1bHR5IHVuaXQgaW4gc3Ryb29wcyAoZGVmYXVsdCAxMDAsMDAwID0gMC4wMSBYTE0pAAAAAARpbml0AAAABQAAAAAAAAAFYWRtaW4AAAAAAAATAAAAAAAAAAh0cmVhc3VyeQAAABMAAAAAAAAACmhpdHpfdG9rZW4AAAAAABMAAAAAAAAACXhsbV90b2tlbgAAAAAAABMAAAAAAAAACGJhc2VfZmVlAAAACwAAAAA=",
         "AAAAAAAAAINVcGRhdGUgYmFzZSBmZWUgKGFkbWluLW9ubHkpCgojIEFyZ3VtZW50cwoqIGBuZXdfYmFzZV9mZWVgIC0gTmV3IGJhc2UgZmVlIHBlciBkaWZmaWN1bHR5IHVuaXQgaW4gc3Ryb29wcyAoZS5nLiwgMTAwLDAwMCA9IDAuMDEgWExNKQAAAAAMc2V0X2Jhc2VfZmVlAAAAAQAAAAAAAAAMbmV3X2Jhc2VfZmVlAAAACwAAAAA=",
         "AAAAAAAAABRHZXQgY3VycmVudCBiYXNlIGZlZQAAAAxnZXRfYmFzZV9mZWUAAAAAAAAAAQAAAAs=",
         "AAAAAAAAAB9DcmVhdGUgYSBuZXcgZW50cnkgKGFkbWluLW9ubHkpAAAAAAxjcmVhdGVfZW50cnkAAAABAAAAAAAAAAhlbnRyeV9pZAAAABAAAAAA",

@@ -73,7 +73,7 @@ upgrade(new_wasm_hash)
 
 ```rust
 // Initialize contract
-init(admin, treasury, hitz_token, xlm_token, stake_unit_hitz, base_fee)
+init(admin, treasury, hitz_token, xlm_token, base_fee)
 
 // Record user action and mint rewards
 record_action(caller, entry_id, kind, amount_xlm)
