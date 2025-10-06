@@ -26,8 +26,8 @@
 //! - Admin can update via set_base_fee() to adjust all action fees proportionally
 //!
 //! Auto-stake (invest/mine only):
-//! - stake_amount = StakeUnitHitz * difficulty
-//! - Pulls HITZ from caller to contract
+//! - stake_amount = Minted reward amount per action
+//! - Pulls newly minted HITZ from caller to contract for locking
 //! - Updates per-user and total stake for entry
 
 mod hitz_token;
@@ -87,7 +87,7 @@ impl SkyhitzCore {
     /// * `treasury` - Treasury address receiving all XLM fees
     /// * `hitz_token` - HITZ token contract address (OpenZeppelin token)
     /// * `xlm_token` - XLM token contract address (SAC)
-    /// * `stake_unit_hitz` - HITZ amount per difficulty unit for auto-stake
+    /// * `stake_unit_hitz` - HITZ amount per difficulty unit for auto-stake (unused, reserved for future use)
     /// * `base_fee` - Base fee per difficulty unit in stroops (default 100,000 = 0.01 XLM)
     pub fn init(
         e: Env,
@@ -190,20 +190,19 @@ impl SkyhitzCore {
         // Request HITZ reward from token contract (handles emission logic)
         let hitz_token: Address = e.storage().instance().get(&DataKey::HitzToken).unwrap();
         let hitz_token_client = SkyhitzTokenClient::new(&e, &hitz_token);
-        let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
-        let reward = hitz_token_client.mint_reward(&admin, &caller, &difficulty);
+        let owner = e.current_contract_address();
+        let reward = hitz_token_client.mint_reward(&owner, &caller, &difficulty);
 
-        // Auto-stake for invest/mine
+        // Auto-stake for invest/mine using the freshly minted reward amount
         if requires_stake {
-            let stake_unit: i128 = e.storage().instance().get(&DataKey::StakeUnitHitz).unwrap();
-            let stake_amt = stake_unit.saturating_mul(difficulty);
+            let stake_amt = reward;
 
             if stake_amt > 0 {
-                // Pull HITZ from caller to contract
+                // Transfer minted reward from user to contract to lock it as stake
                 let hitz_client = token::Client::new(&e, &hitz_token);
                 hitz_client.transfer(&caller, &e.current_contract_address(), &stake_amt);
 
-                // Update stake maps
+                // Update stake maps using the newly staked reward amount
                 let stake_key = DataKey::Stake((entry_id.clone(), caller.clone()));
                 let current_stake: i128 = e.storage().persistent().get(&stake_key).unwrap_or(0);
                 e.storage()
@@ -887,10 +886,9 @@ mod test {
         let hitz_admin = token::StellarAssetClient::new(&e, &hitz_addr);
         hitz_admin.mint(&contract_id, &1_000_000_000i128);
 
-        // Fund user with XLM and HITZ
+        // Fund user with XLM; HITZ balance not required for staking anymore
         let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
         xlm_admin.mint(&user, &100_000_000i128);
-        hitz_admin.mint(&user, &1_000_000_000i128);
 
         client.init(
             &admin,
@@ -912,17 +910,16 @@ mod test {
         assert_eq!(entry.tvl_xlm, 10_000_000); // 1.0 XLM to TVL
         assert_eq!(entry.escrow_xlm, 0);
 
-        // Check HITZ reward (difficulty 10 * 3M)
+        // Check user balance (minted reward was auto-staked, so balance unchanged)
         let user_hitz = token::Client::new(&e, &hitz_addr).balance(&user);
-        // Initial 1B - stake (500M) + reward (30M) = 530M
-        assert_eq!(user_hitz, 1_000_000_000 - 500_000_000 + 30_000_000);
+        assert_eq!(user_hitz, 1_000_000_000);
 
-        // Check stake recorded (10 difficulty * 50M stake unit = 500M)
+        // Check stake recorded (equals minted reward amount)
         let stake = client.get_stake(&entry_id, &user);
-        assert_eq!(stake, 500_000_000);
+        assert_eq!(stake, 30_000_000);
 
         let stake_total = client.get_stake_total(&entry_id);
-        assert_eq!(stake_total, 500_000_000);
+        assert_eq!(stake_total, 30_000_000);
     }
 
     #[test]
@@ -1114,7 +1111,6 @@ mod test {
 
         let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
         xlm_admin.mint(&user, &100_000_000i128);
-        hitz_admin.mint(&user, &10_000_000_000i128);
 
         client.init(
             &admin,
@@ -1130,40 +1126,40 @@ mod test {
 
         // Test 1: Minimum investment (0.3 XLM = 3M stroops)
         // Difficulty = (3M * 10) / 10M = 3
-        // Stake = 50M * 3 = 150M HITZ
+        // Reward = 3 × unit reward (3_000_000) = 9_000_000 HITZ staked
         client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(3_000_000i128));
         
         let entry = client.get_entry(&entry_id).unwrap();
         assert_eq!(entry.tvl_xlm, 3_000_000); // 0.3 XLM
         
         let stake1 = client.get_stake(&entry_id, &user);
-        assert_eq!(stake1, 150_000_000); // 50M * 3
+        assert_eq!(stake1, 9_000_000);
 
         // Test 2: Double investment (0.6 XLM = 6M stroops)
         // Difficulty = (6M * 10) / 10M = 6
-        // Stake = 50M * 6 = 300M HITZ
+        // Reward = 6 × unit reward (3_000_000) = 18_000_000 HITZ staked (total 27_000_000)
         client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(6_000_000i128));
         
         let entry = client.get_entry(&entry_id).unwrap();
         assert_eq!(entry.tvl_xlm, 9_000_000); // 0.3 + 0.6 = 0.9 XLM
         
         let stake2 = client.get_stake(&entry_id, &user);
-        assert_eq!(stake2, 450_000_000); // 150M + 300M
+        assert_eq!(stake2, 27_000_000);
 
         // Test 3: Large investment (3.0 XLM = 30M stroops)
         // Difficulty = (30M * 10) / 10M = 30
-        // Stake = 50M * 30 = 1500M HITZ
+        // Reward = 30 × unit reward (3_000_000) = 90_000_000 HITZ staked (total 117_000_000)
         client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(30_000_000i128));
         
         let entry = client.get_entry(&entry_id).unwrap();
         assert_eq!(entry.tvl_xlm, 39_000_000); // 0.9 + 3.0 = 3.9 XLM
         
         let stake3 = client.get_stake(&entry_id, &user);
-        assert_eq!(stake3, 1_950_000_000); // 450M + 1500M
+        assert_eq!(stake3, 117_000_000);
 
         // Verify proportional stakes
         let total_stake = client.get_stake_total(&entry_id);
-        assert_eq!(total_stake, 1_950_000_000);
+        assert_eq!(total_stake, 117_000_000);
     }
 
     #[test]
@@ -1303,7 +1299,7 @@ mod test {
         client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(10_000_000i128));
 
         let user_stake = client.get_stake(&entry_id, &user);
-        assert_eq!(user_stake, 500_000_000); // 50M * 10 difficulty
+        assert_eq!(user_stake, 30_000_000);
 
         // Admin allocates 1000 HITZ as rewards
         client.allocate_rewards(&entry_id, &1_000_000_000i128);
@@ -1326,8 +1322,8 @@ mod test {
 
         // User should have received HITZ
         let user_hitz = token::Client::new(&e, &hitz_addr).balance(&user);
-        // Initial 1B - stake (500M) + reward (30M from action) + claimed (1000M) = 1530M
-        assert_eq!(user_hitz, 1_530_000_000);
+        // Minted reward staked (30M) and claimed reward (1000M) increase balance by 1,030M
+        assert_eq!(user_hitz, 1_030_000_000);
     }
 
     #[test]
@@ -1368,18 +1364,18 @@ mod test {
         let entry_id = String::from_str(&e, "song123");
         client.create_entry(&entry_id);
 
-        // User1 invests 1 XLM (10 difficulty) → 500M HITZ stake
+        // User1 invests 1 XLM (10 difficulty) → reward 30M HITZ stake
         client.record_action(&user1, &entry_id, &symbol_short!("invest"), &Some(10_000_000i128));
         
-        // User2 invests 2 XLM (20 difficulty) → 1000M HITZ stake
+        // User2 invests 2 XLM (20 difficulty) → reward 60M HITZ stake
         client.record_action(&user2, &entry_id, &symbol_short!("invest"), &Some(20_000_000i128));
         
-        // User3 invests 1 XLM (10 difficulty) → 500M HITZ stake
+        // User3 invests 1 XLM (10 difficulty) → reward 30M HITZ stake
         client.record_action(&user3, &entry_id, &symbol_short!("invest"), &Some(10_000_000i128));
 
-        // Total stake: 2000M HITZ
+        // Total stake: 120M HITZ
         let total_stake = client.get_stake_total(&entry_id);
-        assert_eq!(total_stake, 2_000_000_000);
+        assert_eq!(total_stake, 120_000_000);
 
         // Admin allocates 2000 HITZ rewards
         client.allocate_rewards(&entry_id, &2_000_000_000i128);
@@ -1389,13 +1385,13 @@ mod test {
         let claimable2 = client.get_claimable_rewards(&entry_id, &user2);
         let claimable3 = client.get_claimable_rewards(&entry_id, &user3);
 
-        // User1: 500M / 2000M = 25% → 500M HITZ
+        // User1: 30M / 120M = 25% → 500M HITZ (allocation unchanged)
         assert_eq!(claimable1, 500_000_000);
         
-        // User2: 1000M / 2000M = 50% → 1000M HITZ
+        // User2: 60M / 120M = 50% → 1000M HITZ
         assert_eq!(claimable2, 1_000_000_000);
         
-        // User3: 500M / 2000M = 25% → 500M HITZ
+        // User3: 30M / 120M = 25% → 500M HITZ
         assert_eq!(claimable3, 500_000_000);
 
         // Users claim
@@ -1408,15 +1404,15 @@ mod test {
         let balance2 = token::Client::new(&e, &hitz_addr).balance(&user2);
         let balance3 = token::Client::new(&e, &hitz_addr).balance(&user3);
 
-        // Each started with 10B, staked some, got action rewards, and claimed
-        // User1: 10B - 500M stake + 30M action + 500M claim = 10,030M
-        assert_eq!(balance1, 10_030_000_000);
+        // Each started with 10B, got action rewards, and claimed; minted rewards were staked, not deducted
+        // User1: 10B + 30M action + 500M claim = 10,530M
+        assert_eq!(balance1, 10_530_000_000);
         
-        // User2: 10B - 1000M stake + 60M action + 1000M claim = 10,060M
-        assert_eq!(balance2, 10_060_000_000);
+        // User2: 10B + 60M action + 1000M claim = 11,060M
+        assert_eq!(balance2, 11_060_000_000);
         
-        // User3: 10B - 500M stake + 30M action + 500M claim = 10,030M
-        assert_eq!(balance3, 10_030_000_000);
+        // User3: 10B + 30M action + 500M claim = 10,530M
+        assert_eq!(balance3, 10_530_000_000);
     }
 
     #[test]
@@ -1452,7 +1448,7 @@ mod test {
         client.create_entry(&entry2);
         client.create_entry(&entry3);
 
-        // User stakes in all entries
+        // User stakes in all entries (stake equals minted reward per action)
         client.record_action(&user, &entry1, &symbol_short!("invest"), &Some(10_000_000i128));
         client.record_action(&user, &entry2, &symbol_short!("invest"), &Some(10_000_000i128));
         client.record_action(&user, &entry3, &symbol_short!("invest"), &Some(10_000_000i128));
@@ -1506,32 +1502,30 @@ mod test {
         let entry_id = String::from_str(&e, "song123");
         client.create_entry(&entry_id);
 
-        // User invests 10 XLM (100 difficulty) → 5000M HITZ stake
+        // User invests 10 XLM (100 difficulty)
         client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(100_000_000i128));
 
         let stake = client.get_stake(&entry_id, &user);
-        assert_eq!(stake, 5_000_000_000); // 50M * 100
+        assert_eq!(stake, 300_000_000);
 
         // Admin allocates 500M HITZ rewards on day 30
         e.ledger().with_mut(|li| li.timestamp = 30 * 86_400);
         client.allocate_rewards(&entry_id, &500_000_000i128);
 
         // Calculate APR
-        // APR = (500M / 5000M / 30 days) * 365 * 10000
-        // APR = (0.1 / 30) * 365 * 10000
-        // APR = 0.00333 * 365 * 10000 = 12,166 basis points = 121.66%
+        // APR = (500M / 300M / 30 days) * 365 * 10000
+        // APR = (1.666... / 30) * 365 * 10000 ≈ 202,833 basis points = 2028.33%
         let apr = client.calculate_apr(&entry_id);
-        assert_eq!(apr, 12_166);
+        assert_eq!(apr, 202_833);
 
         // Test with more rewards on day 60
         e.ledger().with_mut(|li| li.timestamp = 60 * 86_400);
         client.allocate_rewards(&entry_id, &500_000_000i128);
 
         // Total rewards: 1000M over 60 days
-        // APR = (1000M / 5000M / 60 days) * 365 * 10000
-        // APR = (0.2 / 60) * 365 * 10000 = 12,166 basis points
+        // APR = (1000M / 300M / 60 days) * 365 * 10000 ≈ 202,833 basis points
         let apr2 = client.calculate_apr(&entry_id);
-        assert_eq!(apr2, 12_166);
+        assert_eq!(apr2, 202_833);
     }
 
     #[test]
@@ -1579,12 +1573,11 @@ mod test {
 
         assert_eq!(tvl, 10_000_000); // 10 XLM invested
         assert_eq!(escrow, 3_000_000); // 0.1 + 0.2 = 0.3 XLM from stream + like
-        assert_eq!(stake, 500_000_000); // 50M * 10 difficulty
+        assert_eq!(stake, 30_000_000);
         assert_eq!(pool, 100_000_000); // 100M HITZ allocated
         
-        // APR = (100M / 500M / 30 days) * 365 * 10000
-        // APR = (0.2 / 30) * 365 * 10000 = 24,333 basis points
-        assert_eq!(apr, 24_333);
+        // APR = (100M / 30M / 30 days) * 365 * 10000 ≈ 405,666 basis points
+        assert_eq!(apr, 405_666);
     }
 
     #[test]
@@ -1682,29 +1675,29 @@ mod test {
         let entry_id = String::from_str(&e, "song123");
         client.create_entry(&entry_id);
 
-        // User invests 10 XLM → gets 500M HITZ stake (50M * 10 difficulty)
+        // User invests 10 XLM; minted reward (30M) is auto-staked
         client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(10_000_000i128));
 
         let user_stake_before = client.get_stake(&entry_id, &user);
         let total_stake_before = client.get_stake_total(&entry_id);
-        assert_eq!(user_stake_before, 500_000_000);
-        assert_eq!(total_stake_before, 500_000_000);
+        assert_eq!(user_stake_before, 30_000_000);
+        assert_eq!(total_stake_before, 30_000_000);
 
         let user_balance_before = hitz_balance_client.balance(&user);
 
-        // Unstake 200M HITZ (40% of stake)
-        let unstaked = client.unstake(&entry_id, &user, &200_000_000i128);
-        assert_eq!(unstaked, 200_000_000);
+        // Unstake 12M HITZ (40% of 30M stake)
+        let unstaked = client.unstake(&entry_id, &user, &12_000_000i128);
+        assert_eq!(unstaked, 12_000_000);
 
         // Verify stake updated
         let user_stake_after = client.get_stake(&entry_id, &user);
         let total_stake_after = client.get_stake_total(&entry_id);
-        assert_eq!(user_stake_after, 300_000_000); // 500M - 200M
-        assert_eq!(total_stake_after, 300_000_000); // 500M - 200M
+        assert_eq!(user_stake_after, 18_000_000);
+        assert_eq!(total_stake_after, 18_000_000);
 
         // Verify HITZ returned to user
         let user_balance_after = hitz_balance_client.balance(&user);
-        assert_eq!(user_balance_after, user_balance_before + 200_000_000);
+        assert_eq!(user_balance_after, user_balance_before + 12_000_000);
     }
 
     #[test]
@@ -1733,15 +1726,15 @@ mod test {
         let entry_id = String::from_str(&e, "song123");
         client.create_entry(&entry_id);
 
-        // User invests 10 XLM → gets 500M HITZ stake
+        // User invests 10 XLM; minted reward (30M) is auto-staked
         client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(10_000_000i128));
 
         let user_stake_before = client.get_stake(&entry_id, &user);
-        assert_eq!(user_stake_before, 500_000_000);
+        assert_eq!(user_stake_before, 30_000_000);
 
         // Unstake ALL HITZ
-        let unstaked = client.unstake(&entry_id, &user, &500_000_000i128);
-        assert_eq!(unstaked, 500_000_000);
+        let unstaked = client.unstake(&entry_id, &user, &30_000_000i128);
+        assert_eq!(unstaked, 30_000_000);
 
         // Verify stake removed
         let user_stake_after = client.get_stake(&entry_id, &user);
@@ -1884,18 +1877,18 @@ mod test {
         let total_stake_before = client.get_stake_total(&entry_id);
         assert_eq!(total_stake_before, 1_500_000_000);
 
-        // User1 unstakes half their stake
-        client.unstake(&entry_id, &user, &250_000_000i128);
+        // User1 unstakes part of their stake (half of 15M = 7.5M)
+        client.unstake(&entry_id, &user, &7_500_000i128);
 
         // Verify individual stakes
         let user1_stake = client.get_stake(&entry_id, &user);
         let user2_stake = client.get_stake(&entry_id, &user2);
-        assert_eq!(user1_stake, 250_000_000); // 500M - 250M
-        assert_eq!(user2_stake, 1_000_000_000); // unchanged
+        assert_eq!(user1_stake, 7_500_000);
+        assert_eq!(user2_stake, 60_000_000);
 
         // Verify total stake
         let total_stake_after = client.get_stake_total(&entry_id);
-        assert_eq!(total_stake_after, 1_250_000_000); // 1500M - 250M
+        assert_eq!(total_stake_after, 67_500_000);
     }
 
     #[test]
@@ -1926,15 +1919,15 @@ mod test {
 
         // User invests
         client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(10_000_000i128));
-        assert_eq!(client.get_stake(&entry_id, &user), 500_000_000);
+        assert_eq!(client.get_stake(&entry_id, &user), 30_000_000);
 
         // User unstakes
-        client.unstake(&entry_id, &user, &500_000_000i128);
+        client.unstake(&entry_id, &user, &30_000_000i128);
         assert_eq!(client.get_stake(&entry_id, &user), 0);
 
         // User reinvests
         client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(10_000_000i128));
-        assert_eq!(client.get_stake(&entry_id, &user), 500_000_000);
+        assert_eq!(client.get_stake(&entry_id, &user), 30_000_000);
     }
 
 }

@@ -39,7 +39,7 @@ export function ProfileScreen({ user }: { user: User }) {
   const [sendHitzModalVisible, setSendHitzModalVisible] = useState<boolean>(false)
   const [isClaimingEarnings, setIsClaimingEarnings] = useState(false)
   const { data: credits, refetch: refetchUserCredits } = useUserCreditsQuery()
-  const { data: hitzBalanceData } = useQuery(USER_HITZ_BALANCE, { skip: !user })
+  const { data: hitzBalanceData, refetch: refetchHitzBalance } = useQuery(USER_HITZ_BALANCE, { skip: !user })
   const { data: userLikesData } = useUserLikesQuery()
   const { data: userCollectionData } = useUserCollectionQuery(user.id)
   const [claimEarnings] = useClaimEarningsMutation()
@@ -240,6 +240,7 @@ export function ProfileScreen({ user }: { user: User }) {
         onClose={() => {
           setSendHitzModalVisible(false)
           // Refetch HITZ balance after sending
+          refetchHitzBalance()
         }}
         currentBalance={displayBalance}
       />

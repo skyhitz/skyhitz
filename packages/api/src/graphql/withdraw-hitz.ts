@@ -1,6 +1,6 @@
 import { GraphQLError } from 'graphql';
 import { Context } from 'src/util/types';
-import ContractClient from '../contract';
+import ContractClient from '../../contract';
 import { requireAuth } from 'src/auth/auth-context';
 import Encryption from 'src/util/encryption';
 
@@ -41,8 +41,9 @@ export const withdrawHitzResolver = async (_: any, args: any, context: Context) 
 	}
 
 	try {
-		// Get user's HITZ balance
-		const balanceInHitz = await contract.getHitzBalance(user.publicKey);
+		// Get user's HITZ balance (convert from stroops)
+		const balanceInStroops = await contract.getHitzBalance(user.publicKey);
+		const balanceInHitz = Number(balanceInStroops) / 10_000_000;
 		
 		if (balanceInHitz < amount) {
 			throw new GraphQLError(

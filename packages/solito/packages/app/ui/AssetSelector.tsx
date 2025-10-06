@@ -6,6 +6,8 @@ import { useAssetStore } from 'app/state/asset'
 import Stellar from 'app/ui/icons/stellar'
 import { ChevronDown } from 'app/ui/icons/chevron-down'
 import { useState, useRef, useEffect } from 'react'
+import { useQuery } from '@apollo/client'
+import { USER_HITZ_BALANCE, USER_CREDITS } from 'app/api/graphql/operations'
 
 /**
  * Asset Selector Component
@@ -18,7 +20,15 @@ export function AssetSelector() {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<View>(null)
 
-  const assets = [AssetType.XLM, AssetType.HITZ]
+  // Fetch balances to decide which assets to show
+  const { data: hitzData } = useQuery(USER_HITZ_BALANCE)
+  const { data: xlmData } = useQuery(USER_CREDITS)
+
+  const hitzBalance = (hitzData?.userHitzBalance ?? 0) as number
+  const xlmBalance = (xlmData?.userCredits ?? 0) as number
+
+  // Only show HITZ if user has a positive balance
+  const assets = [AssetType.XLM].concat(hitzBalance > 0 ? [AssetType.HITZ] as const : [])
   const currentAssetInfo = ASSET_INFO[selectedAsset]
 
   const handleSelect = (asset: AssetType) => {

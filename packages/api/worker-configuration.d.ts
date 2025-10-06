@@ -8,6 +8,7 @@ interface Env {
 	JWT_SECRET: string;
 	ISSUER_ID: string;
 	ISSUER_SEED: string;
+	HITZ_TOKEN_ID: string;
 	ALGOLIA_ADMIN_API_KEY: string;
 	POSTMARK_SERVER_TOKEN: string;
 	STRIPE_SECRET_KEY: string;

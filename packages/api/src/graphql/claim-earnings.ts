@@ -1,6 +1,7 @@
 import { GraphQLError } from 'graphql';
 import { Context } from 'src/util/types';
 import ContractClient from '../../contract';
+import StellarClient from '../stellar/operations';
 import { AlgoliaClient } from 'src/algolia/algolia';
 import { requireAuth } from 'src/auth/auth-context';
 import Encryption from 'src/util/encryption';
@@ -27,6 +28,7 @@ export const claimEarningsResolver = async (_: any, __: any, context: Context) =
 	const user = await requireAuth(context);
 	const encryption = new Encryption(context.env);
 	const contractClient = new ContractClient(context.env);
+    const stellar = new StellarClient(context.env);
 
 	// Check if user has claimed earnings recently
 	const claimCacheKey = `user_claim_${user.id}`;
@@ -69,6 +71,13 @@ export const claimEarningsResolver = async (_: any, __: any, context: Context) =
 	let totalClaimedAmount = 0; // In stroops (1 HITZ = 10^7 stroops)
 	const claimedEntries = [];
 	const userSecret = await encryption.decrypt(user.seed);
+
+	// Ensure trustline for HITZ (classic asset) exists if configured
+	try {
+		await stellar.ensureHitzTrustline(userSecret);
+	} catch (e) {
+		console.log('ensureHitzTrustline skipped/failed:', (e as any)?.message || e);
+	}
 
 	console.log(`📊 Checking ${entries.length} entries for claimable rewards`);
 

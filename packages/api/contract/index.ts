@@ -25,7 +25,8 @@ type ContractId = typeof testnetContractId | typeof mainnetContractId;
 type NetworkPassphrase = typeof testnetNetworkPassphrase | typeof mainnetNetworkPassphrase;
 
 class ContractClient {
-	private sourceKeys: Keypair;
+    private sourceKeys: Keypair;
+    private hitzTokenId: string;
 	private defaultOptions = { timeoutInSeconds: 60, fee: 100000000, restore: true };
 	private network: Network;
 	private horizonUrl: HorizonUrl;
@@ -34,15 +35,16 @@ class ContractClient {
 	private networkPassphrase: NetworkPassphrase;
 	private contract: Client;
 
-	constructor(env: Env) {
-		this.sourceKeys = Keypair.fromSecret(env.ISSUER_SEED);
-		this.network = env.STELLAR_NETWORK as Network;
-		this.horizonUrl = env.STELLAR_NETWORK === 'testnet' ? testnetHorizonUrl : mainnetHorizonUrl;
-		this.rpcUrl = env.STELLAR_NETWORK === 'testnet' ? testnetRpcUrl : mainnetRpcUrl;
-		this.contractId = env.STELLAR_NETWORK === 'testnet' ? testnetContractId : mainnetContractId;
-		this.networkPassphrase = env.STELLAR_NETWORK === 'testnet' ? testnetNetworkPassphrase : mainnetNetworkPassphrase;
-		this.contract = this.getClientForKeypair(this.sourceKeys);
-	}
+    constructor(env: Env) {
+        this.sourceKeys = Keypair.fromSecret(env.ISSUER_SEED);
+        this.network = env.STELLAR_NETWORK as Network;
+        this.horizonUrl = env.STELLAR_NETWORK === 'testnet' ? testnetHorizonUrl : mainnetHorizonUrl;
+        this.rpcUrl = env.STELLAR_NETWORK === 'testnet' ? testnetRpcUrl : mainnetRpcUrl;
+        this.contractId = env.STELLAR_NETWORK === 'testnet' ? testnetContractId : mainnetContractId;
+        this.networkPassphrase = env.STELLAR_NETWORK === 'testnet' ? testnetNetworkPassphrase : mainnetNetworkPassphrase;
+        this.contract = this.getClientForKeypair(this.sourceKeys);
+        this.hitzTokenId = env.HITZ_TOKEN_ID;
+    }
 
 	public getClientForKeypair(keys: Keypair) {
 		return new Client({
@@ -67,6 +69,45 @@ class ContractClient {
 			},
 		});
 	}
+
+    private getTokenClientForKeypair(keys: Keypair) {
+        return new Client({
+            contractId: this.hitzTokenId,
+            networkPassphrase: this.networkPassphrase,
+            rpcUrl: this.rpcUrl,
+            publicKey: keys.publicKey(),
+            signTransaction: async (tx: string) => {
+                const txFromXDR = new Transaction(tx, this.networkPassphrase);
+                txFromXDR.sign(keys);
+                return {
+                    signedTxXdr: txFromXDR.toXDR(),
+                    signerAddress: keys.publicKey(),
+                };
+            },
+            signAuthEntry: async (entryXdr) => {
+                const signedAuthEntry = keys.sign(hash(Buffer.from(entryXdr, 'base64'))).toString('base64');
+                return {
+                    signedAuthEntry,
+                    signerAddress: keys.publicKey(),
+                };
+            },
+        });
+    }
+
+    /**
+     * Read HITZ token symbol from the token contract
+     */
+    public getHitzSymbol = async () => {
+        try {
+            const tokenClient = this.getTokenClientForKeypair(this.sourceKeys);
+            const tx = await tokenClient.symbol(this.defaultOptions);
+            // Expect "HITZ"
+            return tx.result as string;
+        } catch (e) {
+            console.log('getHitzSymbol failed:', (e as any)?.message || e);
+            return 'HITZ';
+        }
+    };
 
 	public async fetchCurrentLedger() {
 		try {
@@ -232,51 +273,45 @@ class ContractClient {
 	 * Get user's HITZ token balance
 	 * Uses the Soroban token client to query the HITZ contract
 	 */
-	public getHitzBalance = async (userPublicKey: string) => {
-		try {
-			// For now, return 0 as HITZ contract address needs to be deployed and configured
-			// TODO: Once HITZ contract is deployed, use env.HITZ_TOKEN_ADDRESS
-			console.log('getHitzBalance called for:', userPublicKey);
-			return 0;
-		} catch (error) {
-			console.error('Error fetching HITZ balance:', error);
-			return 0;
-		}
-	};
+    public getHitzBalance = async (userPublicKey: string) => {
+        try {
+            const tokenClient = this.getTokenClientForKeypair(this.sourceKeys);
+            const tx = await tokenClient.balance({ account: userPublicKey }, this.defaultOptions);
+            return Number(tx.result);
+        } catch (error) {
+            console.error('Error fetching HITZ balance:', error);
+            return 0;
+        }
+    };
 
 	/**
 	 * Transfer HITZ tokens to another address
 	 * Uses the Soroban token transfer functionality
 	 */
-	public transferHitz = async (secret: string, toAddress: string, amount: number) => {
-		try {
-			// Convert amount to stroops (HITZ uses 7 decimals like XLM)
-			const amountInStroops = BigInt(Math.floor(amount * 10_000_000));
+    public transferHitz = async (secret: string, toAddress: string, amount: number) => {
+        try {
+            const userKeys = Keypair.fromSecret(secret);
+            const fromAddress = userKeys.publicKey();
+            const amountInStroops = BigInt(Math.floor(amount * 10_000_000));
 
-			// For now, return a placeholder response
-			// TODO: Once HITZ contract is deployed, implement actual transfer logic:
-			// 1. Get HITZ token address from env.HITZ_TOKEN_ADDRESS
-			// 2. Create Soroban token client
-			// 3. Call transfer(from, to, amount)
-			// 4. Return transaction hash
-			
-			console.log('transferHitz called:', {
-				from: Keypair.fromSecret(secret).publicKey(),
-				to: toAddress,
-				amount,
-				stroops: amountInStroops.toString(),
-			});
+            const tokenClient = this.getTokenClientForKeypair(userKeys);
+            const tx = await tokenClient.transfer(
+                { from: fromAddress, to: toAddress, amount: amountInStroops },
+                this.defaultOptions
+            );
 
-			// Placeholder - will be replaced with actual contract call
-			return {
-				success: true,
-				txHash: 'placeholder_tx_hash',
-			};
-		} catch (error) {
-			console.error('Error transferring HITZ:', error);
-			throw new Error('Failed to transfer HITZ tokens');
-		}
-	};
+            const result = await tx.signAndSend();
+            const txHash = (result as any)?.getTransactionResponse?.hash || null;
+
+            return {
+                success: true,
+                txHash,
+            };
+        } catch (error) {
+            console.error('Error transferring HITZ:', error);
+            throw new Error('Failed to transfer HITZ tokens');
+        }
+    };
 
 	/**
 	 * Get entry stats
