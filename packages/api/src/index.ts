@@ -8,6 +8,7 @@ import { Schema } from './graphql/schema';
 import { authenticateUser } from './auth/auth-context';
 import { handleWebhook } from './webhooks/stripe';
 import { handleUpload } from './upload';
+import { runTreasuryBot } from './treasury/bot';
 
 const server = new ApolloServer<Context>({
 	typeDefs: Schema,
@@ -45,5 +46,17 @@ export default {
 		}
 
 		return response;
+	},
+
+	async scheduled(controller: ScheduledController, env: Env, context: ExecutionContext) {
+		context.waitUntil(
+			runTreasuryBot(env)
+				.then((result) => {
+					console.log('Treasury bot cron result', result);
+				})
+				.catch((error) => {
+					console.error('Treasury bot cron failed', error);
+				})
+		);
 	},
 };

@@ -1,6 +1,6 @@
 import { GraphQLError } from 'graphql';
 import { Context } from 'src/util/types';
-import ContractClient from '../contract';
+import ContractClient from '../../contract';
 import { requireAuth } from 'src/auth/auth-context';
 import Encryption from 'src/util/encryption';
 import { AlgoliaClient } from 'src/algolia/algolia';
@@ -40,7 +40,7 @@ export const recordActionResolver = async (_: any, args: any, context: Context) 
             action
         );
 
-        console.log('✅ Record action result:', result?.status, 'Fee:', result?.fee);
+        console.log('✅ Record action result:', result?.status);
 
         // 2. Get updated entry data from contract
         const sorobanEntry = await contract.getEntry(id);
@@ -67,7 +67,7 @@ export const recordActionResolver = async (_: any, args: any, context: Context) 
         return {
             success: result?.status === 'SUCCESS',
             message: `${action} recorded successfully`,
-            fee: Number(result?.fee || 0) / 10_000_000, // Convert stroops to XLM
+            fee: 0,
         };
 
     } catch (error) {
