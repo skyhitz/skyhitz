@@ -1,6 +1,6 @@
 import { Context } from 'src/util/types';
 import { requireAuth } from 'src/auth/auth-context';
-import ContractClient from '../contract';
+import ContractClient from '../../contract';
 
 /**
  * User HITZ Balance Resolver
