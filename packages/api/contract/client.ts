@@ -37,6 +37,8 @@ export type HitzTokenDataKey = {tag: "HalvingStartTs", values: void} | {tag: "Ha
 
 export type DataKey = {tag: "Admin", values: void} | {tag: "Treasury", values: void} | {tag: "HitzToken", values: void} | {tag: "XlmToken", values: void} | {tag: "BaseFee", values: void} | {tag: "Entry", values: readonly [string]} | {tag: "Stake", values: readonly [readonly [string, string]]} | {tag: "StakeTotal", values: readonly [string]} | {tag: "RewardPool", values: readonly [string]} | {tag: "Claimed", values: readonly [readonly [string, string]]} | {tag: "EntryAt", values: readonly [u32]} | {tag: "EntryCount", values: void};
 
+export type LegacyDataKey = {tag: "Index", values: void} | {tag: "Entries", values: readonly [string]} | {tag: "Network", values: void} | {tag: "Admin", values: void};
+
 
 export interface Entry {
   created_at: u64;
@@ -725,6 +727,53 @@ export interface Client {
   }) => Promise<AssembledTransaction<null>>
 
   /**
+   * Construct and simulate a upgrade_core transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Upgrade core contract to new WASM code (admin-only)
+   * Note: Named `upgrade_core` to avoid export name collision with token's `upgrade`.
+   */
+  upgrade_core: ({new_wasm_hash}: {new_wasm_hash: Buffer}, options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<null>>
+
+  /**
+   * Construct and simulate a reset_all transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Reset storage for both legacy and current keys (admin-only)
+   * 
+   * Intended for use immediately after upgrading from the legacy contract,
+   * to wipe old state while keeping the same contract ID.
+   * Safe to call even if some keys don't exist.
+   */
+  reset_all: (options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<null>>
+
+  /**
    * Construct and simulate a init transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    * Initialize the contract (one-time only)
    * 
@@ -1217,7 +1266,10 @@ export class Client extends ContractClient {
         "AAAAAAAAAAAAAAAQYWNjZXB0X293bmVyc2hpcAAAAAAAAAAA",
         "AAAAAAAAAAAAAAAScmVub3VuY2Vfb3duZXJzaGlwAAAAAAAAAAAAAA==",
         "AAAAAgAAAAAAAAAAAAAAB0RhdGFLZXkAAAAADAAAAAAAAAAAAAAABUFkbWluAAAAAAAAAAAAAAAAAAAIVHJlYXN1cnkAAAAAAAAAAAAAAAlIaXR6VG9rZW4AAAAAAAAAAAAAAAAAAAhYbG1Ub2tlbgAAAAAAAAAAAAAAB0Jhc2VGZWUAAAAAAQAAAAAAAAAFRW50cnkAAAAAAAABAAAAEAAAAAEAAAAAAAAABVN0YWtlAAAAAAAAAQAAA+0AAAACAAAAEAAAABMAAAABAAAAAAAAAApTdGFrZVRvdGFsAAAAAAABAAAAEAAAAAEAAAAAAAAAClJld2FyZFBvb2wAAAAAAAEAAAAQAAAAAQAAAAAAAAAHQ2xhaW1lZAAAAAABAAAD7QAAAAIAAAAQAAAAEwAAAAEAAAAAAAAAB0VudHJ5QXQAAAAAAQAAAAQAAAAAAAAAAAAAAApFbnRyeUNvdW50AAA=",
+        "AAAAAgAAAAAAAAAAAAAADUxlZ2FjeURhdGFLZXkAAAAAAAAEAAAAAAAAAAAAAAAFSW5kZXgAAAAAAAABAAAAAAAAAAdFbnRyaWVzAAAAAAEAAAAQAAAAAAAAAAAAAAAHTmV0d29yawAAAAAAAAAAAAAAAAVBZG1pbgAAAA==",
         "AAAAAQAAAAAAAAAAAAAABUVudHJ5AAAAAAAAAwAAAAAAAAAKY3JlYXRlZF9hdAAAAAAABgAAAAAAAAAKZXNjcm93X3hsbQAAAAAACwAAAAAAAAAHdHZsX3hsbQAAAAAL",
+        "AAAAAAAAAIVVcGdyYWRlIGNvcmUgY29udHJhY3QgdG8gbmV3IFdBU00gY29kZSAoYWRtaW4tb25seSkKTm90ZTogTmFtZWQgYHVwZ3JhZGVfY29yZWAgdG8gYXZvaWQgZXhwb3J0IG5hbWUgY29sbGlzaW9uIHdpdGggdG9rZW4ncyBgdXBncmFkZWAuAAAAAAAADHVwZ3JhZGVfY29yZQAAAAEAAAAAAAAADW5ld193YXNtX2hhc2gAAAAAAAPuAAAAIAAAAAA=",
+        "AAAAAAAAAOVSZXNldCBzdG9yYWdlIGZvciBib3RoIGxlZ2FjeSBhbmQgY3VycmVudCBrZXlzIChhZG1pbi1vbmx5KQoKSW50ZW5kZWQgZm9yIHVzZSBpbW1lZGlhdGVseSBhZnRlciB1cGdyYWRpbmcgZnJvbSB0aGUgbGVnYWN5IGNvbnRyYWN0LAp0byB3aXBlIG9sZCBzdGF0ZSB3aGlsZSBrZWVwaW5nIHRoZSBzYW1lIGNvbnRyYWN0IElELgpTYWZlIHRvIGNhbGwgZXZlbiBpZiBzb21lIGtleXMgZG9uJ3QgZXhpc3QuAAAAAAAACXJlc2V0X2FsbAAAAAAAAAAAAAAA",
         "AAAAAAAAAWNJbml0aWFsaXplIHRoZSBjb250cmFjdCAob25lLXRpbWUgb25seSkKCiMgQXJndW1lbnRzCiogYGFkbWluYCAtIEFkbWluIGFkZHJlc3Mgd2l0aCBwcml2aWxlZ2VkIHJpZ2h0cwoqIGB0cmVhc3VyeWAgLSBUcmVhc3VyeSBhZGRyZXNzIHJlY2VpdmluZyBhbGwgWExNIGZlZXMKKiBgaGl0el90b2tlbmAgLSBISVRaIHRva2VuIGNvbnRyYWN0IGFkZHJlc3MgKE9wZW5aZXBwZWxpbiB0b2tlbikKKiBgeGxtX3Rva2VuYCAtIFhMTSB0b2tlbiBjb250cmFjdCBhZGRyZXNzIChTQUMpCiogYGJhc2VfZmVlYCAtIEJhc2UgZmVlIHBlciBkaWZmaWN1bHR5IHVuaXQgaW4gc3Ryb29wcyAoZGVmYXVsdCAxMDAsMDAwID0gMC4wMSBYTE0pAAAAAARpbml0AAAABQAAAAAAAAAFYWRtaW4AAAAAAAATAAAAAAAAAAh0cmVhc3VyeQAAABMAAAAAAAAACmhpdHpfdG9rZW4AAAAAABMAAAAAAAAACXhsbV90b2tlbgAAAAAAABMAAAAAAAAACGJhc2VfZmVlAAAACwAAAAA=",
         "AAAAAAAAAINVcGRhdGUgYmFzZSBmZWUgKGFkbWluLW9ubHkpCgojIEFyZ3VtZW50cwoqIGBuZXdfYmFzZV9mZWVgIC0gTmV3IGJhc2UgZmVlIHBlciBkaWZmaWN1bHR5IHVuaXQgaW4gc3Ryb29wcyAoZS5nLiwgMTAwLDAwMCA9IDAuMDEgWExNKQAAAAAMc2V0X2Jhc2VfZmVlAAAAAQAAAAAAAAAMbmV3X2Jhc2VfZmVlAAAACwAAAAA=",
         "AAAAAAAAABRHZXQgY3VycmVudCBiYXNlIGZlZQAAAAxnZXRfYmFzZV9mZWUAAAAAAAAAAQAAAAs=",
@@ -1285,6 +1337,8 @@ export class Client extends ContractClient {
         transfer_ownership: this.txFromJSON<null>,
         accept_ownership: this.txFromJSON<null>,
         renounce_ownership: this.txFromJSON<null>,
+        upgrade_core: this.txFromJSON<null>,
+        reset_all: this.txFromJSON<null>,
         init: this.txFromJSON<null>,
         set_base_fee: this.txFromJSON<null>,
         get_base_fee: this.txFromJSON<i128>,
