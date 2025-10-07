@@ -163,6 +163,152 @@ impl SkyhitzCore {
             e.storage().instance().remove(&DataKey::EntryCount);
         }
     }
+
+    /// Legacy-only: remove instance keys (Admin/Network). Admin-only.
+    pub fn reset_legacy_instance(e: Env) {
+        // Auth by current or legacy admin
+        if let Some(admin) = e.storage().instance().get::<DataKey, Address>(&DataKey::Admin) { admin.require_auth(); }
+        else if let Some(legacy_admin) = e.storage().instance().get::<LegacyDataKey, Address>(&LegacyDataKey::Admin) { legacy_admin.require_auth(); }
+        else { panic!("No admin found to authorize reset"); }
+
+        if e.storage().instance().has(&LegacyDataKey::Admin) { e.storage().instance().remove(&LegacyDataKey::Admin); }
+        if e.storage().instance().has(&LegacyDataKey::Network) { e.storage().instance().remove(&LegacyDataKey::Network); }
+    }
+
+    /// Legacy-only: remove legacy entries in chunks to stay under footprint limits. Admin-only.
+    /// Removes entries at indexes [start, start+limit).
+    pub fn reset_legacy_entries_chunk(e: Env, start: u32, limit: u32) {
+        // Auth by current or legacy admin
+        if let Some(admin) = e.storage().instance().get::<DataKey, Address>(&DataKey::Admin) { admin.require_auth(); }
+        else if let Some(legacy_admin) = e.storage().instance().get::<LegacyDataKey, Address>(&LegacyDataKey::Admin) { legacy_admin.require_auth(); }
+        else { panic!("No admin found to authorize reset"); }
+
+        if let Some(index) = e.storage().persistent().get::<LegacyDataKey, Vec<String>>(&LegacyDataKey::Index) {
+            let total = index.len();
+            let end = core::cmp::min(start.saturating_add(limit), total);
+            for i in start..end {
+                if let Some(id) = index.get(i) {
+                    let key = LegacyDataKey::Entries(id.clone());
+                    if e.storage().persistent().has(&key) { e.storage().persistent().remove(&key); }
+                }
+            }
+            // If we covered all entries, remove Index vector itself
+            if end == total { e.storage().persistent().remove(&LegacyDataKey::Index); }
+        }
+    }
+
+    /// Current-only: remove instance keys (Admin/Treasury/HitzToken/XlmToken/BaseFee). Admin-only.
+    pub fn reset_current_instance(e: Env) {
+        let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap_or_else(|| panic!("Admin not set"));
+        admin.require_auth();
+
+        if e.storage().instance().has(&DataKey::Admin) { e.storage().instance().remove(&DataKey::Admin); }
+        if e.storage().instance().has(&DataKey::Treasury) { e.storage().instance().remove(&DataKey::Treasury); }
+        if e.storage().instance().has(&DataKey::HitzToken) { e.storage().instance().remove(&DataKey::HitzToken); }
+        if e.storage().instance().has(&DataKey::XlmToken) { e.storage().instance().remove(&DataKey::XlmToken); }
+        if e.storage().instance().has(&DataKey::BaseFee) { e.storage().instance().remove(&DataKey::BaseFee); }
+    }
+
+    /// Current-only: remove entries in chunks to stay under footprint limits. Admin-only.
+    /// Removes entries at indexes [start, start+limit) using EntryAt(i).
+    pub fn reset_current_entries_chunk(e: Env, start: u32, limit: u32) {
+        let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap_or_else(|| panic!("Admin not set"));
+        admin.require_auth();
+
+        let count: u32 = e.storage().instance().get(&DataKey::EntryCount).unwrap_or(0);
+        if count == 0 { return; }
+        let end = core::cmp::min(start.saturating_add(limit), count);
+        for i in start..end {
+            let at_key = DataKey::EntryAt(i);
+            if let Some(entry_id) = e.storage().persistent().get::<DataKey, String>(&at_key) {
+                let entry_key = DataKey::Entry(entry_id.clone());
+                if e.storage().persistent().has(&entry_key) { e.storage().persistent().remove(&entry_key); }
+                let pool_key = DataKey::RewardPool(entry_id.clone());
+                if e.storage().persistent().has(&pool_key) { e.storage().persistent().remove(&pool_key); }
+                let total_key = DataKey::StakeTotal(entry_id.clone());
+                if e.storage().persistent().has(&total_key) { e.storage().persistent().remove(&total_key); }
+            }
+            if e.storage().persistent().has(&at_key) { e.storage().persistent().remove(&at_key); }
+        }
+        // If we covered all indices in this chunk and reached the end, clear EntryCount
+        if end == count { e.storage().instance().remove(&DataKey::EntryCount); }
+    }
+
+    /// Helpers to introspect counts before chunking.
+    pub fn legacy_index_len(e: Env) -> u32 {
+        if let Some(index) = e.storage().persistent().get::<LegacyDataKey, Vec<String>>(&LegacyDataKey::Index) {
+            index.len()
+        } else { 0 }
+    }
+
+    pub fn current_entry_count(e: Env) -> u32 {
+        e.storage().instance().get(&DataKey::EntryCount).unwrap_or(0)
+    }
+
+    /// Read-only: return a slice of the legacy index IDs [start, start+limit).
+    pub fn legacy_index_slice(e: Env, start: u32, limit: u32) -> Vec<String> {
+        let out = Vec::new(&e);
+        if let Some(index) = e.storage().persistent().get::<LegacyDataKey, Vec<String>>(&LegacyDataKey::Index) {
+            let total = index.len();
+            if start >= total { return out; }
+            let end = core::cmp::min(start.saturating_add(limit), total);
+            let mut res = Vec::new(&e);
+            for i in start..end {
+                if let Some(id) = index.get(i) { res.push_back(id.clone()); }
+            }
+            return res;
+        }
+        out
+    }
+
+    /// Admin-only: remove one legacy entry by id and drop it from the legacy index if present.
+    pub fn reset_legacy_entry_by_id(e: Env, id: String) {
+        // Auth by current or legacy admin
+        if let Some(admin) = e.storage().instance().get::<DataKey, Address>(&DataKey::Admin) { admin.require_auth(); }
+        else if let Some(legacy_admin) = e.storage().instance().get::<LegacyDataKey, Address>(&LegacyDataKey::Admin) { legacy_admin.require_auth(); }
+        else { panic!("No admin found to authorize reset"); }
+
+        // Remove entry data
+        let key = LegacyDataKey::Entries(id.clone());
+        if e.storage().persistent().has(&key) { e.storage().persistent().remove(&key); }
+
+        // Remove id from Index vector if present
+        if let Some(index) = e.storage().persistent().get::<LegacyDataKey, Vec<String>>(&LegacyDataKey::Index) {
+            let mut new_index = Vec::new(&e);
+            for cur in index.iter() {
+                if cur != id { new_index.push_back(cur.clone()); }
+            }
+            e.storage().persistent().set(&LegacyDataKey::Index, &new_index);
+        }
+    }
+
+    /// Admin-only: remove the legacy Index vector entirely.
+    pub fn reset_legacy_index(e: Env) {
+        if let Some(admin) = e.storage().instance().get::<DataKey, Address>(&DataKey::Admin) { admin.require_auth(); }
+        else if let Some(legacy_admin) = e.storage().instance().get::<LegacyDataKey, Address>(&LegacyDataKey::Admin) { legacy_admin.require_auth(); }
+        else { panic!("No admin found to authorize reset"); }
+
+        if e.storage().persistent().has(&LegacyDataKey::Index) {
+            e.storage().persistent().remove(&LegacyDataKey::Index);
+        }
+    }
+
+    /// Admin-only: remove one current entry by its position (EntryAt(i)) and related keys.
+    pub fn reset_current_entry_by_pos(e: Env, i: u32) {
+        let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap_or_else(|| panic!("Admin not set"));
+        admin.require_auth();
+
+        let at_key = DataKey::EntryAt(i);
+        if let Some(entry_id) = e.storage().persistent().get::<DataKey, String>(&at_key) {
+            let entry_key = DataKey::Entry(entry_id.clone());
+            if e.storage().persistent().has(&entry_key) { e.storage().persistent().remove(&entry_key); }
+            let pool_key = DataKey::RewardPool(entry_id.clone());
+            if e.storage().persistent().has(&pool_key) { e.storage().persistent().remove(&pool_key); }
+            let total_key = DataKey::StakeTotal(entry_id.clone());
+            if e.storage().persistent().has(&total_key) { e.storage().persistent().remove(&total_key); }
+        }
+        if e.storage().persistent().has(&at_key) { e.storage().persistent().remove(&at_key); }
+    }
     /// Initialize the contract (one-time only)
     ///
     /// # Arguments
@@ -189,6 +335,28 @@ impl SkyhitzCore {
         e.storage().instance().set(&DataKey::XlmToken, &xlm_token);
         e.storage().instance().set(&DataKey::BaseFee, &base_fee);
         e.storage().instance().set(&DataKey::EntryCount, &0u32);
+    }
+
+    /// Accept ownership of the HITZ token (admin-only)
+    /// Call this after initiating transfer_ownership on the token so that the
+    /// core contract becomes the token owner and can mint rewards.
+    pub fn accept_hitz_ownership(e: Env) {
+        // Require current admin to authorize this call
+        let admin: Address = e
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .unwrap_or_else(|| panic!("Admin not set"));
+        admin.require_auth();
+
+        // Call token's accept_ownership from the core contract
+        let hitz_token: Address = e
+            .storage()
+            .instance()
+            .get(&DataKey::HitzToken)
+            .unwrap_or_else(|| panic!("HITZ token not set"));
+        let hitz_token_client = SkyhitzTokenClient::new(&e, &hitz_token);
+        hitz_token_client.accept_ownership();
     }
 
     /// Update base fee (admin-only)

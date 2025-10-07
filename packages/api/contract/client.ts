@@ -445,6 +445,29 @@ export interface Client {
   }) => Promise<AssembledTransaction<null>>
 
   /**
+   * Construct and simulate a accept_hitz_ownership transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Accept ownership of the HITZ token (admin-only)
+   * Call this after initiating transfer_ownership on the token so that the
+   * core contract becomes the token owner and can mint rewards.
+   */
+  accept_hitz_ownership: (options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<null>>
+
+  /**
    * Construct and simulate a upgrade transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    * Upgrade contract to new WASM code
    * Only callable by owner (admin)
@@ -757,6 +780,217 @@ export interface Client {
    * Safe to call even if some keys don't exist.
    */
   reset_all: (options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<null>>
+
+  /**
+   * Construct and simulate a reset_legacy_instance transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Legacy-only: remove instance keys (Admin/Network). Admin-only.
+   */
+  reset_legacy_instance: (options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<null>>
+
+  /**
+   * Construct and simulate a reset_legacy_entries_chunk transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Legacy-only: remove legacy entries in chunks to stay under footprint limits. Admin-only.
+   * Removes entries at indexes [start, start+limit).
+   */
+  reset_legacy_entries_chunk: ({start, limit}: {start: u32, limit: u32}, options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<null>>
+
+  /**
+   * Construct and simulate a reset_current_instance transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Current-only: remove instance keys (Admin/Treasury/HitzToken/XlmToken/BaseFee). Admin-only.
+   */
+  reset_current_instance: (options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<null>>
+
+  /**
+   * Construct and simulate a reset_current_entries_chunk transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Current-only: remove entries in chunks to stay under footprint limits. Admin-only.
+   * Removes entries at indexes [start, start+limit) using EntryAt(i).
+   */
+  reset_current_entries_chunk: ({start, limit}: {start: u32, limit: u32}, options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<null>>
+
+  /**
+   * Construct and simulate a legacy_index_len transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Helpers to introspect counts before chunking.
+   */
+  legacy_index_len: (options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<u32>>
+
+  /**
+   * Construct and simulate a current_entry_count transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   */
+  current_entry_count: (options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<u32>>
+
+  /**
+   * Construct and simulate a legacy_index_slice transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Read-only: return a slice of the legacy index IDs [start, start+limit).
+   */
+  legacy_index_slice: ({start, limit}: {start: u32, limit: u32}, options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<Array<string>>>
+
+  /**
+   * Construct and simulate a reset_legacy_entry_by_id transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Admin-only: remove one legacy entry by id and drop it from the legacy index if present.
+   */
+  reset_legacy_entry_by_id: ({id}: {id: string}, options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<null>>
+
+  /**
+   * Construct and simulate a reset_legacy_index transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Admin-only: remove the legacy Index vector entirely.
+   */
+  reset_legacy_index: (options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<null>>
+
+  /**
+   * Construct and simulate a reset_current_entry_by_pos transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Admin-only: remove one current entry by its position (EntryAt(i)) and related keys.
+   */
+  reset_current_entry_by_pos: ({i}: {i: u32}, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -1270,6 +1504,16 @@ export class Client extends ContractClient {
         "AAAAAQAAAAAAAAAAAAAABUVudHJ5AAAAAAAAAwAAAAAAAAAKY3JlYXRlZF9hdAAAAAAABgAAAAAAAAAKZXNjcm93X3hsbQAAAAAACwAAAAAAAAAHdHZsX3hsbQAAAAAL",
         "AAAAAAAAAIVVcGdyYWRlIGNvcmUgY29udHJhY3QgdG8gbmV3IFdBU00gY29kZSAoYWRtaW4tb25seSkKTm90ZTogTmFtZWQgYHVwZ3JhZGVfY29yZWAgdG8gYXZvaWQgZXhwb3J0IG5hbWUgY29sbGlzaW9uIHdpdGggdG9rZW4ncyBgdXBncmFkZWAuAAAAAAAADHVwZ3JhZGVfY29yZQAAAAEAAAAAAAAADW5ld193YXNtX2hhc2gAAAAAAAPuAAAAIAAAAAA=",
         "AAAAAAAAAOVSZXNldCBzdG9yYWdlIGZvciBib3RoIGxlZ2FjeSBhbmQgY3VycmVudCBrZXlzIChhZG1pbi1vbmx5KQoKSW50ZW5kZWQgZm9yIHVzZSBpbW1lZGlhdGVseSBhZnRlciB1cGdyYWRpbmcgZnJvbSB0aGUgbGVnYWN5IGNvbnRyYWN0LAp0byB3aXBlIG9sZCBzdGF0ZSB3aGlsZSBrZWVwaW5nIHRoZSBzYW1lIGNvbnRyYWN0IElELgpTYWZlIHRvIGNhbGwgZXZlbiBpZiBzb21lIGtleXMgZG9uJ3QgZXhpc3QuAAAAAAAACXJlc2V0X2FsbAAAAAAAAAAAAAAA",
+        "AAAAAAAAAD5MZWdhY3ktb25seTogcmVtb3ZlIGluc3RhbmNlIGtleXMgKEFkbWluL05ldHdvcmspLiBBZG1pbi1vbmx5LgAAAAAAFXJlc2V0X2xlZ2FjeV9pbnN0YW5jZQAAAAAAAAAAAAAA",
+        "AAAAAAAAAIlMZWdhY3ktb25seTogcmVtb3ZlIGxlZ2FjeSBlbnRyaWVzIGluIGNodW5rcyB0byBzdGF5IHVuZGVyIGZvb3RwcmludCBsaW1pdHMuIEFkbWluLW9ubHkuClJlbW92ZXMgZW50cmllcyBhdCBpbmRleGVzIFtzdGFydCwgc3RhcnQrbGltaXQpLgAAAAAAABpyZXNldF9sZWdhY3lfZW50cmllc19jaHVuawAAAAAAAgAAAAAAAAAFc3RhcnQAAAAAAAAEAAAAAAAAAAVsaW1pdAAAAAAAAAQAAAAA",
+        "AAAAAAAAAFtDdXJyZW50LW9ubHk6IHJlbW92ZSBpbnN0YW5jZSBrZXlzIChBZG1pbi9UcmVhc3VyeS9IaXR6VG9rZW4vWGxtVG9rZW4vQmFzZUZlZSkuIEFkbWluLW9ubHkuAAAAABZyZXNldF9jdXJyZW50X2luc3RhbmNlAAAAAAAAAAAAAA==",
+        "AAAAAAAAAJRDdXJyZW50LW9ubHk6IHJlbW92ZSBlbnRyaWVzIGluIGNodW5rcyB0byBzdGF5IHVuZGVyIGZvb3RwcmludCBsaW1pdHMuIEFkbWluLW9ubHkuClJlbW92ZXMgZW50cmllcyBhdCBpbmRleGVzIFtzdGFydCwgc3RhcnQrbGltaXQpIHVzaW5nIEVudHJ5QXQoaSkuAAAAG3Jlc2V0X2N1cnJlbnRfZW50cmllc19jaHVuawAAAAACAAAAAAAAAAVzdGFydAAAAAAAAAQAAAAAAAAABWxpbWl0AAAAAAAABAAAAAA=",
+        "AAAAAAAAAC1IZWxwZXJzIHRvIGludHJvc3BlY3QgY291bnRzIGJlZm9yZSBjaHVua2luZy4AAAAAAAAQbGVnYWN5X2luZGV4X2xlbgAAAAAAAAABAAAABA==",
+        "AAAAAAAAAAAAAAATY3VycmVudF9lbnRyeV9jb3VudAAAAAAAAAAAAQAAAAQ=",
+        "AAAAAAAAAEdSZWFkLW9ubHk6IHJldHVybiBhIHNsaWNlIG9mIHRoZSBsZWdhY3kgaW5kZXggSURzIFtzdGFydCwgc3RhcnQrbGltaXQpLgAAAAASbGVnYWN5X2luZGV4X3NsaWNlAAAAAAACAAAAAAAAAAVzdGFydAAAAAAAAAQAAAAAAAAABWxpbWl0AAAAAAAABAAAAAEAAAPqAAAAEA==",
+        "AAAAAAAAAFdBZG1pbi1vbmx5OiByZW1vdmUgb25lIGxlZ2FjeSBlbnRyeSBieSBpZCBhbmQgZHJvcCBpdCBmcm9tIHRoZSBsZWdhY3kgaW5kZXggaWYgcHJlc2VudC4AAAAAGHJlc2V0X2xlZ2FjeV9lbnRyeV9ieV9pZAAAAAEAAAAAAAAAAmlkAAAAAAAQAAAAAA==",
+        "AAAAAAAAADRBZG1pbi1vbmx5OiByZW1vdmUgdGhlIGxlZ2FjeSBJbmRleCB2ZWN0b3IgZW50aXJlbHkuAAAAEnJlc2V0X2xlZ2FjeV9pbmRleAAAAAAAAAAAAAA=",
+        "AAAAAAAAAFNBZG1pbi1vbmx5OiByZW1vdmUgb25lIGN1cnJlbnQgZW50cnkgYnkgaXRzIHBvc2l0aW9uIChFbnRyeUF0KGkpKSBhbmQgcmVsYXRlZCBrZXlzLgAAAAAacmVzZXRfY3VycmVudF9lbnRyeV9ieV9wb3MAAAAAAAEAAAAAAAAAAWkAAAAAAAAEAAAAAA==",
         "AAAAAAAAAWNJbml0aWFsaXplIHRoZSBjb250cmFjdCAob25lLXRpbWUgb25seSkKCiMgQXJndW1lbnRzCiogYGFkbWluYCAtIEFkbWluIGFkZHJlc3Mgd2l0aCBwcml2aWxlZ2VkIHJpZ2h0cwoqIGB0cmVhc3VyeWAgLSBUcmVhc3VyeSBhZGRyZXNzIHJlY2VpdmluZyBhbGwgWExNIGZlZXMKKiBgaGl0el90b2tlbmAgLSBISVRaIHRva2VuIGNvbnRyYWN0IGFkZHJlc3MgKE9wZW5aZXBwZWxpbiB0b2tlbikKKiBgeGxtX3Rva2VuYCAtIFhMTSB0b2tlbiBjb250cmFjdCBhZGRyZXNzIChTQUMpCiogYGJhc2VfZmVlYCAtIEJhc2UgZmVlIHBlciBkaWZmaWN1bHR5IHVuaXQgaW4gc3Ryb29wcyAoZGVmYXVsdCAxMDAsMDAwID0gMC4wMSBYTE0pAAAAAARpbml0AAAABQAAAAAAAAAFYWRtaW4AAAAAAAATAAAAAAAAAAh0cmVhc3VyeQAAABMAAAAAAAAACmhpdHpfdG9rZW4AAAAAABMAAAAAAAAACXhsbV90b2tlbgAAAAAAABMAAAAAAAAACGJhc2VfZmVlAAAACwAAAAA=",
         "AAAAAAAAAINVcGRhdGUgYmFzZSBmZWUgKGFkbWluLW9ubHkpCgojIEFyZ3VtZW50cwoqIGBuZXdfYmFzZV9mZWVgIC0gTmV3IGJhc2UgZmVlIHBlciBkaWZmaWN1bHR5IHVuaXQgaW4gc3Ryb29wcyAoZS5nLiwgMTAwLDAwMCA9IDAuMDEgWExNKQAAAAAMc2V0X2Jhc2VfZmVlAAAAAQAAAAAAAAAMbmV3X2Jhc2VfZmVlAAAACwAAAAA=",
         "AAAAAAAAABRHZXQgY3VycmVudCBiYXNlIGZlZQAAAAxnZXRfYmFzZV9mZWUAAAAAAAAAAQAAAAs=",
@@ -1339,6 +1583,16 @@ export class Client extends ContractClient {
         renounce_ownership: this.txFromJSON<null>,
         upgrade_core: this.txFromJSON<null>,
         reset_all: this.txFromJSON<null>,
+        reset_legacy_instance: this.txFromJSON<null>,
+        reset_legacy_entries_chunk: this.txFromJSON<null>,
+        reset_current_instance: this.txFromJSON<null>,
+        reset_current_entries_chunk: this.txFromJSON<null>,
+        legacy_index_len: this.txFromJSON<u32>,
+        current_entry_count: this.txFromJSON<u32>,
+        legacy_index_slice: this.txFromJSON<Array<string>>,
+        reset_legacy_entry_by_id: this.txFromJSON<null>,
+        reset_legacy_index: this.txFromJSON<null>,
+        reset_current_entry_by_pos: this.txFromJSON<null>,
         init: this.txFromJSON<null>,
         set_base_fee: this.txFromJSON<null>,
         get_base_fee: this.txFromJSON<i128>,
@@ -1357,6 +1611,7 @@ export class Client extends ContractClient {
         get_reward_pool: this.txFromJSON<i128>,
         calculate_apr: this.txFromJSON<i128>,
         get_entry_stats: this.txFromJSON<readonly [i128, i128, i128, i128, i128]>,
-        version: this.txFromJSON<u32>
+      version: this.txFromJSON<u32>,
+      accept_hitz_ownership: this.txFromJSON<null>
   }
 }
