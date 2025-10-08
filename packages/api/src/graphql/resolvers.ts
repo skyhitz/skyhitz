@@ -14,7 +14,6 @@ import { likeEntryResolver } from './like-entry';
 import { removeEntryResolver } from './remove-entry';
 import { withdrawToExternalAddressResolver } from './withdraw-to-external-wallet';
 import { processEntryResolver } from './process-entry';
-import { initContractResolver } from './init-contract';
 import { submitLinkResolver } from './submit-link';
 import { createPaymentIntentResolver } from './create-payment-intent';
 import { checkPendingWithdrawalsResolver } from './check-pending-withdrawals';
@@ -46,7 +45,6 @@ const Mutation = {
 	checkPendingWithdrawals: checkPendingWithdrawalsResolver,
 	createPaymentIntent: createPaymentIntentResolver,
 	createUserWithEmail: createUserWithEmailResolver,
-	initContract: initContractResolver,
 	investEntry: investEntryResolver,
 	likeEntry: likeEntryResolver,
 	processEntry: processEntryResolver,
