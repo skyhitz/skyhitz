@@ -17,6 +17,7 @@ import { INVEST_ENTRY, UNSTAKE_ENTRY, USER_CREDITS, USER_HITZ_BALANCE } from 'ap
 import { INVEST_MIN_XLM } from 'app/constants/constants'
 import { stroopsToToken } from 'app/types/asset'
 import { AssetType } from 'app/types/asset'
+import { SkyhitzLogo } from 'app/ui/logo'
 
 
 type Share = { shares: number }
@@ -183,7 +184,7 @@ export function InvestSection({ entry }: Props) {
           </View>
         )}
         {user && (
-          <View className="flex-col gap-1">
+          <View className="flex-col gap-2">
             <View className="flex-row">
               <P className="text-[--text-secondary-color] text-xs font-unbounded">
                 XLM balance:{' '}
@@ -250,7 +251,7 @@ export function InvestSection({ entry }: Props) {
             Unstake HITZ
           </P>
           <FormInputWithIcon
-            icon={<Stellar size={18} />}
+            icon={<SkyhitzLogo size={18} id="entry" className='text-[--text-color]' />}
             value={amountToUnstake}
             onChangeText={setAmountToUnstake}
             placeholder={`Amount to unstake (max ${stroopsToLumens(shares)} HITZ)`}

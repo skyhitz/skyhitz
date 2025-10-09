@@ -96,6 +96,13 @@ export const USER_HITZ_BALANCE = gql`
   }
 `
 
+// Market data
+export const XLM_PRICE = gql`
+  query XlmPrice {
+    xlmPrice
+  }
+`
+
 export const USER_COLLECTION = gql`
   query UserCollection($userId: String!) {
     userEntries(userId: $userId) {

@@ -4,9 +4,11 @@ import Svg, { LinearGradient, Path, Stop } from 'react-native-svg'
 export const SkyhitzLogo = ({
   size = 30,
   id,
+  className,
 }: {
   size?: number
-  id: string
+  id: string,
+  className?: string,
 }) => {
   return (
     <Svg
@@ -14,6 +16,7 @@ export const SkyhitzLogo = ({
       width={size}
       height={size}
       preserveAspectRatio="xMidYMid"
+      className={className}
     >
       <LinearGradient
         id={`a_${size}${id}`}
@@ -29,7 +32,7 @@ export const SkyhitzLogo = ({
       </LinearGradient>
       <Path
         d="M76 67c-6 1-3-66-3-66s21 72 62 103c25 18-54-37-59-37zm-11 0c-5 0-84 55-59 37C48 73 69 1 69 1s2 67-4 66z"
-        fill={`url(#a_${size}${id})`}
+        fill={className ? 'currentColor' : `url(#a_${size}${id})`}
       />
     </Svg>
   )
