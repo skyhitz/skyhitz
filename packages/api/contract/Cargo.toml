@@ -9,6 +9,9 @@ doctest = false
 
 [dependencies]
 soroban-sdk = "22"
+stellar-access = "0.4.0"
+stellar-macros = "0.4.0"
+stellar-tokens = "0.4.0"
 
 [dev-dependencies]
 soroban-sdk = { version = "22", features = ["testutils"] }

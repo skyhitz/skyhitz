@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { Keypair, Asset, TransactionBuilder, Operation, Account, Networks, Transaction, StrKey, xdr } from '@stellar/stellar-sdk';
+import ContractClient from '../../contract';
 
 const XLM = Asset.native();
 
@@ -138,6 +139,45 @@ class StellarClient {
 	async getAccount(publicKey: string) {
 		const { id, sequence } = await this.getAccountData(publicKey);
 		return new Account(id, sequence);
+	}
+
+	/**
+	 * Ensure a classic trustline exists for HITZ asset for the given account.
+	 * No-op if env.HITZ_ASSET_CODE/HITZ_ASSET_ISSUER are not set.
+	 */
+	async ensureHitzTrustline(seed: string) {
+		// Infer classic asset code from Soroban token symbol; issuer from ISSUER_ID
+		let HITZ_ASSET_CODE: string;
+		let HITZ_ASSET_ISSUER: string;
+		try {
+			const contract = new ContractClient(this.env as any);
+			const symbol = await contract.getHitzSymbol();
+			HITZ_ASSET_CODE = symbol || 'HITZ';
+			HITZ_ASSET_ISSUER = (this.env as any).ISSUER_ID;
+		} catch (_) {
+			HITZ_ASSET_CODE = 'HITZ';
+			HITZ_ASSET_ISSUER = (this.env as any).ISSUER_ID;
+		}
+
+		const userKeys = Keypair.fromSecret(seed);
+		const accountId = userKeys.publicKey();
+		const account = await this.getAccountData(accountId);
+		const hasTrustline = (account.balances || []).some((b: any) => b.asset_code === HITZ_ASSET_CODE && b.asset_issuer === HITZ_ASSET_ISSUER);
+		if (hasTrustline) return { created: false, reason: 'exists' };
+
+		const asset = new Asset(HITZ_ASSET_CODE, HITZ_ASSET_ISSUER);
+		const tx = (await this.buildTransactionWithFee(accountId))
+			.addOperation(
+				Operation.changeTrust({
+					asset,
+				})
+			)
+			.setTimeout(0)
+			.build();
+
+		tx.sign(userKeys);
+		const res = await this.submitTransaction(tx);
+		return { created: true, tx: res };
 	}
 
 	verifySourceSignatureOnXDR(xdr: string) {

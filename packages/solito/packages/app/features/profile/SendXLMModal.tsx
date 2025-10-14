@@ -74,6 +74,9 @@ export function SendXLMModal({
             <H1 className="text-xl font-bold font-unbounded text-[--text-color]">
               Send XLM
             </H1>
+            <P className="mt-2 text-xs text-[--text-secondary-color] text-center">
+              Send XLM to any Stellar address
+            </P>
 
             <View className="mt-8 w-full flex flex-row items-center justify-center">
               <Stellar size={18} className="mr-2" />

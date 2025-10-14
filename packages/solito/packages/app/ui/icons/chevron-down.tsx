@@ -1,26 +1,24 @@
-'use client'
 import * as React from 'react'
 import Svg, { Path } from 'react-native-svg'
 
-export default function ChevronDown({
-  className,
-  size = 24,
-  ...props
-}: React.ComponentProps<typeof Svg> & { size?: number }) {
+type Props = React.ComponentProps<typeof Svg>
+
+export function ChevronDown(props: Props) {
   return (
     <Svg
-      width={size}
-      height={size}
+      width={props.size || 24}
+      height={props.size || 24}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2}
+      strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={className}
       {...props}
     >
-      <Path d="m6 9 6 6 6-6" />
+      <Path d="M6 9l6 6 6-6" />
     </Svg>
   )
 }
+
+export default ChevronDown

@@ -90,6 +90,19 @@ export const USER_CREDITS = gql`
   }
 `
 
+export const USER_HITZ_BALANCE = gql`
+  query UserHitzBalance {
+    userHitzBalance
+  }
+`
+
+// Market data
+export const XLM_PRICE = gql`
+  query XlmPrice {
+    xlmPrice
+  }
+`
+
 export const USER_COLLECTION = gql`
   query UserCollection($userId: String!) {
     userEntries(userId: $userId) {
@@ -288,6 +301,38 @@ export const CLAIMABLE_EARNINGS_PREVIEW = gql`
       success
       message
       totalClaimedAmount
+    }
+  }
+`
+
+export const UNSTAKE_ENTRY = gql`
+  mutation UnstakeEntry($id: String!, $amount: Float!) {
+    unstakeEntry(id: $id, amount: $amount) {
+      success
+      message
+      unstakedAmount
+    }
+  }
+`
+
+export const WITHDRAW_HITZ = gql`
+  mutation WithdrawHitz($address: String!, $amount: Float!) {
+    withdrawHitz(address: $address, amount: $amount) {
+      success
+      message
+      amount
+      txHash
+    }
+  }
+`
+
+// Record user actions (stream, like, download, mine, invest)
+export const RECORD_ACTION = gql`
+  mutation RecordAction($id: String!, $action: String!) {
+    recordAction(id: $id, action: $action) {
+      success
+      message
+      fee
     }
   }
 `

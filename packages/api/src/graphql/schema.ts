@@ -3,6 +3,7 @@ type Query {
   entry(id: String!, bypassCache: Boolean): EntryDetails!
   entryLikes(id: String!): EntryLikes!
   userCredits: Float!
+  userHitzBalance: Float!
   userEntries(userId: String!): [Entry!]!
   userLikes: [Entry!]!
   xlmPrice: String!
@@ -42,12 +43,15 @@ type Mutation {
     instagram: String
   ): User!
   withdrawToExternalWallet(address: String!, amount: Float!): Boolean!
-  initContract: InitContractResult!
   submitLink(link: String!, email: String!): SubmitLinkResponse!
   claimEarnings: ClaimEarningsResponse!
   mineExternalEntry(input: ExternalTrackInput!): Entry!
-  sellShares(id: String!, amount: Float!): Boolean!
+  unstakeEntry(id: String!, amount: Float!): UnstakeResponse!
+  withdrawHitz(address: String!, amount: Float!): WithdrawHitzResponse!
   mergeEntries(fromId: String!, toId: String!): Boolean!
+  recordAction(id: String!, action: String!): RecordActionResponse!
+  # REMOVED: sellShares - no longer supported in new contract
+  # Users can only invest/stake/unstake, not sell stakes
 }
 
 type PaymentIntentResponse {
@@ -210,6 +214,25 @@ type ClaimEarningsResponse {
 type ClaimedEntry {
     entryId: String!
     amount: Float!
+}
+
+type UnstakeResponse {
+  success: Boolean!
+  message: String!
+  unstakedAmount: Float!
+}
+
+type WithdrawHitzResponse {
+  success: Boolean!
+  message: String!
+  amount: Float!
+  txHash: String
+}
+
+type RecordActionResponse {
+    success: Boolean!
+    message: String!
+    fee: Float!
 }
 
 type ExternalTrack {
