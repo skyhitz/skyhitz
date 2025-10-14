@@ -25,14 +25,15 @@ The Skyhitz platform uses two main smart contracts:
 - **Reward Formula**: `unit_reward = epoch0_reward / (2^epoch_index)`
 - **Max Epochs**: 64 (after which reward becomes negligible)
 
-### Key Functions
+### Key Functions (SAC-based HITZ)
 
 ```rust
 // Initialize token
 __constructor(owner, halving_start_ts, halving_interval_sec, epoch0_unit_reward)
 
-// Mint rewards based on difficulty (only owner)
-mint_reward(to, difficulty) -> i128
+// Core computes unit reward and mints via HITZ SAC (core is admin)
+// Reward = unit_reward(epoch) × difficulty
+// SAC mint is invoked by core; users must have trustline to receive liquid HITZ
 
 // Get emission info
 emission_info() -> (epoch, unit_reward, released, remaining)

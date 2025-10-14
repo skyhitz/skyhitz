@@ -33,11 +33,7 @@ if (typeof window !== 'undefined') {
 
 
 
-export type HitzTokenDataKey = {tag: "HalvingStartTs", values: void} | {tag: "HalvingIntervalSec", values: void} | {tag: "Epoch0Reward", values: void} | {tag: "ReleasedTotal", values: void};
-
-export type DataKey = {tag: "Admin", values: void} | {tag: "Treasury", values: void} | {tag: "HitzToken", values: void} | {tag: "XlmToken", values: void} | {tag: "BaseFee", values: void} | {tag: "Entry", values: readonly [string]} | {tag: "Stake", values: readonly [readonly [string, string]]} | {tag: "StakeTotal", values: readonly [string]} | {tag: "RewardPool", values: readonly [string]} | {tag: "Claimed", values: readonly [readonly [string, string]]} | {tag: "EntryAt", values: readonly [u32]} | {tag: "EntryCount", values: void};
-
-export type LegacyDataKey = {tag: "Index", values: void} | {tag: "Entries", values: readonly [string]} | {tag: "Network", values: void} | {tag: "Admin", values: void};
+export type DataKey = {tag: "Admin", values: void} | {tag: "Treasury", values: void} | {tag: "HitzToken", values: void} | {tag: "XlmToken", values: void} | {tag: "BaseFee", values: void} | {tag: "EmissionStartTs", values: void} | {tag: "EmissionIntervalSec", values: void} | {tag: "EmissionEpoch0UnitReward", values: void} | {tag: "OraclePrice", values: void} | {tag: "OracleLastUpdate", values: void} | {tag: "Entry", values: readonly [string]} | {tag: "Stake", values: readonly [readonly [string, string]]} | {tag: "StakeTotal", values: readonly [string]} | {tag: "RewardPool", values: readonly [string]} | {tag: "Claimed", values: readonly [readonly [string, string]]} | {tag: "EntryAt", values: readonly [u32]} | {tag: "EntryCount", values: void} | {tag: "TotalMinted", values: void};
 
 
 export interface Entry {
@@ -46,709 +42,7 @@ export interface Entry {
   tvl_xlm: i128;
 }
 
-
-/**
- * Storage key for enumeration of accounts per role.
- */
-export interface RoleAccountKey {
-  index: u32;
-  role: string;
-}
-
-/**
- * Storage keys for the data associated with the access control
- */
-export type AccessControlStorageKey = {tag: "RoleAccounts", values: readonly [RoleAccountKey]} | {tag: "HasRole", values: readonly [string, string]} | {tag: "RoleAccountsCount", values: readonly [string]} | {tag: "RoleAdmin", values: readonly [string]} | {tag: "Admin", values: void} | {tag: "PendingAdmin", values: void};
-
-export const AccessControlError = {
-  1210: {message:"Unauthorized"},
-  1211: {message:"AdminNotSet"},
-  1212: {message:"IndexOutOfBounds"},
-  1213: {message:"AdminRoleNotFound"},
-  1214: {message:"RoleCountIsNotZero"},
-  1215: {message:"RoleNotFound"},
-  1216: {message:"AdminAlreadySet"},
-  1217: {message:"RoleNotHeld"},
-  1218: {message:"RoleIsEmpty"}
-}
-
-/**
- * Storage keys for `Ownable` utility.
- */
-export type OwnableStorageKey = {tag: "Owner", values: void} | {tag: "PendingOwner", values: void};
-
-export const OwnableError = {
-  1220: {message:"OwnerNotSet"},
-  1221: {message:"TransferInProgress"},
-  1222: {message:"OwnerAlreadySet"}
-}
-
-export const RoleTransferError = {
-  1200: {message:"NoPendingTransfer"},
-  1201: {message:"InvalidLiveUntilLedger"},
-  1202: {message:"InvalidPendingAccount"}
-}
-
-/**
- * Storage keys for the data associated with the allowlist extension
- */
-export type AllowListStorageKey = {tag: "Allowed", values: readonly [string]};
-
-/**
- * Storage keys for the data associated with the blocklist extension
- */
-export type BlockListStorageKey = {tag: "Blocked", values: readonly [string]};
-
-
-/**
- * Storage key that maps to [`AllowanceData`]
- */
-export interface AllowanceKey {
-  owner: string;
-  spender: string;
-}
-
-
-/**
- * Storage container for the amount of tokens for which an allowance is granted
- * and the ledger number at which this allowance expires.
- */
-export interface AllowanceData {
-  amount: i128;
-  live_until_ledger: u32;
-}
-
-/**
- * Storage keys for the data associated with `FungibleToken`
- */
-export type StorageKey = {tag: "TotalSupply", values: void} | {tag: "Balance", values: readonly [string]} | {tag: "Allowance", values: readonly [AllowanceKey]};
-
-
-/**
- * Storage container for token metadata
- */
-export interface Metadata {
-  decimals: u32;
-  name: string;
-  symbol: string;
-}
-
-/**
- * Storage key for accessing the SAC address
- */
-export type SACAdminGenericDataKey = {tag: "Sac", values: void};
-
-/**
- * Storage key for accessing the SAC address
- */
-export type SACAdminWrapperDataKey = {tag: "Sac", values: void};
-
-export const FungibleTokenError = {
-  /**
-   * Indicates an error related to the current balance of account from which
-   * tokens are expected to be transferred.
-   */
-  100: {message:"InsufficientBalance"},
-  /**
-   * Indicates a failure with the allowance mechanism when a given spender
-   * doesn't have enough allowance.
-   */
-  101: {message:"InsufficientAllowance"},
-  /**
-   * Indicates an invalid value for `live_until_ledger` when setting an
-   * allowance.
-   */
-  102: {message:"InvalidLiveUntilLedger"},
-  /**
-   * Indicates an error when an input that must be >= 0
-   */
-  103: {message:"LessThanZero"},
-  /**
-   * Indicates overflow when adding two values
-   */
-  104: {message:"MathOverflow"},
-  /**
-   * Indicates access to uninitialized metadata
-   */
-  105: {message:"UnsetMetadata"},
-  /**
-   * Indicates that the operation would have caused `total_supply` to exceed
-   * the `cap`.
-   */
-  106: {message:"ExceededCap"},
-  /**
-   * Indicates the supplied `cap` is not a valid cap value.
-   */
-  107: {message:"InvalidCap"},
-  /**
-   * Indicates the Cap was not set.
-   */
-  108: {message:"CapNotSet"},
-  /**
-   * Indicates the SAC address was not set.
-   */
-  109: {message:"SACNotSet"},
-  /**
-   * Indicates a SAC address different than expected.
-   */
-  110: {message:"SACAddressMismatch"},
-  /**
-   * Indicates a missing function parameter in the SAC contract context.
-   */
-  111: {message:"SACMissingFnParam"},
-  /**
-   * Indicates an invalid function parameter in the SAC contract context.
-   */
-  112: {message:"SACInvalidFnParam"},
-  /**
-   * The user is not allowed to perform this operation
-   */
-  113: {message:"UserNotAllowed"},
-  /**
-   * The user is blocked and cannot perform this operation
-   */
-  114: {message:"UserBlocked"}
-}
-
-/**
- * Storage keys for the data associated with the consecutive extension of
- * `NonFungibleToken`
- */
-export type NFTConsecutiveStorageKey = {tag: "Approval", values: readonly [u32]} | {tag: "Owner", values: readonly [u32]} | {tag: "OwnershipBucket", values: readonly [u32]} | {tag: "BurnedToken", values: readonly [u32]};
-
-
-export interface OwnerTokensKey {
-  index: u32;
-  owner: string;
-}
-
-/**
- * Storage keys for the data associated with the enumerable extension of
- * `NonFungibleToken`
- */
-export type NFTEnumerableStorageKey = {tag: "TotalSupply", values: void} | {tag: "OwnerTokens", values: readonly [OwnerTokensKey]} | {tag: "OwnerTokensIndex", values: readonly [u32]} | {tag: "GlobalTokens", values: readonly [u32]} | {tag: "GlobalTokensIndex", values: readonly [u32]};
-
-
-/**
- * Storage container for royalty information
- */
-export interface RoyaltyInfo {
-  basis_points: u32;
-  receiver: string;
-}
-
-/**
- * Storage keys for royalty data
- */
-export type NFTRoyaltiesStorageKey = {tag: "DefaultRoyalty", values: void} | {tag: "TokenRoyalty", values: readonly [u32]};
-
-
-/**
- * Storage container for the token for which an approval is granted
- * and the ledger number at which this approval expires.
- */
-export interface ApprovalData {
-  approved: string;
-  live_until_ledger: u32;
-}
-
-
-/**
- * Storage container for token metadata
- */
-export interface Metadata {
-  base_uri: string;
-  name: string;
-  symbol: string;
-}
-
-/**
- * Storage keys for the data associated with `NonFungibleToken`
- */
-export type NFTStorageKey = {tag: "Owner", values: readonly [u32]} | {tag: "Balance", values: readonly [string]} | {tag: "Approval", values: readonly [u32]} | {tag: "ApprovalForAll", values: readonly [string, string]} | {tag: "Metadata", values: void};
-
-export type NFTSequentialStorageKey = {tag: "TokenIdCounter", values: void};
-
-export const NonFungibleTokenError = {
-  /**
-   * Indicates a non-existent `token_id`.
-   */
-  200: {message:"NonExistentToken"},
-  /**
-   * Indicates an error related to the ownership over a particular token.
-   * Used in transfers.
-   */
-  201: {message:"IncorrectOwner"},
-  /**
-   * Indicates a failure with the `operator`s approval. Used in transfers.
-   */
-  202: {message:"InsufficientApproval"},
-  /**
-   * Indicates a failure with the `approver` of a token to be approved. Used
-   * in approvals.
-   */
-  203: {message:"InvalidApprover"},
-  /**
-   * Indicates an invalid value for `live_until_ledger` when setting
-   * approvals.
-   */
-  204: {message:"InvalidLiveUntilLedger"},
-  /**
-   * Indicates overflow when adding two values
-   */
-  205: {message:"MathOverflow"},
-  /**
-   * Indicates all possible `token_id`s are already in use.
-   */
-  206: {message:"TokenIDsAreDepleted"},
-  /**
-   * Indicates an invalid amount to batch mint in `consecutive` extension.
-   */
-  207: {message:"InvalidAmount"},
-  /**
-   * Indicates the token does not exist in owner's list.
-   */
-  208: {message:"TokenNotFoundInOwnerList"},
-  /**
-   * Indicates the token does not exist in global list.
-   */
-  209: {message:"TokenNotFoundInGlobalList"},
-  /**
-   * Indicates access to unset metadata.
-   */
-  210: {message:"UnsetMetadata"},
-  /**
-   * Indicates the length of the base URI exceeds the maximum allowed.
-   */
-  211: {message:"BaseUriMaxLenExceeded"},
-  /**
-   * Indicates the royalty amount is higher than 10_000 (100%) basis points.
-   */
-  212: {message:"InvalidRoyaltyAmount"}
-}
-
 export interface Client {
-  /**
-   * Construct and simulate a mint_reward transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   * Mint reward tokens based on difficulty
-   * 
-   * Calculates reward using halving schedule and enforces max supply cap.
-   * Only callable by owner (Skyhitz Core contract).
-   * 
-   * # Arguments
-   * * `to` - Recipient address
-   * * `difficulty` - Difficulty multiplier for reward calculation
-   * 
-   * # Returns
-   * Actual amount minted (may be less than calculated if near max supply)
-   */
-  mint_reward: ({_caller, to, difficulty}: {_caller: string, to: string, difficulty: i128}, options?: {
-    /**
-     * The fee to pay for the transaction. Default: BASE_FEE
-     */
-    fee?: number;
-
-    /**
-     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
-     */
-    timeoutInSeconds?: number;
-
-    /**
-     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
-     */
-    simulate?: boolean;
-  }) => Promise<AssembledTransaction<i128>>
-
-  /**
-   * Construct and simulate a emission_info transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   * Get emission info: (epoch_index, current_unit_reward, released_total, remaining_supply)
-   */
-  emission_info: (options?: {
-    /**
-     * The fee to pay for the transaction. Default: BASE_FEE
-     */
-    fee?: number;
-
-    /**
-     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
-     */
-    timeoutInSeconds?: number;
-
-    /**
-     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
-     */
-    simulate?: boolean;
-  }) => Promise<AssembledTransaction<readonly [u64, i128, i128, i128]>>
-
-  /**
-   * Construct and simulate a max_supply transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   * Get max supply
-   */
-  max_supply: (options?: {
-    /**
-     * The fee to pay for the transaction. Default: BASE_FEE
-     */
-    fee?: number;
-
-    /**
-     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
-     */
-    timeoutInSeconds?: number;
-
-    /**
-     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
-     */
-    simulate?: boolean;
-  }) => Promise<AssembledTransaction<i128>>
-
-  /**
-   * Construct and simulate a released_total transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   * Get released total
-   */
-  released_total: (options?: {
-    /**
-     * The fee to pay for the transaction. Default: BASE_FEE
-     */
-    fee?: number;
-
-    /**
-     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
-     */
-    timeoutInSeconds?: number;
-
-    /**
-     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
-     */
-    simulate?: boolean;
-  }) => Promise<AssembledTransaction<i128>>
-
-  /**
-   * Construct and simulate a admin_mint transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   * Admin mint (for initial distribution or emergency)
-   * Still respects max supply cap
-   */
-  admin_mint: ({_caller, account, amount}: {_caller: string, account: string, amount: i128}, options?: {
-    /**
-     * The fee to pay for the transaction. Default: BASE_FEE
-     */
-    fee?: number;
-
-    /**
-     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
-     */
-    timeoutInSeconds?: number;
-
-    /**
-     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
-     */
-    simulate?: boolean;
-  }) => Promise<AssembledTransaction<null>>
-
-  /**
-   * Construct and simulate a accept_hitz_ownership transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   * Accept ownership of the HITZ token (admin-only)
-   * Call this after initiating transfer_ownership on the token so that the
-   * core contract becomes the token owner and can mint rewards.
-   */
-  accept_hitz_ownership: (options?: {
-    /**
-     * The fee to pay for the transaction. Default: BASE_FEE
-     */
-    fee?: number;
-
-    /**
-     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
-     */
-    timeoutInSeconds?: number;
-
-    /**
-     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
-     */
-    simulate?: boolean;
-  }) => Promise<AssembledTransaction<null>>
-
-  /**
-   * Construct and simulate a upgrade transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   * Upgrade contract to new WASM code
-   * Only callable by owner (admin)
-   */
-  upgrade: ({_caller, new_wasm_hash}: {_caller: string, new_wasm_hash: Buffer}, options?: {
-    /**
-     * The fee to pay for the transaction. Default: BASE_FEE
-     */
-    fee?: number;
-
-    /**
-     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
-     */
-    timeoutInSeconds?: number;
-
-    /**
-     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
-     */
-    simulate?: boolean;
-  }) => Promise<AssembledTransaction<null>>
-
-  /**
-   * Construct and simulate a transfer transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   */
-  transfer: ({from, to, amount}: {from: string, to: string, amount: i128}, options?: {
-    /**
-     * The fee to pay for the transaction. Default: BASE_FEE
-     */
-    fee?: number;
-
-    /**
-     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
-     */
-    timeoutInSeconds?: number;
-
-    /**
-     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
-     */
-    simulate?: boolean;
-  }) => Promise<AssembledTransaction<null>>
-
-  /**
-   * Construct and simulate a transfer_from transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   */
-  transfer_from: ({spender, from, to, amount}: {spender: string, from: string, to: string, amount: i128}, options?: {
-    /**
-     * The fee to pay for the transaction. Default: BASE_FEE
-     */
-    fee?: number;
-
-    /**
-     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
-     */
-    timeoutInSeconds?: number;
-
-    /**
-     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
-     */
-    simulate?: boolean;
-  }) => Promise<AssembledTransaction<null>>
-
-  /**
-   * Construct and simulate a total_supply transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   */
-  total_supply: (options?: {
-    /**
-     * The fee to pay for the transaction. Default: BASE_FEE
-     */
-    fee?: number;
-
-    /**
-     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
-     */
-    timeoutInSeconds?: number;
-
-    /**
-     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
-     */
-    simulate?: boolean;
-  }) => Promise<AssembledTransaction<i128>>
-
-  /**
-   * Construct and simulate a balance transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   */
-  balance: ({account}: {account: string}, options?: {
-    /**
-     * The fee to pay for the transaction. Default: BASE_FEE
-     */
-    fee?: number;
-
-    /**
-     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
-     */
-    timeoutInSeconds?: number;
-
-    /**
-     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
-     */
-    simulate?: boolean;
-  }) => Promise<AssembledTransaction<i128>>
-
-  /**
-   * Construct and simulate a allowance transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   */
-  allowance: ({owner, spender}: {owner: string, spender: string}, options?: {
-    /**
-     * The fee to pay for the transaction. Default: BASE_FEE
-     */
-    fee?: number;
-
-    /**
-     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
-     */
-    timeoutInSeconds?: number;
-
-    /**
-     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
-     */
-    simulate?: boolean;
-  }) => Promise<AssembledTransaction<i128>>
-
-  /**
-   * Construct and simulate a approve transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   */
-  approve: ({owner, spender, amount, live_until_ledger}: {owner: string, spender: string, amount: i128, live_until_ledger: u32}, options?: {
-    /**
-     * The fee to pay for the transaction. Default: BASE_FEE
-     */
-    fee?: number;
-
-    /**
-     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
-     */
-    timeoutInSeconds?: number;
-
-    /**
-     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
-     */
-    simulate?: boolean;
-  }) => Promise<AssembledTransaction<null>>
-
-  /**
-   * Construct and simulate a decimals transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   */
-  decimals: (options?: {
-    /**
-     * The fee to pay for the transaction. Default: BASE_FEE
-     */
-    fee?: number;
-
-    /**
-     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
-     */
-    timeoutInSeconds?: number;
-
-    /**
-     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
-     */
-    simulate?: boolean;
-  }) => Promise<AssembledTransaction<u32>>
-
-  /**
-   * Construct and simulate a name transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   */
-  name: (options?: {
-    /**
-     * The fee to pay for the transaction. Default: BASE_FEE
-     */
-    fee?: number;
-
-    /**
-     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
-     */
-    timeoutInSeconds?: number;
-
-    /**
-     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
-     */
-    simulate?: boolean;
-  }) => Promise<AssembledTransaction<string>>
-
-  /**
-   * Construct and simulate a symbol transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   */
-  symbol: (options?: {
-    /**
-     * The fee to pay for the transaction. Default: BASE_FEE
-     */
-    fee?: number;
-
-    /**
-     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
-     */
-    timeoutInSeconds?: number;
-
-    /**
-     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
-     */
-    simulate?: boolean;
-  }) => Promise<AssembledTransaction<string>>
-
-  /**
-   * Construct and simulate a get_owner transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   */
-  get_owner: (options?: {
-    /**
-     * The fee to pay for the transaction. Default: BASE_FEE
-     */
-    fee?: number;
-
-    /**
-     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
-     */
-    timeoutInSeconds?: number;
-
-    /**
-     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
-     */
-    simulate?: boolean;
-  }) => Promise<AssembledTransaction<Option<string>>>
-
-  /**
-   * Construct and simulate a transfer_ownership transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   */
-  transfer_ownership: ({new_owner, live_until_ledger}: {new_owner: string, live_until_ledger: u32}, options?: {
-    /**
-     * The fee to pay for the transaction. Default: BASE_FEE
-     */
-    fee?: number;
-
-    /**
-     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
-     */
-    timeoutInSeconds?: number;
-
-    /**
-     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
-     */
-    simulate?: boolean;
-  }) => Promise<AssembledTransaction<null>>
-
-  /**
-   * Construct and simulate a accept_ownership transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   */
-  accept_ownership: (options?: {
-    /**
-     * The fee to pay for the transaction. Default: BASE_FEE
-     */
-    fee?: number;
-
-    /**
-     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
-     */
-    timeoutInSeconds?: number;
-
-    /**
-     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
-     */
-    simulate?: boolean;
-  }) => Promise<AssembledTransaction<null>>
-
-  /**
-   * Construct and simulate a renounce_ownership transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   */
-  renounce_ownership: (options?: {
-    /**
-     * The fee to pay for the transaction. Default: BASE_FEE
-     */
-    fee?: number;
-
-    /**
-     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
-     */
-    timeoutInSeconds?: number;
-
-    /**
-     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
-     */
-    simulate?: boolean;
-  }) => Promise<AssembledTransaction<null>>
-
   /**
    * Construct and simulate a upgrade_core transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    * Upgrade core contract to new WASM code (admin-only)
@@ -772,14 +66,18 @@ export interface Client {
   }) => Promise<AssembledTransaction<null>>
 
   /**
-   * Construct and simulate a reset_all transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   * Reset storage for both legacy and current keys (admin-only)
+   * Construct and simulate a reset_instance transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Reset instance storage (admin-only)
    * 
-   * Intended for use immediately after upgrading from the legacy contract,
-   * to wipe old state while keeping the same contract ID.
-   * Safe to call even if some keys don't exist.
+   * CRITICAL: This clears instance configuration. Contract will be unusable until re-initialized.
+   * Use with extreme caution during upgrades only when you need to change core parameters.
+   * 
+   * Clears: Admin, Treasury, HitzToken, XlmToken, BaseFee, Oracle settings, Emission settings
+   * Preserves: Persistent data (entries, stakes, rewards, TotalMinted, EntryCount)
+   * 
+   * After calling this, you MUST call init() again to restore functionality.
    */
-  reset_all: (options?: {
+  reset_instance: (options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -797,75 +95,11 @@ export interface Client {
   }) => Promise<AssembledTransaction<null>>
 
   /**
-   * Construct and simulate a reset_legacy_instance transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   * Legacy-only: remove instance keys (Admin/Network). Admin-only.
-   */
-  reset_legacy_instance: (options?: {
-    /**
-     * The fee to pay for the transaction. Default: BASE_FEE
-     */
-    fee?: number;
-
-    /**
-     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
-     */
-    timeoutInSeconds?: number;
-
-    /**
-     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
-     */
-    simulate?: boolean;
-  }) => Promise<AssembledTransaction<null>>
-
-  /**
-   * Construct and simulate a reset_legacy_entries_chunk transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   * Legacy-only: remove legacy entries in chunks to stay under footprint limits. Admin-only.
-   * Removes entries at indexes [start, start+limit).
-   */
-  reset_legacy_entries_chunk: ({start, limit}: {start: u32, limit: u32}, options?: {
-    /**
-     * The fee to pay for the transaction. Default: BASE_FEE
-     */
-    fee?: number;
-
-    /**
-     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
-     */
-    timeoutInSeconds?: number;
-
-    /**
-     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
-     */
-    simulate?: boolean;
-  }) => Promise<AssembledTransaction<null>>
-
-  /**
-   * Construct and simulate a reset_current_instance transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   * Current-only: remove instance keys (Admin/Treasury/HitzToken/XlmToken/BaseFee). Admin-only.
-   */
-  reset_current_instance: (options?: {
-    /**
-     * The fee to pay for the transaction. Default: BASE_FEE
-     */
-    fee?: number;
-
-    /**
-     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
-     */
-    timeoutInSeconds?: number;
-
-    /**
-     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
-     */
-    simulate?: boolean;
-  }) => Promise<AssembledTransaction<null>>
-
-  /**
-   * Construct and simulate a reset_current_entries_chunk transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   * Current-only: remove entries in chunks to stay under footprint limits. Admin-only.
+   * Construct and simulate a reset_entries_chunk transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Admin-only: remove entries in chunks to stay under footprint limits.
    * Removes entries at indexes [start, start+limit) using EntryAt(i).
    */
-  reset_current_entries_chunk: ({start, limit}: {start: u32, limit: u32}, options?: {
+  reset_entries_chunk: ({start, limit}: {start: u32, limit: u32}, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -883,10 +117,10 @@ export interface Client {
   }) => Promise<AssembledTransaction<null>>
 
   /**
-   * Construct and simulate a legacy_index_len transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   * Helpers to introspect counts before chunking.
+   * Construct and simulate a entry_count transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Helper to introspect entry count before chunking.
    */
-  legacy_index_len: (options?: {
+  entry_count: (options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -904,93 +138,10 @@ export interface Client {
   }) => Promise<AssembledTransaction<u32>>
 
   /**
-   * Construct and simulate a current_entry_count transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Construct and simulate a reset_entry_by_pos transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Admin-only: remove one entry by its position (EntryAt(i)) and related keys.
    */
-  current_entry_count: (options?: {
-    /**
-     * The fee to pay for the transaction. Default: BASE_FEE
-     */
-    fee?: number;
-
-    /**
-     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
-     */
-    timeoutInSeconds?: number;
-
-    /**
-     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
-     */
-    simulate?: boolean;
-  }) => Promise<AssembledTransaction<u32>>
-
-  /**
-   * Construct and simulate a legacy_index_slice transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   * Read-only: return a slice of the legacy index IDs [start, start+limit).
-   */
-  legacy_index_slice: ({start, limit}: {start: u32, limit: u32}, options?: {
-    /**
-     * The fee to pay for the transaction. Default: BASE_FEE
-     */
-    fee?: number;
-
-    /**
-     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
-     */
-    timeoutInSeconds?: number;
-
-    /**
-     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
-     */
-    simulate?: boolean;
-  }) => Promise<AssembledTransaction<Array<string>>>
-
-  /**
-   * Construct and simulate a reset_legacy_entry_by_id transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   * Admin-only: remove one legacy entry by id and drop it from the legacy index if present.
-   */
-  reset_legacy_entry_by_id: ({id}: {id: string}, options?: {
-    /**
-     * The fee to pay for the transaction. Default: BASE_FEE
-     */
-    fee?: number;
-
-    /**
-     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
-     */
-    timeoutInSeconds?: number;
-
-    /**
-     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
-     */
-    simulate?: boolean;
-  }) => Promise<AssembledTransaction<null>>
-
-  /**
-   * Construct and simulate a reset_legacy_index transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   * Admin-only: remove the legacy Index vector entirely.
-   */
-  reset_legacy_index: (options?: {
-    /**
-     * The fee to pay for the transaction. Default: BASE_FEE
-     */
-    fee?: number;
-
-    /**
-     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
-     */
-    timeoutInSeconds?: number;
-
-    /**
-     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
-     */
-    simulate?: boolean;
-  }) => Promise<AssembledTransaction<null>>
-
-  /**
-   * Construct and simulate a reset_current_entry_by_pos transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   * Admin-only: remove one current entry by its position (EntryAt(i)) and related keys.
-   */
-  reset_current_entry_by_pos: ({i}: {i: u32}, options?: {
+  reset_entry_by_pos: ({i}: {i: u32}, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -1013,7 +164,7 @@ export interface Client {
    * 
    * # Arguments
    * * `admin` - Admin address with privileged rights
-   * * `treasury` - Treasury address receiving all XLM fees
+   * * `treasury` - Treasury address receiving all XLM fees (also the oracle updater)
    * * `hitz_token` - HITZ token contract address (OpenZeppelin token)
    * * `xlm_token` - XLM token contract address (SAC)
    * * `base_fee` - Base fee per difficulty unit in stroops (default 100,000 = 0.01 XLM)
@@ -1060,6 +211,84 @@ export interface Client {
   }) => Promise<AssembledTransaction<null>>
 
   /**
+   * Construct and simulate a withdraw_xlm_to_treasury transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Transfer all contract XLM balance to treasury (admin-only)
+   * 
+   * Used to recover XLM that may be locked in the contract after upgrade/reset.
+   * Transfers the entire XLM balance of the contract to the treasury address.
+   * 
+   * # Returns
+   * The amount of XLM transferred in stroops
+   */
+  withdraw_xlm_to_treasury: (options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<i128>>
+
+  /**
+   * Construct and simulate a update_oracle_price transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Update oracle price (treasury-only)
+   * 
+   * Treasury bot calls this after fetching current market price from DEX.
+   * This price is used for dynamic emission rate calculations.
+   * 
+   * # Arguments
+   * * `caller` - Treasury address (must be the configured Treasury)
+   * * `new_price` - New HITZ/XLM price in stroops (e.g., 100,000 = 0.01 XLM per HITZ)
+   */
+  update_oracle_price: ({caller, new_price}: {caller: string, new_price: i128}, options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<null>>
+
+  /**
+   * Construct and simulate a get_oracle_data transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Get oracle data (price and last update timestamp)
+   * 
+   * Returns (price_in_stroops, last_update_timestamp)
+   */
+  get_oracle_data: (options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<readonly [i128, u64]>>
+
+  /**
    * Construct and simulate a get_base_fee transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    * Get current base fee
    */
@@ -1081,8 +310,53 @@ export interface Client {
   }) => Promise<AssembledTransaction<i128>>
 
   /**
+   * Construct and simulate a get_total_supply transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Get total HITZ supply minted so far
+   * Returns the total amount of HITZ tokens minted by this contract in stroops
+   */
+  get_total_supply: (options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<i128>>
+
+  /**
+   * Construct and simulate a get_remaining_supply transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Get remaining HITZ tokens that can be minted
+   * Returns the amount of HITZ remaining before hitting the 21M cap, in stroops
+   */
+  get_remaining_supply: (options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<i128>>
+
+  /**
    * Construct and simulate a create_entry transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    * Create a new entry (admin-only)
+   * SECURITY: Limited to MAX_ENTRIES to prevent DOS
    */
   create_entry: ({entry_id}: {entry_id: string}, options?: {
     /**
@@ -1223,7 +497,7 @@ export interface Client {
    * 
    * # Performance
    * Optimized to single loop - O(n) where n = number of entries
-   * Handles rounding dust by allocating to last entry
+   * SECURITY: Limited to 1000 entries to prevent DOS
    */
   distribute_rewards: ({caller, hitz_amount}: {caller: string, hitz_amount: i128}, options?: {
     /**
@@ -1458,11 +732,72 @@ export interface Client {
     simulate?: boolean;
   }) => Promise<AssembledTransaction<u32>>
 
+  /**
+   * Construct and simulate a merge_entries transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Merge one entry into another (admin-only).
+   * All escrow, TVL, reward pool, and stakes move from `from_id` to `into_id`.
+   * The `from_id` entry is removed from storage and index.
+   * 
+   * For stake migration:
+   * - If `stakers` list is provided: migrates those users' stakes from from_id to into_id
+   * - If `stakers` is empty: only moves totals (admin must ensure no orphaned stakes)
+   * 
+   * Note: We cannot iterate all stakers (no index), so admin must provide the list.
+   * Use off-chain indexing or events to track stakers.
+   */
+  merge_entries: ({from_id, into_id, stakers}: {from_id: string, into_id: string, stakers: Array<string>}, options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<null>>
+
+  /**
+   * Construct and simulate a remove_entry transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Remove an entry completely (admin-only).
+   * 
+   * If `stakers` list is provided:
+   * - Returns all stakes to those users
+   * - Verifies returned stakes match total
+   * - Then removes entry
+   * 
+   * If `stakers` is empty:
+   * - Removes entry only if total stake is 0
+   * - Otherwise panics (admin must provide staker list)
+   * 
+   * Note: We cannot iterate all stakers (no index), so admin must provide the list.
+   * Use off-chain indexing or events to track stakers.
+   */
+  remove_entry: ({entry_id, stakers}: {entry_id: string, stakers: Array<string>}, options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<null>>
+
 }
 export class Client extends ContractClient {
   static async deploy<T = Client>(
-        /** Constructor/Initialization Args for the contract's `__constructor` method */
-        {owner, halving_start_ts, halving_interval_sec, epoch0_unit_reward}: {owner: string, halving_start_ts: u64, halving_interval_sec: u64, epoch0_unit_reward: i128},
     /** Options for initializing a Client as well as for calling a method, with extras specific to deploying. */
     options: MethodOptions &
       Omit<ContractClientOptions, "contractId"> & {
@@ -1474,56 +809,32 @@ export class Client extends ContractClient {
         format?: "hex" | "base64";
       }
   ): Promise<AssembledTransaction<T>> {
-    return ContractClient.deploy({owner, halving_start_ts, halving_interval_sec, epoch0_unit_reward}, options)
+    return ContractClient.deploy(null, options)
   }
   constructor(public readonly options: ContractClientOptions) {
     super(
-      new ContractSpec([ "AAAAAgAAAAAAAAAAAAAAEEhpdHpUb2tlbkRhdGFLZXkAAAAEAAAAAAAAAAAAAAAOSGFsdmluZ1N0YXJ0VHMAAAAAAAAAAAAAAAAAEkhhbHZpbmdJbnRlcnZhbFNlYwAAAAAAAAAAAAAAAAAMRXBvY2gwUmV3YXJkAAAAAAAAAAAAAAANUmVsZWFzZWRUb3RhbAAAAA==",
-        "AAAAAAAAAS5Jbml0aWFsaXplIHRoZSBISVRaIHRva2VuCgojIEFyZ3VtZW50cwoqIGBvd25lcmAgLSBBZG1pbiBhZGRyZXNzIHdpdGggcHJpdmlsZWdlZCByaWdodHMKKiBgaGFsdmluZ19zdGFydF90c2AgLSBVbml4IHRpbWVzdGFtcCB3aGVuIGhhbHZpbmcgc2NoZWR1bGUgYmVnaW5zCiogYGhhbHZpbmdfaW50ZXJ2YWxfc2VjYCAtIFNlY29uZHMgcGVyIGVwb2NoICgxMjYsMTQ0LDAwMCA9IDQgeWVhcnMpCiogYGVwb2NoMF91bml0X3Jld2FyZGAgLSBJbml0aWFsIHVuaXQgcmV3YXJkIGluIHN0cm9vcHMgKDMsMDAwLDAwMCA9IDAuMyBISVRaKQAAAAAADV9fY29uc3RydWN0b3IAAAAAAAAEAAAAAAAAAAVvd25lcgAAAAAAABMAAAAAAAAAEGhhbHZpbmdfc3RhcnRfdHMAAAAGAAAAAAAAABRoYWx2aW5nX2ludGVydmFsX3NlYwAAAAYAAAAAAAAAEmVwb2NoMF91bml0X3Jld2FyZAAAAAAACwAAAAA=",
-        "AAAAAAAAAVRNaW50IHJld2FyZCB0b2tlbnMgYmFzZWQgb24gZGlmZmljdWx0eQoKQ2FsY3VsYXRlcyByZXdhcmQgdXNpbmcgaGFsdmluZyBzY2hlZHVsZSBhbmQgZW5mb3JjZXMgbWF4IHN1cHBseSBjYXAuCk9ubHkgY2FsbGFibGUgYnkgb3duZXIgKFNreWhpdHogQ29yZSBjb250cmFjdCkuCgojIEFyZ3VtZW50cwoqIGB0b2AgLSBSZWNpcGllbnQgYWRkcmVzcwoqIGBkaWZmaWN1bHR5YCAtIERpZmZpY3VsdHkgbXVsdGlwbGllciBmb3IgcmV3YXJkIGNhbGN1bGF0aW9uCgojIFJldHVybnMKQWN0dWFsIGFtb3VudCBtaW50ZWQgKG1heSBiZSBsZXNzIHRoYW4gY2FsY3VsYXRlZCBpZiBuZWFyIG1heCBzdXBwbHkpAAAAC21pbnRfcmV3YXJkAAAAAAMAAAAAAAAAB19jYWxsZXIAAAAAEwAAAAAAAAACdG8AAAAAABMAAAAAAAAACmRpZmZpY3VsdHkAAAAAAAsAAAABAAAACw==",
-        "AAAAAAAAAFdHZXQgZW1pc3Npb24gaW5mbzogKGVwb2NoX2luZGV4LCBjdXJyZW50X3VuaXRfcmV3YXJkLCByZWxlYXNlZF90b3RhbCwgcmVtYWluaW5nX3N1cHBseSkAAAAADWVtaXNzaW9uX2luZm8AAAAAAAAAAAAAAQAAA+0AAAAEAAAABgAAAAsAAAALAAAACw==",
-        "AAAAAAAAAA5HZXQgbWF4IHN1cHBseQAAAAAACm1heF9zdXBwbHkAAAAAAAAAAAABAAAACw==",
-        "AAAAAAAAABJHZXQgcmVsZWFzZWQgdG90YWwAAAAAAA5yZWxlYXNlZF90b3RhbAAAAAAAAAAAAAEAAAAL",
-        "AAAAAAAAAFBBZG1pbiBtaW50IChmb3IgaW5pdGlhbCBkaXN0cmlidXRpb24gb3IgZW1lcmdlbmN5KQpTdGlsbCByZXNwZWN0cyBtYXggc3VwcGx5IGNhcAAAAAphZG1pbl9taW50AAAAAAADAAAAAAAAAAdfY2FsbGVyAAAAABMAAAAAAAAAB2FjY291bnQAAAAAEwAAAAAAAAAGYW1vdW50AAAAAAALAAAAAA==",
-        "AAAAAAAAAEBVcGdyYWRlIGNvbnRyYWN0IHRvIG5ldyBXQVNNIGNvZGUKT25seSBjYWxsYWJsZSBieSBvd25lciAoYWRtaW4pAAAAB3VwZ3JhZGUAAAAAAgAAAAAAAAAHX2NhbGxlcgAAAAATAAAAAAAAAA1uZXdfd2FzbV9oYXNoAAAAAAAD7gAAACAAAAAA",
-        "AAAAAAAAAAAAAAAIdHJhbnNmZXIAAAADAAAAAAAAAARmcm9tAAAAEwAAAAAAAAACdG8AAAAAABMAAAAAAAAABmFtb3VudAAAAAAACwAAAAA=",
-        "AAAAAAAAAAAAAAANdHJhbnNmZXJfZnJvbQAAAAAAAAQAAAAAAAAAB3NwZW5kZXIAAAAAEwAAAAAAAAAEZnJvbQAAABMAAAAAAAAAAnRvAAAAAAATAAAAAAAAAAZhbW91bnQAAAAAAAsAAAAA",
-        "AAAAAAAAAAAAAAAMdG90YWxfc3VwcGx5AAAAAAAAAAEAAAAL",
-        "AAAAAAAAAAAAAAAHYmFsYW5jZQAAAAABAAAAAAAAAAdhY2NvdW50AAAAABMAAAABAAAACw==",
-        "AAAAAAAAAAAAAAAJYWxsb3dhbmNlAAAAAAAAAgAAAAAAAAAFb3duZXIAAAAAAAATAAAAAAAAAAdzcGVuZGVyAAAAABMAAAABAAAACw==",
-        "AAAAAAAAAAAAAAAHYXBwcm92ZQAAAAAEAAAAAAAAAAVvd25lcgAAAAAAABMAAAAAAAAAB3NwZW5kZXIAAAAAEwAAAAAAAAAGYW1vdW50AAAAAAALAAAAAAAAABFsaXZlX3VudGlsX2xlZGdlcgAAAAAAAAQAAAAA",
-        "AAAAAAAAAAAAAAAIZGVjaW1hbHMAAAAAAAAAAQAAAAQ=",
-        "AAAAAAAAAAAAAAAEbmFtZQAAAAAAAAABAAAAEA==",
-        "AAAAAAAAAAAAAAAGc3ltYm9sAAAAAAAAAAAAAQAAABA=",
-        "AAAAAAAAAAAAAAAJZ2V0X293bmVyAAAAAAAAAAAAAAEAAAPoAAAAEw==",
-        "AAAAAAAAAAAAAAASdHJhbnNmZXJfb3duZXJzaGlwAAAAAAACAAAAAAAAAAluZXdfb3duZXIAAAAAAAATAAAAAAAAABFsaXZlX3VudGlsX2xlZGdlcgAAAAAAAAQAAAAA",
-        "AAAAAAAAAAAAAAAQYWNjZXB0X293bmVyc2hpcAAAAAAAAAAA",
-        "AAAAAAAAAAAAAAAScmVub3VuY2Vfb3duZXJzaGlwAAAAAAAAAAAAAA==",
-        "AAAAAgAAAAAAAAAAAAAAB0RhdGFLZXkAAAAADAAAAAAAAAAAAAAABUFkbWluAAAAAAAAAAAAAAAAAAAIVHJlYXN1cnkAAAAAAAAAAAAAAAlIaXR6VG9rZW4AAAAAAAAAAAAAAAAAAAhYbG1Ub2tlbgAAAAAAAAAAAAAAB0Jhc2VGZWUAAAAAAQAAAAAAAAAFRW50cnkAAAAAAAABAAAAEAAAAAEAAAAAAAAABVN0YWtlAAAAAAAAAQAAA+0AAAACAAAAEAAAABMAAAABAAAAAAAAAApTdGFrZVRvdGFsAAAAAAABAAAAEAAAAAEAAAAAAAAAClJld2FyZFBvb2wAAAAAAAEAAAAQAAAAAQAAAAAAAAAHQ2xhaW1lZAAAAAABAAAD7QAAAAIAAAAQAAAAEwAAAAEAAAAAAAAAB0VudHJ5QXQAAAAAAQAAAAQAAAAAAAAAAAAAAApFbnRyeUNvdW50AAA=",
-        "AAAAAgAAAAAAAAAAAAAADUxlZ2FjeURhdGFLZXkAAAAAAAAEAAAAAAAAAAAAAAAFSW5kZXgAAAAAAAABAAAAAAAAAAdFbnRyaWVzAAAAAAEAAAAQAAAAAAAAAAAAAAAHTmV0d29yawAAAAAAAAAAAAAAAAVBZG1pbgAAAA==",
+      new ContractSpec([ "AAAAAgAAAAAAAAAAAAAAB0RhdGFLZXkAAAAAEgAAAAAAAAAAAAAABUFkbWluAAAAAAAAAAAAAAAAAAAIVHJlYXN1cnkAAAAAAAAAAAAAAAlIaXR6VG9rZW4AAAAAAAAAAAAAAAAAAAhYbG1Ub2tlbgAAAAAAAAAAAAAAB0Jhc2VGZWUAAAAAAAAAAAAAAAAPRW1pc3Npb25TdGFydFRzAAAAAAAAAAAAAAAAE0VtaXNzaW9uSW50ZXJ2YWxTZWMAAAAAAAAAAAAAAAAYRW1pc3Npb25FcG9jaDBVbml0UmV3YXJkAAAAAAAAAAAAAAALT3JhY2xlUHJpY2UAAAAAAAAAAAAAAAAQT3JhY2xlTGFzdFVwZGF0ZQAAAAEAAAAAAAAABUVudHJ5AAAAAAAAAQAAABAAAAABAAAAAAAAAAVTdGFrZQAAAAAAAAEAAAPtAAAAAgAAABAAAAATAAAAAQAAAAAAAAAKU3Rha2VUb3RhbAAAAAAAAQAAABAAAAABAAAAAAAAAApSZXdhcmRQb29sAAAAAAABAAAAEAAAAAEAAAAAAAAAB0NsYWltZWQAAAAAAQAAA+0AAAACAAAAEAAAABMAAAABAAAAAAAAAAdFbnRyeUF0AAAAAAEAAAAEAAAAAAAAAAAAAAAKRW50cnlDb3VudAAAAAAAAAAAAAAAAAALVG90YWxNaW50ZWQA",
         "AAAAAQAAAAAAAAAAAAAABUVudHJ5AAAAAAAAAwAAAAAAAAAKY3JlYXRlZF9hdAAAAAAABgAAAAAAAAAKZXNjcm93X3hsbQAAAAAACwAAAAAAAAAHdHZsX3hsbQAAAAAL",
         "AAAAAAAAAIVVcGdyYWRlIGNvcmUgY29udHJhY3QgdG8gbmV3IFdBU00gY29kZSAoYWRtaW4tb25seSkKTm90ZTogTmFtZWQgYHVwZ3JhZGVfY29yZWAgdG8gYXZvaWQgZXhwb3J0IG5hbWUgY29sbGlzaW9uIHdpdGggdG9rZW4ncyBgdXBncmFkZWAuAAAAAAAADHVwZ3JhZGVfY29yZQAAAAEAAAAAAAAADW5ld193YXNtX2hhc2gAAAAAAAPuAAAAIAAAAAA=",
-        "AAAAAAAAAOVSZXNldCBzdG9yYWdlIGZvciBib3RoIGxlZ2FjeSBhbmQgY3VycmVudCBrZXlzIChhZG1pbi1vbmx5KQoKSW50ZW5kZWQgZm9yIHVzZSBpbW1lZGlhdGVseSBhZnRlciB1cGdyYWRpbmcgZnJvbSB0aGUgbGVnYWN5IGNvbnRyYWN0LAp0byB3aXBlIG9sZCBzdGF0ZSB3aGlsZSBrZWVwaW5nIHRoZSBzYW1lIGNvbnRyYWN0IElELgpTYWZlIHRvIGNhbGwgZXZlbiBpZiBzb21lIGtleXMgZG9uJ3QgZXhpc3QuAAAAAAAACXJlc2V0X2FsbAAAAAAAAAAAAAAA",
-        "AAAAAAAAAD5MZWdhY3ktb25seTogcmVtb3ZlIGluc3RhbmNlIGtleXMgKEFkbWluL05ldHdvcmspLiBBZG1pbi1vbmx5LgAAAAAAFXJlc2V0X2xlZ2FjeV9pbnN0YW5jZQAAAAAAAAAAAAAA",
-        "AAAAAAAAAIlMZWdhY3ktb25seTogcmVtb3ZlIGxlZ2FjeSBlbnRyaWVzIGluIGNodW5rcyB0byBzdGF5IHVuZGVyIGZvb3RwcmludCBsaW1pdHMuIEFkbWluLW9ubHkuClJlbW92ZXMgZW50cmllcyBhdCBpbmRleGVzIFtzdGFydCwgc3RhcnQrbGltaXQpLgAAAAAAABpyZXNldF9sZWdhY3lfZW50cmllc19jaHVuawAAAAAAAgAAAAAAAAAFc3RhcnQAAAAAAAAEAAAAAAAAAAVsaW1pdAAAAAAAAAQAAAAA",
-        "AAAAAAAAAFtDdXJyZW50LW9ubHk6IHJlbW92ZSBpbnN0YW5jZSBrZXlzIChBZG1pbi9UcmVhc3VyeS9IaXR6VG9rZW4vWGxtVG9rZW4vQmFzZUZlZSkuIEFkbWluLW9ubHkuAAAAABZyZXNldF9jdXJyZW50X2luc3RhbmNlAAAAAAAAAAAAAA==",
-        "AAAAAAAAAJRDdXJyZW50LW9ubHk6IHJlbW92ZSBlbnRyaWVzIGluIGNodW5rcyB0byBzdGF5IHVuZGVyIGZvb3RwcmludCBsaW1pdHMuIEFkbWluLW9ubHkuClJlbW92ZXMgZW50cmllcyBhdCBpbmRleGVzIFtzdGFydCwgc3RhcnQrbGltaXQpIHVzaW5nIEVudHJ5QXQoaSkuAAAAG3Jlc2V0X2N1cnJlbnRfZW50cmllc19jaHVuawAAAAACAAAAAAAAAAVzdGFydAAAAAAAAAQAAAAAAAAABWxpbWl0AAAAAAAABAAAAAA=",
-        "AAAAAAAAAC1IZWxwZXJzIHRvIGludHJvc3BlY3QgY291bnRzIGJlZm9yZSBjaHVua2luZy4AAAAAAAAQbGVnYWN5X2luZGV4X2xlbgAAAAAAAAABAAAABA==",
-        "AAAAAAAAAAAAAAATY3VycmVudF9lbnRyeV9jb3VudAAAAAAAAAAAAQAAAAQ=",
-        "AAAAAAAAAEdSZWFkLW9ubHk6IHJldHVybiBhIHNsaWNlIG9mIHRoZSBsZWdhY3kgaW5kZXggSURzIFtzdGFydCwgc3RhcnQrbGltaXQpLgAAAAASbGVnYWN5X2luZGV4X3NsaWNlAAAAAAACAAAAAAAAAAVzdGFydAAAAAAAAAQAAAAAAAAABWxpbWl0AAAAAAAABAAAAAEAAAPqAAAAEA==",
-        "AAAAAAAAAFdBZG1pbi1vbmx5OiByZW1vdmUgb25lIGxlZ2FjeSBlbnRyeSBieSBpZCBhbmQgZHJvcCBpdCBmcm9tIHRoZSBsZWdhY3kgaW5kZXggaWYgcHJlc2VudC4AAAAAGHJlc2V0X2xlZ2FjeV9lbnRyeV9ieV9pZAAAAAEAAAAAAAAAAmlkAAAAAAAQAAAAAA==",
-        "AAAAAAAAADRBZG1pbi1vbmx5OiByZW1vdmUgdGhlIGxlZ2FjeSBJbmRleCB2ZWN0b3IgZW50aXJlbHkuAAAAEnJlc2V0X2xlZ2FjeV9pbmRleAAAAAAAAAAAAAA=",
-        "AAAAAAAAAFNBZG1pbi1vbmx5OiByZW1vdmUgb25lIGN1cnJlbnQgZW50cnkgYnkgaXRzIHBvc2l0aW9uIChFbnRyeUF0KGkpKSBhbmQgcmVsYXRlZCBrZXlzLgAAAAAacmVzZXRfY3VycmVudF9lbnRyeV9ieV9wb3MAAAAAAAEAAAAAAAAAAWkAAAAAAAAEAAAAAA==",
-        "AAAAAAAAAWNJbml0aWFsaXplIHRoZSBjb250cmFjdCAob25lLXRpbWUgb25seSkKCiMgQXJndW1lbnRzCiogYGFkbWluYCAtIEFkbWluIGFkZHJlc3Mgd2l0aCBwcml2aWxlZ2VkIHJpZ2h0cwoqIGB0cmVhc3VyeWAgLSBUcmVhc3VyeSBhZGRyZXNzIHJlY2VpdmluZyBhbGwgWExNIGZlZXMKKiBgaGl0el90b2tlbmAgLSBISVRaIHRva2VuIGNvbnRyYWN0IGFkZHJlc3MgKE9wZW5aZXBwZWxpbiB0b2tlbikKKiBgeGxtX3Rva2VuYCAtIFhMTSB0b2tlbiBjb250cmFjdCBhZGRyZXNzIChTQUMpCiogYGJhc2VfZmVlYCAtIEJhc2UgZmVlIHBlciBkaWZmaWN1bHR5IHVuaXQgaW4gc3Ryb29wcyAoZGVmYXVsdCAxMDAsMDAwID0gMC4wMSBYTE0pAAAAAARpbml0AAAABQAAAAAAAAAFYWRtaW4AAAAAAAATAAAAAAAAAAh0cmVhc3VyeQAAABMAAAAAAAAACmhpdHpfdG9rZW4AAAAAABMAAAAAAAAACXhsbV90b2tlbgAAAAAAABMAAAAAAAAACGJhc2VfZmVlAAAACwAAAAA=",
+        "AAAAAAAAAc1SZXNldCBpbnN0YW5jZSBzdG9yYWdlIChhZG1pbi1vbmx5KQoKQ1JJVElDQUw6IFRoaXMgY2xlYXJzIGluc3RhbmNlIGNvbmZpZ3VyYXRpb24uIENvbnRyYWN0IHdpbGwgYmUgdW51c2FibGUgdW50aWwgcmUtaW5pdGlhbGl6ZWQuClVzZSB3aXRoIGV4dHJlbWUgY2F1dGlvbiBkdXJpbmcgdXBncmFkZXMgb25seSB3aGVuIHlvdSBuZWVkIHRvIGNoYW5nZSBjb3JlIHBhcmFtZXRlcnMuCgpDbGVhcnM6IEFkbWluLCBUcmVhc3VyeSwgSGl0elRva2VuLCBYbG1Ub2tlbiwgQmFzZUZlZSwgT3JhY2xlIHNldHRpbmdzLCBFbWlzc2lvbiBzZXR0aW5ncwpQcmVzZXJ2ZXM6IFBlcnNpc3RlbnQgZGF0YSAoZW50cmllcywgc3Rha2VzLCByZXdhcmRzLCBUb3RhbE1pbnRlZCwgRW50cnlDb3VudCkKCkFmdGVyIGNhbGxpbmcgdGhpcywgeW91IE1VU1QgY2FsbCBpbml0KCkgYWdhaW4gdG8gcmVzdG9yZSBmdW5jdGlvbmFsaXR5LgAAAAAAAA5yZXNldF9pbnN0YW5jZQAAAAAAAAAAAAA=",
+        "AAAAAAAAAIZBZG1pbi1vbmx5OiByZW1vdmUgZW50cmllcyBpbiBjaHVua3MgdG8gc3RheSB1bmRlciBmb290cHJpbnQgbGltaXRzLgpSZW1vdmVzIGVudHJpZXMgYXQgaW5kZXhlcyBbc3RhcnQsIHN0YXJ0K2xpbWl0KSB1c2luZyBFbnRyeUF0KGkpLgAAAAAAE3Jlc2V0X2VudHJpZXNfY2h1bmsAAAAAAgAAAAAAAAAFc3RhcnQAAAAAAAAEAAAAAAAAAAVsaW1pdAAAAAAAAAQAAAAA",
+        "AAAAAAAAADFIZWxwZXIgdG8gaW50cm9zcGVjdCBlbnRyeSBjb3VudCBiZWZvcmUgY2h1bmtpbmcuAAAAAAAAC2VudHJ5X2NvdW50AAAAAAAAAAABAAAABA==",
+        "AAAAAAAAAEtBZG1pbi1vbmx5OiByZW1vdmUgb25lIGVudHJ5IGJ5IGl0cyBwb3NpdGlvbiAoRW50cnlBdChpKSkgYW5kIHJlbGF0ZWQga2V5cy4AAAAAEnJlc2V0X2VudHJ5X2J5X3BvcwAAAAAAAQAAAAAAAAABaQAAAAAAAAQAAAAA",
+        "AAAAAAAAAX1Jbml0aWFsaXplIHRoZSBjb250cmFjdCAob25lLXRpbWUgb25seSkKCiMgQXJndW1lbnRzCiogYGFkbWluYCAtIEFkbWluIGFkZHJlc3Mgd2l0aCBwcml2aWxlZ2VkIHJpZ2h0cwoqIGB0cmVhc3VyeWAgLSBUcmVhc3VyeSBhZGRyZXNzIHJlY2VpdmluZyBhbGwgWExNIGZlZXMgKGFsc28gdGhlIG9yYWNsZSB1cGRhdGVyKQoqIGBoaXR6X3Rva2VuYCAtIEhJVFogdG9rZW4gY29udHJhY3QgYWRkcmVzcyAoT3BlblplcHBlbGluIHRva2VuKQoqIGB4bG1fdG9rZW5gIC0gWExNIHRva2VuIGNvbnRyYWN0IGFkZHJlc3MgKFNBQykKKiBgYmFzZV9mZWVgIC0gQmFzZSBmZWUgcGVyIGRpZmZpY3VsdHkgdW5pdCBpbiBzdHJvb3BzIChkZWZhdWx0IDEwMCwwMDAgPSAwLjAxIFhMTSkAAAAAAAAEaW5pdAAAAAUAAAAAAAAABWFkbWluAAAAAAAAEwAAAAAAAAAIdHJlYXN1cnkAAAATAAAAAAAAAApoaXR6X3Rva2VuAAAAAAATAAAAAAAAAAl4bG1fdG9rZW4AAAAAAAATAAAAAAAAAAhiYXNlX2ZlZQAAAAsAAAAA",
         "AAAAAAAAAINVcGRhdGUgYmFzZSBmZWUgKGFkbWluLW9ubHkpCgojIEFyZ3VtZW50cwoqIGBuZXdfYmFzZV9mZWVgIC0gTmV3IGJhc2UgZmVlIHBlciBkaWZmaWN1bHR5IHVuaXQgaW4gc3Ryb29wcyAoZS5nLiwgMTAwLDAwMCA9IDAuMDEgWExNKQAAAAAMc2V0X2Jhc2VfZmVlAAAAAQAAAAAAAAAMbmV3X2Jhc2VfZmVlAAAACwAAAAA=",
+        "AAAAAAAAAQVUcmFuc2ZlciBhbGwgY29udHJhY3QgWExNIGJhbGFuY2UgdG8gdHJlYXN1cnkgKGFkbWluLW9ubHkpCgpVc2VkIHRvIHJlY292ZXIgWExNIHRoYXQgbWF5IGJlIGxvY2tlZCBpbiB0aGUgY29udHJhY3QgYWZ0ZXIgdXBncmFkZS9yZXNldC4KVHJhbnNmZXJzIHRoZSBlbnRpcmUgWExNIGJhbGFuY2Ugb2YgdGhlIGNvbnRyYWN0IHRvIHRoZSB0cmVhc3VyeSBhZGRyZXNzLgoKIyBSZXR1cm5zClRoZSBhbW91bnQgb2YgWExNIHRyYW5zZmVycmVkIGluIHN0cm9vcHMAAAAAAAAYd2l0aGRyYXdfeGxtX3RvX3RyZWFzdXJ5AAAAAAAAAAEAAAAL",
+        "AAAAAAAAAURVcGRhdGUgb3JhY2xlIHByaWNlICh0cmVhc3VyeS1vbmx5KQoKVHJlYXN1cnkgYm90IGNhbGxzIHRoaXMgYWZ0ZXIgZmV0Y2hpbmcgY3VycmVudCBtYXJrZXQgcHJpY2UgZnJvbSBERVguClRoaXMgcHJpY2UgaXMgdXNlZCBmb3IgZHluYW1pYyBlbWlzc2lvbiByYXRlIGNhbGN1bGF0aW9ucy4KCiMgQXJndW1lbnRzCiogYGNhbGxlcmAgLSBUcmVhc3VyeSBhZGRyZXNzIChtdXN0IGJlIHRoZSBjb25maWd1cmVkIFRyZWFzdXJ5KQoqIGBuZXdfcHJpY2VgIC0gTmV3IEhJVFovWExNIHByaWNlIGluIHN0cm9vcHMgKGUuZy4sIDEwMCwwMDAgPSAwLjAxIFhMTSBwZXIgSElUWikAAAATdXBkYXRlX29yYWNsZV9wcmljZQAAAAACAAAAAAAAAAZjYWxsZXIAAAAAABMAAAAAAAAACW5ld19wcmljZQAAAAAAAAsAAAAA",
+        "AAAAAAAAAGRHZXQgb3JhY2xlIGRhdGEgKHByaWNlIGFuZCBsYXN0IHVwZGF0ZSB0aW1lc3RhbXApCgpSZXR1cm5zIChwcmljZV9pbl9zdHJvb3BzLCBsYXN0X3VwZGF0ZV90aW1lc3RhbXApAAAAD2dldF9vcmFjbGVfZGF0YQAAAAAAAAAAAQAAA+0AAAACAAAACwAAAAY=",
         "AAAAAAAAABRHZXQgY3VycmVudCBiYXNlIGZlZQAAAAxnZXRfYmFzZV9mZWUAAAAAAAAAAQAAAAs=",
-        "AAAAAAAAAB9DcmVhdGUgYSBuZXcgZW50cnkgKGFkbWluLW9ubHkpAAAAAAxjcmVhdGVfZW50cnkAAAABAAAAAAAAAAhlbnRyeV9pZAAAABAAAAAA",
+        "AAAAAAAAAG5HZXQgdG90YWwgSElUWiBzdXBwbHkgbWludGVkIHNvIGZhcgpSZXR1cm5zIHRoZSB0b3RhbCBhbW91bnQgb2YgSElUWiB0b2tlbnMgbWludGVkIGJ5IHRoaXMgY29udHJhY3QgaW4gc3Ryb29wcwAAAAAAEGdldF90b3RhbF9zdXBwbHkAAAAAAAAAAQAAAAs=",
+        "AAAAAAAAAHhHZXQgcmVtYWluaW5nIEhJVFogdG9rZW5zIHRoYXQgY2FuIGJlIG1pbnRlZApSZXR1cm5zIHRoZSBhbW91bnQgb2YgSElUWiByZW1haW5pbmcgYmVmb3JlIGhpdHRpbmcgdGhlIDIxTSBjYXAsIGluIHN0cm9vcHMAAAAUZ2V0X3JlbWFpbmluZ19zdXBwbHkAAAAAAAAAAQAAAAs=",
+        "AAAAAAAAAE9DcmVhdGUgYSBuZXcgZW50cnkgKGFkbWluLW9ubHkpClNFQ1VSSVRZOiBMaW1pdGVkIHRvIE1BWF9FTlRSSUVTIHRvIHByZXZlbnQgRE9TAAAAAAxjcmVhdGVfZW50cnkAAAABAAAAAAAAAAhlbnRyeV9pZAAAABAAAAAA",
         "AAAAAAAAAMtSZWNvcmQgYSB1c2VyIGFjdGlvbiAobWFpbiBlbnRyeXBvaW50KQoKSGFuZGxlcyBmZWUgdHJhbnNmZXIsIHJld2FyZCBjYWxjdWxhdGlvbiwgYW5kIG9wdGlvbmFsIGF1dG8tc3Rha2luZwpGb3IgaW52ZXN0IGFjdGlvbiwgYW1vdW50X3hsbSBzcGVjaWZpZXMgdGhlIGludmVzdG1lbnQgKG1pbiAwLjMgWExNKSwgaWdub3JlZCBmb3Igb3RoZXIgYWN0aW9ucwAAAAANcmVjb3JkX2FjdGlvbgAAAAAAAAQAAAAAAAAABmNhbGxlcgAAAAAAEwAAAAAAAAAIZW50cnlfaWQAAAAQAAAAAAAAAARraW5kAAAAEQAAAAAAAAAKYW1vdW50X3hsbQAAAAAD6AAAAAsAAAAA",
         "AAAAAAAAAA5HZXQgZW50cnkgZGF0YQAAAAAACWdldF9lbnRyeQAAAAAAAAEAAAAAAAAACGVudHJ5X2lkAAAAEAAAAAEAAAPoAAAH0AAAAAVFbnRyeQAAAA==",
         "AAAAAAAAAB5MaXN0IGVudHJ5IElEcyB3aXRoIHBhZ2luYXRpb24AAAAAAAxsaXN0X2VudHJpZXMAAAACAAAAAAAAAAVzdGFydAAAAAAAAAQAAAAAAAAABWxpbWl0AAAAAAAABAAAAAEAAAPqAAAAEA==",
         "AAAAAAAAAB1HZXQgdXNlcidzIHN0YWtlIGZvciBhbiBlbnRyeQAAAAAAAAlnZXRfc3Rha2UAAAAAAAACAAAAAAAAAAhlbnRyeV9pZAAAABAAAAAAAAAABW93bmVyAAAAAAAAEwAAAAEAAAAL",
         "AAAAAAAAABxHZXQgdG90YWwgc3Rha2UgZm9yIGFuIGVudHJ5AAAAD2dldF9zdGFrZV90b3RhbAAAAAABAAAAAAAAAAhlbnRyeV9pZAAAABAAAAABAAAACw==",
-        "AAAAAAAAAdxDb250cmFjdCB2ZXJzaW9uCkRpc3RyaWJ1dGUgSElUWiByZXdhcmRzIHByb3BvcnRpb25hbGx5IGJhc2VkIG9uIGVzY3JvdyBwZXJmb3JtYW5jZQoKVHJlYXN1cnkgYm90IGNhbGxzIHRoaXMgYWZ0ZXIgYnV5aW5nIEhJVFogd2l0aCBhY2N1bXVsYXRlZCBYTE0gZmVlcy4KQ29udHJhY3QgYXV0b21hdGljYWxseSBkaXN0cmlidXRlcyB0byBlbnRyaWVzIGJhc2VkIG9uIHRoZWlyIGVzY3Jvd194bG0uCgojIEFyZ3VtZW50cwoqIGBjYWxsZXJgIC0gVHJlYXN1cnkgYWRkcmVzcyB0aGF0IGhvbGRzIHRoZSBISVRaCiogYGhpdHpfYW1vdW50YCAtIFRvdGFsIEhJVFogdG8gZGlzdHJpYnV0ZSBhY3Jvc3MgYWxsIGVudHJpZXMKCiMgUGVyZm9ybWFuY2UKT3B0aW1pemVkIHRvIHNpbmdsZSBsb29wIC0gTyhuKSB3aGVyZSBuID0gbnVtYmVyIG9mIGVudHJpZXMKSGFuZGxlcyByb3VuZGluZyBkdXN0IGJ5IGFsbG9jYXRpbmcgdG8gbGFzdCBlbnRyeQAAABJkaXN0cmlidXRlX3Jld2FyZHMAAAAAAAIAAAAAAAAABmNhbGxlcgAAAAAAEwAAAAAAAAALaGl0el9hbW91bnQAAAAACwAAAAA=",
+        "AAAAAAAAAdtDb250cmFjdCB2ZXJzaW9uCkRpc3RyaWJ1dGUgSElUWiByZXdhcmRzIHByb3BvcnRpb25hbGx5IGJhc2VkIG9uIGVzY3JvdyBwZXJmb3JtYW5jZQoKVHJlYXN1cnkgYm90IGNhbGxzIHRoaXMgYWZ0ZXIgYnV5aW5nIEhJVFogd2l0aCBhY2N1bXVsYXRlZCBYTE0gZmVlcy4KQ29udHJhY3QgYXV0b21hdGljYWxseSBkaXN0cmlidXRlcyB0byBlbnRyaWVzIGJhc2VkIG9uIHRoZWlyIGVzY3Jvd194bG0uCgojIEFyZ3VtZW50cwoqIGBjYWxsZXJgIC0gVHJlYXN1cnkgYWRkcmVzcyB0aGF0IGhvbGRzIHRoZSBISVRaCiogYGhpdHpfYW1vdW50YCAtIFRvdGFsIEhJVFogdG8gZGlzdHJpYnV0ZSBhY3Jvc3MgYWxsIGVudHJpZXMKCiMgUGVyZm9ybWFuY2UKT3B0aW1pemVkIHRvIHNpbmdsZSBsb29wIC0gTyhuKSB3aGVyZSBuID0gbnVtYmVyIG9mIGVudHJpZXMKU0VDVVJJVFk6IExpbWl0ZWQgdG8gMTAwMCBlbnRyaWVzIHRvIHByZXZlbnQgRE9TAAAAABJkaXN0cmlidXRlX3Jld2FyZHMAAAAAAAIAAAAAAAAABmNhbGxlcgAAAAAAEwAAAAAAAAALaGl0el9hbW91bnQAAAAACwAAAAA=",
         "AAAAAAAAAIVBbGxvY2F0ZSBISVRaIHJld2FyZHMgdG8gYSBzcGVjaWZpYyBlbnRyeSdzIHJld2FyZCBwb29sCgpBZG1pbi1vbmx5IGZ1bmN0aW9uIGZvciBtYW51YWwgcmV3YXJkIGFsbG9jYXRpb24gKGUuZy4sIHByb21vdGlvbnMsIGJvbnVzZXMpAAAAAAAAEGFsbG9jYXRlX3Jld2FyZHMAAAACAAAAAAAAAAhlbnRyeV9pZAAAABAAAAAAAAAAC2hpdHpfYW1vdW50AAAAAAsAAAAA",
         "AAAAAAAAAHdCYXRjaCBhbGxvY2F0ZSByZXdhcmRzIHRvIG11bHRpcGxlIGVudHJpZXMKCkFkbWluLW9ubHkgZnVuY3Rpb24gZm9yIG1hbnVhbCBiYXRjaCBhbGxvY2F0aW9uIChlLmcuLCBjYW1wYWlnbnMsIGFpcmRyb3BzKQAAAAAWYmF0Y2hfYWxsb2NhdGVfcmV3YXJkcwAAAAAAAgAAAAAAAAAJZW50cnlfaWRzAAAAAAAD6gAAABAAAAAAAAAAB2Ftb3VudHMAAAAD6gAAAAsAAAAA",
         "AAAAAAAAALRDbGFpbSBISVRaIHJld2FyZHMgZnJvbSBhbiBlbnRyeSdzIHJld2FyZCBwb29sCgpTdGFrZXJzIHJlY2VpdmUgcmV3YXJkcyBwcm9wb3J0aW9uYWwgdG8gdGhlaXIgc3Rha2UKRm9ybXVsYTogY2xhaW1hYmxlID0gKHJld2FyZF9wb29sIMOXIHVzZXJfc3Rha2UpIC8gdG90YWxfc3Rha2UgLSBhbHJlYWR5X2NsYWltZWQAAAANY2xhaW1fcmV3YXJkcwAAAAAAAAIAAAAAAAAACGVudHJ5X2lkAAAAEAAAAAAAAAAHY2xhaW1lcgAAAAATAAAAAQAAAAs=",
@@ -1533,69 +844,25 @@ export class Client extends ContractClient {
         "AAAAAAAAAKxDYWxjdWxhdGUgQVBSIGZvciBhbiBlbnRyeSBiYXNlZCBvbiBISVRaIHJld2FyZHMKCkFQUiA9ICgocmV3YXJkX3Bvb2wgLyB0b3RhbF9zdGFrZSkgLyBkYXlzX3NpbmNlX2NyZWF0aW9uKSDDlyAzNjUgw5cgMTAwClJldHVybnMgQVBSIGFzIGJhc2lzIHBvaW50cyAoMSUgPSAxMDAsIDEwJSA9IDEwMDApAAAADWNhbGN1bGF0ZV9hcHIAAAAAAAABAAAAAAAAAAhlbnRyeV9pZAAAABAAAAABAAAACw==",
         "AAAAAAAAAIRHZXQgY29tcHJlaGVuc2l2ZSBlbnRyeSBzdGF0aXN0aWNzIGZvciByYW5raW5nCgpSZXR1cm5zOiAodHZsX3hsbSwgZXNjcm93X3hsbSwgdG90YWxfc3Rha2VfaGl0eiwgcmV3YXJkX3Bvb2xfaGl0eiwgYXByX2Jhc2lzX3BvaW50cykAAAAPZ2V0X2VudHJ5X3N0YXRzAAAAAAEAAAAAAAAACGVudHJ5X2lkAAAAEAAAAAEAAAPtAAAABQAAAAsAAAALAAAACwAAAAsAAAAL",
         "AAAAAAAAAAAAAAAHdmVyc2lvbgAAAAAAAAAAAQAAAAQ=",
-        "AAAAAQAAADFTdG9yYWdlIGtleSBmb3IgZW51bWVyYXRpb24gb2YgYWNjb3VudHMgcGVyIHJvbGUuAAAAAAAAAAAAAA5Sb2xlQWNjb3VudEtleQAAAAAAAgAAAAAAAAAFaW5kZXgAAAAAAAAEAAAAAAAAAARyb2xlAAAAEQ==",
-        "AAAAAgAAADxTdG9yYWdlIGtleXMgZm9yIHRoZSBkYXRhIGFzc29jaWF0ZWQgd2l0aCB0aGUgYWNjZXNzIGNvbnRyb2wAAAAAAAAAF0FjY2Vzc0NvbnRyb2xTdG9yYWdlS2V5AAAAAAYAAAABAAAAAAAAAAxSb2xlQWNjb3VudHMAAAABAAAH0AAAAA5Sb2xlQWNjb3VudEtleQAAAAAAAQAAAAAAAAAHSGFzUm9sZQAAAAACAAAAEwAAABEAAAABAAAAAAAAABFSb2xlQWNjb3VudHNDb3VudAAAAAAAAAEAAAARAAAAAQAAAAAAAAAJUm9sZUFkbWluAAAAAAAAAQAAABEAAAAAAAAAAAAAAAVBZG1pbgAAAAAAAAAAAAAAAAAADFBlbmRpbmdBZG1pbg==",
-        "AAAABAAAAAAAAAAAAAAAEkFjY2Vzc0NvbnRyb2xFcnJvcgAAAAAACQAAAAAAAAAMVW5hdXRob3JpemVkAAAEugAAAAAAAAALQWRtaW5Ob3RTZXQAAAAEuwAAAAAAAAAQSW5kZXhPdXRPZkJvdW5kcwAABLwAAAAAAAAAEUFkbWluUm9sZU5vdEZvdW5kAAAAAAAEvQAAAAAAAAASUm9sZUNvdW50SXNOb3RaZXJvAAAAAAS+AAAAAAAAAAxSb2xlTm90Rm91bmQAAAS/AAAAAAAAAA9BZG1pbkFscmVhZHlTZXQAAAAEwAAAAAAAAAALUm9sZU5vdEhlbGQAAAAEwQAAAAAAAAALUm9sZUlzRW1wdHkAAAAEwg==",
-        "AAAAAgAAACNTdG9yYWdlIGtleXMgZm9yIGBPd25hYmxlYCB1dGlsaXR5LgAAAAAAAAAAEU93bmFibGVTdG9yYWdlS2V5AAAAAAAAAgAAAAAAAAAAAAAABU93bmVyAAAAAAAAAAAAAAAAAAAMUGVuZGluZ093bmVy",
-        "AAAABAAAAAAAAAAAAAAADE93bmFibGVFcnJvcgAAAAMAAAAAAAAAC093bmVyTm90U2V0AAAABMQAAAAAAAAAElRyYW5zZmVySW5Qcm9ncmVzcwAAAAAExQAAAAAAAAAPT3duZXJBbHJlYWR5U2V0AAAABMY=",
-        "AAAABAAAAAAAAAAAAAAAEVJvbGVUcmFuc2ZlckVycm9yAAAAAAAAAwAAAAAAAAARTm9QZW5kaW5nVHJhbnNmZXIAAAAAAASwAAAAAAAAABZJbnZhbGlkTGl2ZVVudGlsTGVkZ2VyAAAAAASxAAAAAAAAABVJbnZhbGlkUGVuZGluZ0FjY291bnQAAAAAAASy",
-        "AAAAAgAAAEFTdG9yYWdlIGtleXMgZm9yIHRoZSBkYXRhIGFzc29jaWF0ZWQgd2l0aCB0aGUgYWxsb3dsaXN0IGV4dGVuc2lvbgAAAAAAAAAAAAATQWxsb3dMaXN0U3RvcmFnZUtleQAAAAABAAAAAQAAACdTdG9yZXMgdGhlIGFsbG93ZWQgc3RhdHVzIG9mIGFuIGFjY291bnQAAAAAB0FsbG93ZWQAAAAAAQAAABM=",
-        "AAAAAgAAAEFTdG9yYWdlIGtleXMgZm9yIHRoZSBkYXRhIGFzc29jaWF0ZWQgd2l0aCB0aGUgYmxvY2tsaXN0IGV4dGVuc2lvbgAAAAAAAAAAAAATQmxvY2tMaXN0U3RvcmFnZUtleQAAAAABAAAAAQAAACdTdG9yZXMgdGhlIGJsb2NrZWQgc3RhdHVzIG9mIGFuIGFjY291bnQAAAAAB0Jsb2NrZWQAAAAAAQAAABM=",
-        "AAAAAQAAACpTdG9yYWdlIGtleSB0aGF0IG1hcHMgdG8gW2BBbGxvd2FuY2VEYXRhYF0AAAAAAAAAAAAMQWxsb3dhbmNlS2V5AAAAAgAAAAAAAAAFb3duZXIAAAAAAAATAAAAAAAAAAdzcGVuZGVyAAAAABM=",
-        "AAAAAQAAAINTdG9yYWdlIGNvbnRhaW5lciBmb3IgdGhlIGFtb3VudCBvZiB0b2tlbnMgZm9yIHdoaWNoIGFuIGFsbG93YW5jZSBpcyBncmFudGVkCmFuZCB0aGUgbGVkZ2VyIG51bWJlciBhdCB3aGljaCB0aGlzIGFsbG93YW5jZSBleHBpcmVzLgAAAAAAAAAADUFsbG93YW5jZURhdGEAAAAAAAACAAAAAAAAAAZhbW91bnQAAAAAAAsAAAAAAAAAEWxpdmVfdW50aWxfbGVkZ2VyAAAAAAAABA==",
-        "AAAAAgAAADlTdG9yYWdlIGtleXMgZm9yIHRoZSBkYXRhIGFzc29jaWF0ZWQgd2l0aCBgRnVuZ2libGVUb2tlbmAAAAAAAAAAAAAAClN0b3JhZ2VLZXkAAAAAAAMAAAAAAAAAAAAAAAtUb3RhbFN1cHBseQAAAAABAAAAAAAAAAdCYWxhbmNlAAAAAAEAAAATAAAAAQAAAAAAAAAJQWxsb3dhbmNlAAAAAAAAAQAAB9AAAAAMQWxsb3dhbmNlS2V5",
-        "AAAAAQAAACRTdG9yYWdlIGNvbnRhaW5lciBmb3IgdG9rZW4gbWV0YWRhdGEAAAAAAAAACE1ldGFkYXRhAAAAAwAAAAAAAAAIZGVjaW1hbHMAAAAEAAAAAAAAAARuYW1lAAAAEAAAAAAAAAAGc3ltYm9sAAAAAAAQ",
-        "AAAAAgAAAClTdG9yYWdlIGtleSBmb3IgYWNjZXNzaW5nIHRoZSBTQUMgYWRkcmVzcwAAAAAAAAAAAAAWU0FDQWRtaW5HZW5lcmljRGF0YUtleQAAAAAAAQAAAAAAAAAAAAAAA1NhYwA=",
-        "AAAAAgAAAClTdG9yYWdlIGtleSBmb3IgYWNjZXNzaW5nIHRoZSBTQUMgYWRkcmVzcwAAAAAAAAAAAAAWU0FDQWRtaW5XcmFwcGVyRGF0YUtleQAAAAAAAQAAAAAAAAAAAAAAA1NhYwA=",
-        "AAAABAAAAAAAAAAAAAAAEkZ1bmdpYmxlVG9rZW5FcnJvcgAAAAAADwAAAG5JbmRpY2F0ZXMgYW4gZXJyb3IgcmVsYXRlZCB0byB0aGUgY3VycmVudCBiYWxhbmNlIG9mIGFjY291bnQgZnJvbSB3aGljaAp0b2tlbnMgYXJlIGV4cGVjdGVkIHRvIGJlIHRyYW5zZmVycmVkLgAAAAAAE0luc3VmZmljaWVudEJhbGFuY2UAAAAAZAAAAGRJbmRpY2F0ZXMgYSBmYWlsdXJlIHdpdGggdGhlIGFsbG93YW5jZSBtZWNoYW5pc20gd2hlbiBhIGdpdmVuIHNwZW5kZXIKZG9lc24ndCBoYXZlIGVub3VnaCBhbGxvd2FuY2UuAAAAFUluc3VmZmljaWVudEFsbG93YW5jZQAAAAAAAGUAAABNSW5kaWNhdGVzIGFuIGludmFsaWQgdmFsdWUgZm9yIGBsaXZlX3VudGlsX2xlZGdlcmAgd2hlbiBzZXR0aW5nIGFuCmFsbG93YW5jZS4AAAAAAAAWSW52YWxpZExpdmVVbnRpbExlZGdlcgAAAAAAZgAAADJJbmRpY2F0ZXMgYW4gZXJyb3Igd2hlbiBhbiBpbnB1dCB0aGF0IG11c3QgYmUgPj0gMAAAAAAADExlc3NUaGFuWmVybwAAAGcAAAApSW5kaWNhdGVzIG92ZXJmbG93IHdoZW4gYWRkaW5nIHR3byB2YWx1ZXMAAAAAAAAMTWF0aE92ZXJmbG93AAAAaAAAACpJbmRpY2F0ZXMgYWNjZXNzIHRvIHVuaW5pdGlhbGl6ZWQgbWV0YWRhdGEAAAAAAA1VbnNldE1ldGFkYXRhAAAAAAAAaQAAAFJJbmRpY2F0ZXMgdGhhdCB0aGUgb3BlcmF0aW9uIHdvdWxkIGhhdmUgY2F1c2VkIGB0b3RhbF9zdXBwbHlgIHRvIGV4Y2VlZAp0aGUgYGNhcGAuAAAAAAALRXhjZWVkZWRDYXAAAAAAagAAADZJbmRpY2F0ZXMgdGhlIHN1cHBsaWVkIGBjYXBgIGlzIG5vdCBhIHZhbGlkIGNhcCB2YWx1ZS4AAAAAAApJbnZhbGlkQ2FwAAAAAABrAAAAHkluZGljYXRlcyB0aGUgQ2FwIHdhcyBub3Qgc2V0LgAAAAAACUNhcE5vdFNldAAAAAAAAGwAAAAmSW5kaWNhdGVzIHRoZSBTQUMgYWRkcmVzcyB3YXMgbm90IHNldC4AAAAAAAlTQUNOb3RTZXQAAAAAAABtAAAAMEluZGljYXRlcyBhIFNBQyBhZGRyZXNzIGRpZmZlcmVudCB0aGFuIGV4cGVjdGVkLgAAABJTQUNBZGRyZXNzTWlzbWF0Y2gAAAAAAG4AAABDSW5kaWNhdGVzIGEgbWlzc2luZyBmdW5jdGlvbiBwYXJhbWV0ZXIgaW4gdGhlIFNBQyBjb250cmFjdCBjb250ZXh0LgAAAAARU0FDTWlzc2luZ0ZuUGFyYW0AAAAAAABvAAAAREluZGljYXRlcyBhbiBpbnZhbGlkIGZ1bmN0aW9uIHBhcmFtZXRlciBpbiB0aGUgU0FDIGNvbnRyYWN0IGNvbnRleHQuAAAAEVNBQ0ludmFsaWRGblBhcmFtAAAAAAAAcAAAADFUaGUgdXNlciBpcyBub3QgYWxsb3dlZCB0byBwZXJmb3JtIHRoaXMgb3BlcmF0aW9uAAAAAAAADlVzZXJOb3RBbGxvd2VkAAAAAABxAAAANVRoZSB1c2VyIGlzIGJsb2NrZWQgYW5kIGNhbm5vdCBwZXJmb3JtIHRoaXMgb3BlcmF0aW9uAAAAAAAAC1VzZXJCbG9ja2VkAAAAAHI=",
-        "AAAAAgAAAFlTdG9yYWdlIGtleXMgZm9yIHRoZSBkYXRhIGFzc29jaWF0ZWQgd2l0aCB0aGUgY29uc2VjdXRpdmUgZXh0ZW5zaW9uIG9mCmBOb25GdW5naWJsZVRva2VuYAAAAAAAAAAAAAAYTkZUQ29uc2VjdXRpdmVTdG9yYWdlS2V5AAAABAAAAAEAAAAAAAAACEFwcHJvdmFsAAAAAQAAAAQAAAABAAAAAAAAAAVPd25lcgAAAAAAAAEAAAAEAAAAAQAAAAAAAAAPT3duZXJzaGlwQnVja2V0AAAAAAEAAAAEAAAAAQAAAAAAAAALQnVybmVkVG9rZW4AAAAAAQAAAAQ=",
-        "AAAAAQAAAAAAAAAAAAAADk93bmVyVG9rZW5zS2V5AAAAAAACAAAAAAAAAAVpbmRleAAAAAAAAAQAAAAAAAAABW93bmVyAAAAAAAAEw==",
-        "AAAAAgAAAFhTdG9yYWdlIGtleXMgZm9yIHRoZSBkYXRhIGFzc29jaWF0ZWQgd2l0aCB0aGUgZW51bWVyYWJsZSBleHRlbnNpb24gb2YKYE5vbkZ1bmdpYmxlVG9rZW5gAAAAAAAAABdORlRFbnVtZXJhYmxlU3RvcmFnZUtleQAAAAAFAAAAAAAAAAAAAAALVG90YWxTdXBwbHkAAAAAAQAAAAAAAAALT3duZXJUb2tlbnMAAAAAAQAAB9AAAAAOT3duZXJUb2tlbnNLZXkAAAAAAAEAAAAAAAAAEE93bmVyVG9rZW5zSW5kZXgAAAABAAAABAAAAAEAAAAAAAAADEdsb2JhbFRva2VucwAAAAEAAAAEAAAAAQAAAAAAAAARR2xvYmFsVG9rZW5zSW5kZXgAAAAAAAABAAAABA==",
-        "AAAAAQAAAClTdG9yYWdlIGNvbnRhaW5lciBmb3Igcm95YWx0eSBpbmZvcm1hdGlvbgAAAAAAAAAAAAALUm95YWx0eUluZm8AAAAAAgAAAAAAAAAMYmFzaXNfcG9pbnRzAAAABAAAAAAAAAAIcmVjZWl2ZXIAAAAT",
-        "AAAAAgAAAB1TdG9yYWdlIGtleXMgZm9yIHJveWFsdHkgZGF0YQAAAAAAAAAAAAAWTkZUUm95YWx0aWVzU3RvcmFnZUtleQAAAAAAAgAAAAAAAAAAAAAADkRlZmF1bHRSb3lhbHR5AAAAAAABAAAAAAAAAAxUb2tlblJveWFsdHkAAAABAAAABA==",
-        "AAAAAQAAAHZTdG9yYWdlIGNvbnRhaW5lciBmb3IgdGhlIHRva2VuIGZvciB3aGljaCBhbiBhcHByb3ZhbCBpcyBncmFudGVkCmFuZCB0aGUgbGVkZ2VyIG51bWJlciBhdCB3aGljaCB0aGlzIGFwcHJvdmFsIGV4cGlyZXMuAAAAAAAAAAAADEFwcHJvdmFsRGF0YQAAAAIAAAAAAAAACGFwcHJvdmVkAAAAEwAAAAAAAAARbGl2ZV91bnRpbF9sZWRnZXIAAAAAAAAE",
-        "AAAAAQAAACRTdG9yYWdlIGNvbnRhaW5lciBmb3IgdG9rZW4gbWV0YWRhdGEAAAAAAAAACE1ldGFkYXRhAAAAAwAAAAAAAAAIYmFzZV91cmkAAAAQAAAAAAAAAARuYW1lAAAAEAAAAAAAAAAGc3ltYm9sAAAAAAAQ",
-        "AAAAAgAAADxTdG9yYWdlIGtleXMgZm9yIHRoZSBkYXRhIGFzc29jaWF0ZWQgd2l0aCBgTm9uRnVuZ2libGVUb2tlbmAAAAAAAAAADU5GVFN0b3JhZ2VLZXkAAAAAAAAFAAAAAQAAAAAAAAAFT3duZXIAAAAAAAABAAAABAAAAAEAAAAAAAAAB0JhbGFuY2UAAAAAAQAAABMAAAABAAAAAAAAAAhBcHByb3ZhbAAAAAEAAAAEAAAAAQAAAAAAAAAOQXBwcm92YWxGb3JBbGwAAAAAAAIAAAATAAAAEwAAAAAAAAAAAAAACE1ldGFkYXRh",
-        "AAAAAgAAAAAAAAAAAAAAF05GVFNlcXVlbnRpYWxTdG9yYWdlS2V5AAAAAAEAAAAAAAAAAAAAAA5Ub2tlbklkQ291bnRlcgAA",
-        "AAAABAAAAAAAAAAAAAAAFU5vbkZ1bmdpYmxlVG9rZW5FcnJvcgAAAAAAAA0AAAAkSW5kaWNhdGVzIGEgbm9uLWV4aXN0ZW50IGB0b2tlbl9pZGAuAAAAEE5vbkV4aXN0ZW50VG9rZW4AAADIAAAAV0luZGljYXRlcyBhbiBlcnJvciByZWxhdGVkIHRvIHRoZSBvd25lcnNoaXAgb3ZlciBhIHBhcnRpY3VsYXIgdG9rZW4uClVzZWQgaW4gdHJhbnNmZXJzLgAAAAAOSW5jb3JyZWN0T3duZXIAAAAAAMkAAABFSW5kaWNhdGVzIGEgZmFpbHVyZSB3aXRoIHRoZSBgb3BlcmF0b3JgcyBhcHByb3ZhbC4gVXNlZCBpbiB0cmFuc2ZlcnMuAAAAAAAAFEluc3VmZmljaWVudEFwcHJvdmFsAAAAygAAAFVJbmRpY2F0ZXMgYSBmYWlsdXJlIHdpdGggdGhlIGBhcHByb3ZlcmAgb2YgYSB0b2tlbiB0byBiZSBhcHByb3ZlZC4gVXNlZAppbiBhcHByb3ZhbHMuAAAAAAAAD0ludmFsaWRBcHByb3ZlcgAAAADLAAAASkluZGljYXRlcyBhbiBpbnZhbGlkIHZhbHVlIGZvciBgbGl2ZV91bnRpbF9sZWRnZXJgIHdoZW4gc2V0dGluZwphcHByb3ZhbHMuAAAAAAAWSW52YWxpZExpdmVVbnRpbExlZGdlcgAAAAAAzAAAAClJbmRpY2F0ZXMgb3ZlcmZsb3cgd2hlbiBhZGRpbmcgdHdvIHZhbHVlcwAAAAAAAAxNYXRoT3ZlcmZsb3cAAADNAAAANkluZGljYXRlcyBhbGwgcG9zc2libGUgYHRva2VuX2lkYHMgYXJlIGFscmVhZHkgaW4gdXNlLgAAAAAAE1Rva2VuSURzQXJlRGVwbGV0ZWQAAAAAzgAAAEVJbmRpY2F0ZXMgYW4gaW52YWxpZCBhbW91bnQgdG8gYmF0Y2ggbWludCBpbiBgY29uc2VjdXRpdmVgIGV4dGVuc2lvbi4AAAAAAAANSW52YWxpZEFtb3VudAAAAAAAAM8AAAAzSW5kaWNhdGVzIHRoZSB0b2tlbiBkb2VzIG5vdCBleGlzdCBpbiBvd25lcidzIGxpc3QuAAAAABhUb2tlbk5vdEZvdW5kSW5Pd25lckxpc3QAAADQAAAAMkluZGljYXRlcyB0aGUgdG9rZW4gZG9lcyBub3QgZXhpc3QgaW4gZ2xvYmFsIGxpc3QuAAAAAAAZVG9rZW5Ob3RGb3VuZEluR2xvYmFsTGlzdAAAAAAAANEAAAAjSW5kaWNhdGVzIGFjY2VzcyB0byB1bnNldCBtZXRhZGF0YS4AAAAADVVuc2V0TWV0YWRhdGEAAAAAAADSAAAAQUluZGljYXRlcyB0aGUgbGVuZ3RoIG9mIHRoZSBiYXNlIFVSSSBleGNlZWRzIHRoZSBtYXhpbXVtIGFsbG93ZWQuAAAAAAAAFUJhc2VVcmlNYXhMZW5FeGNlZWRlZAAAAAAAANMAAABHSW5kaWNhdGVzIHRoZSByb3lhbHR5IGFtb3VudCBpcyBoaWdoZXIgdGhhbiAxMF8wMDAgKDEwMCUpIGJhc2lzIHBvaW50cy4AAAAAFEludmFsaWRSb3lhbHR5QW1vdW50AAAA1A==" ]),
+        "AAAAAAAAAe5NZXJnZSBvbmUgZW50cnkgaW50byBhbm90aGVyIChhZG1pbi1vbmx5KS4KQWxsIGVzY3JvdywgVFZMLCByZXdhcmQgcG9vbCwgYW5kIHN0YWtlcyBtb3ZlIGZyb20gYGZyb21faWRgIHRvIGBpbnRvX2lkYC4KVGhlIGBmcm9tX2lkYCBlbnRyeSBpcyByZW1vdmVkIGZyb20gc3RvcmFnZSBhbmQgaW5kZXguCgpGb3Igc3Rha2UgbWlncmF0aW9uOgotIElmIGBzdGFrZXJzYCBsaXN0IGlzIHByb3ZpZGVkOiBtaWdyYXRlcyB0aG9zZSB1c2Vycycgc3Rha2VzIGZyb20gZnJvbV9pZCB0byBpbnRvX2lkCi0gSWYgYHN0YWtlcnNgIGlzIGVtcHR5OiBvbmx5IG1vdmVzIHRvdGFscyAoYWRtaW4gbXVzdCBlbnN1cmUgbm8gb3JwaGFuZWQgc3Rha2VzKQoKTm90ZTogV2UgY2Fubm90IGl0ZXJhdGUgYWxsIHN0YWtlcnMgKG5vIGluZGV4KSwgc28gYWRtaW4gbXVzdCBwcm92aWRlIHRoZSBsaXN0LgpVc2Ugb2ZmLWNoYWluIGluZGV4aW5nIG9yIGV2ZW50cyB0byB0cmFjayBzdGFrZXJzLgAAAAAADW1lcmdlX2VudHJpZXMAAAAAAAADAAAAAAAAAAdmcm9tX2lkAAAAABAAAAAAAAAAB2ludG9faWQAAAAAEAAAAAAAAAAHc3Rha2VycwAAAAPqAAAAEwAAAAA=",
+        "AAAAAAAAAaFSZW1vdmUgYW4gZW50cnkgY29tcGxldGVseSAoYWRtaW4tb25seSkuCgpJZiBgc3Rha2Vyc2AgbGlzdCBpcyBwcm92aWRlZDoKLSBSZXR1cm5zIGFsbCBzdGFrZXMgdG8gdGhvc2UgdXNlcnMKLSBWZXJpZmllcyByZXR1cm5lZCBzdGFrZXMgbWF0Y2ggdG90YWwKLSBUaGVuIHJlbW92ZXMgZW50cnkKCklmIGBzdGFrZXJzYCBpcyBlbXB0eToKLSBSZW1vdmVzIGVudHJ5IG9ubHkgaWYgdG90YWwgc3Rha2UgaXMgMAotIE90aGVyd2lzZSBwYW5pY3MgKGFkbWluIG11c3QgcHJvdmlkZSBzdGFrZXIgbGlzdCkKCk5vdGU6IFdlIGNhbm5vdCBpdGVyYXRlIGFsbCBzdGFrZXJzIChubyBpbmRleCksIHNvIGFkbWluIG11c3QgcHJvdmlkZSB0aGUgbGlzdC4KVXNlIG9mZi1jaGFpbiBpbmRleGluZyBvciBldmVudHMgdG8gdHJhY2sgc3Rha2Vycy4AAAAAAAAMcmVtb3ZlX2VudHJ5AAAAAgAAAAAAAAAIZW50cnlfaWQAAAAQAAAAAAAAAAdzdGFrZXJzAAAAA+oAAAATAAAAAA==" ]),
       options
     )
   }
   public readonly fromJSON = {
-    mint_reward: this.txFromJSON<i128>,
-        emission_info: this.txFromJSON<readonly [u64, i128, i128, i128]>,
-        max_supply: this.txFromJSON<i128>,
-        released_total: this.txFromJSON<i128>,
-        admin_mint: this.txFromJSON<null>,
-        upgrade: this.txFromJSON<null>,
-        transfer: this.txFromJSON<null>,
-        transfer_from: this.txFromJSON<null>,
-        total_supply: this.txFromJSON<i128>,
-        balance: this.txFromJSON<i128>,
-        allowance: this.txFromJSON<i128>,
-        approve: this.txFromJSON<null>,
-        decimals: this.txFromJSON<u32>,
-        name: this.txFromJSON<string>,
-        symbol: this.txFromJSON<string>,
-        get_owner: this.txFromJSON<Option<string>>,
-        transfer_ownership: this.txFromJSON<null>,
-        accept_ownership: this.txFromJSON<null>,
-        renounce_ownership: this.txFromJSON<null>,
-        upgrade_core: this.txFromJSON<null>,
-        reset_all: this.txFromJSON<null>,
-        reset_legacy_instance: this.txFromJSON<null>,
-        reset_legacy_entries_chunk: this.txFromJSON<null>,
-        reset_current_instance: this.txFromJSON<null>,
-        reset_current_entries_chunk: this.txFromJSON<null>,
-        legacy_index_len: this.txFromJSON<u32>,
-        current_entry_count: this.txFromJSON<u32>,
-        legacy_index_slice: this.txFromJSON<Array<string>>,
-        reset_legacy_entry_by_id: this.txFromJSON<null>,
-        reset_legacy_index: this.txFromJSON<null>,
-        reset_current_entry_by_pos: this.txFromJSON<null>,
+    upgrade_core: this.txFromJSON<null>,
+        reset_instance: this.txFromJSON<null>,
+        reset_entries_chunk: this.txFromJSON<null>,
+        entry_count: this.txFromJSON<u32>,
+        reset_entry_by_pos: this.txFromJSON<null>,
         init: this.txFromJSON<null>,
         set_base_fee: this.txFromJSON<null>,
+        withdraw_xlm_to_treasury: this.txFromJSON<i128>,
+        update_oracle_price: this.txFromJSON<null>,
+        get_oracle_data: this.txFromJSON<readonly [i128, u64]>,
         get_base_fee: this.txFromJSON<i128>,
+        get_total_supply: this.txFromJSON<i128>,
+        get_remaining_supply: this.txFromJSON<i128>,
         create_entry: this.txFromJSON<null>,
         record_action: this.txFromJSON<null>,
         get_entry: this.txFromJSON<Option<Entry>>,
@@ -1611,7 +878,8 @@ export class Client extends ContractClient {
         get_reward_pool: this.txFromJSON<i128>,
         calculate_apr: this.txFromJSON<i128>,
         get_entry_stats: this.txFromJSON<readonly [i128, i128, i128, i128, i128]>,
-      version: this.txFromJSON<u32>,
-      accept_hitz_ownership: this.txFromJSON<null>
+        version: this.txFromJSON<u32>,
+        merge_entries: this.txFromJSON<null>,
+        remove_entry: this.txFromJSON<null>
   }
 }

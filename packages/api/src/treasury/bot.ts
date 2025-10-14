@@ -1,5 +1,7 @@
 import { Asset, BASE_FEE, Keypair, Networks, Operation, TransactionBuilder, Account } from '@stellar/stellar-sdk';
 import ContractClient from '../../contract';
+import { runOracleBot } from './oracle-bot';
+import { syncAllAPRsToAlgolia } from './sync-aprs';
 
 const TESTNET_HORIZON_URL = 'https://horizon-testnet.stellar.org';
 const MAINNET_HORIZON_URL = 'https://horizon.stellar.org';
@@ -103,9 +105,53 @@ export interface TreasuryRunResult {
 
 export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
 	try {
+		// Step 1: Update oracle price first (treasury bot will use this for dynamic emission)
+		const oracleResult = await runOracleBot(env);
+		console.log('Oracle bot result:', oracleResult);
+		
 		ensureEnv(env, 'TREASURY_SEED');
 		ensureEnv(env, 'ISSUER_ID');
 		const treasuryKeys = Keypair.fromSecret(env.TREASURY_SEED as string);
+		const treasuryAddress = treasuryKeys.publicKey();
+
+		// Step 2: Distribute existing HITZ balance FIRST (before buying more)
+		console.log('Checking treasury HITZ balance for distribution...');
+		try {
+			const contract = new ContractClient(env);
+			const currentHitzBalance = await contract.getHitzBalance(treasuryAddress);
+			const currentHitzBalanceBigInt = BigInt(currentHitzBalance);
+			
+			console.log(`Treasury HITZ balance: ${Number(currentHitzBalance) / 10_000_000} HITZ`);
+
+			// Distribute if we have significant HITZ (> 1 HITZ to avoid dust)
+			const MIN_DISTRIBUTION_AMOUNT = BigInt(10_000_000); // 1 HITZ
+			if (currentHitzBalanceBigInt >= MIN_DISTRIBUTION_AMOUNT) {
+				console.log(`Distributing ${Number(currentHitzBalance) / 10_000_000} HITZ from treasury...`);
+				
+				const treasuryClient = contract.getClientForKeypair(treasuryKeys);
+				const distTx = await treasuryClient.distribute_rewards(
+					{ caller: treasuryAddress, hitz_amount: currentHitzBalanceBigInt },
+					{ timeoutInSeconds: 60 }
+				);
+				const distResult = await distTx.signAndSend();
+				console.log('✅ Distribution successful!', distResult);
+
+				// Sync APRs to Algolia after successful distribution
+				console.log('Syncing APRs to Algolia...');
+				const syncResult = await syncAllAPRsToAlgolia(env);
+				console.log(`✅ APR sync complete: ${syncResult.entriesSynced} entries updated`);
+				if (syncResult.errors.length > 0) {
+					console.warn(`⚠️ APR sync had ${syncResult.errors.length} errors:`, syncResult.errors.slice(0, 5));
+				}
+			} else {
+				console.log('Treasury HITZ balance below minimum distribution threshold, skipping distribution');
+			}
+		} catch (distError: any) {
+			// Log but don't fail - we still want to buy more HITZ
+			console.error('❌ Failed to distribute existing HITZ:', distError?.message || distError);
+			console.error('Stack:', distError?.stack);
+			// Don't return here - continue with buying more HITZ
+		}
 		const networkPassphrase = getNetworkPassphrase(env.STELLAR_NETWORK);
 		const horizonUrl = getHorizonUrl(env.STELLAR_NETWORK);
 		const hitzAssetCode = await resolveHitzSymbol(env);
@@ -196,32 +242,10 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
         const result: any = await response.json();
         const spendAmount = toStellarAmount(parseFloat(buyAmountFormatted) * price);
 
-        // After buy, distribute HITZ on Soroban using Treasury as caller
-        try {
-            const contract = new ContractClient(env);
-            // Read Treasury's HITZ balance before and after to compute delta; fallback to buyAmountFormatted
-            const treasuryAddress = treasuryKeys.publicKey();
-            const beforeBalance = await contract.getHitzBalance(treasuryAddress);
-            // Small delay to allow offer settlement to reflect in balance endpoints
-            await new Promise((r) => setTimeout(r, 500));
-            const afterBalance = await contract.getHitzBalance(treasuryAddress);
-            const delta = Math.max(0, Number(afterBalance) - Number(beforeBalance));
-            const hitzAmountStroops = BigInt(
-                delta > 0 ? delta : Math.floor(parseFloat(buyAmountFormatted) * 10_000_000)
-            );
-
-            if (hitzAmountStroops > 0n) {
-                // Build and sign distribute call with Treasury keys
-                const treasurySignedClient = contract.getClientForKeypair(treasuryKeys);
-                const distTx = await treasurySignedClient.distribute_rewards(
-                    { caller: treasuryAddress, hitz_amount: hitzAmountStroops },
-                    { timeoutInSeconds: 60 }
-                );
-                await distTx.signAndSend();
-            }
-        } catch (e) {
-            console.log('treasury-bot: distribute_rewards skipped', (e as any)?.message || e);
-        }
+        // Note: Buy offers are placed on DEX and will execute when someone accepts them.
+        // Distribution of HITZ happens at the START of each bot run (see above),
+        // not immediately after placing offers, because offers take time to fill.
+        // The next bot run will detect the increased HITZ balance and distribute it.
 
         return {
             status: 'submitted',
