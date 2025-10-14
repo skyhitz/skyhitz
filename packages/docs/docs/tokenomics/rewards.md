@@ -3,96 +3,387 @@ id: rewards
 title: Rewards Overview
 ---
 
-Skyhitz rewards accrue via on-chain variables maintained per entry and per user.
+Skyhitz uses a dual-contract system to create a sustainable music economy powered by the HITZ token with Bitcoin-style emission.
 
-- TVL (Total Value Locked): total equity-bearing investments (stroops) across all users
-- Escrow: total funds held by the contract for the entry (includes equity + earnings)
-- APR: annualized rate derived on-chain from excess escrow over TVL
-- Shares: user-specific equity (stroops); ownership = `shares / tvl`
+## System Overview
 
-Only investments strictly greater than 0.3 XLM grant shares. Micro-spends at or below 0.3 XLM (stream completion, like, download) do not grant shares but increase escrow, which can raise APR.
+### Two Smart Contracts
 
-## Micro-spends vs. Investments
+1. **HITZ Token Contract**: SEP-41 compatible fungible token with controlled emission
+   - Max supply: 21,000,000 HITZ
+   - No pre-mint: all tokens released through rewards
+   - Bitcoin-style halving every 4 years
+   - 7 decimals precision
 
-- Micro-spends (≤ 0.3 XLM): stream completion, like, download — increase escrow, no shares, may raise APR
-- Investments (> 0.3 XLM): Invest or the equity half of Mine — increase escrow and TVL, grant shares proportionally to amount
+2. **Skyhitz Core Contract**: Handles user actions, staking, and XLM fee management
+   - Records all user actions (stream, like, download, mine, invest)
+   - Manages HITZ token staking for equity actions
+   - Collects XLM fees to Treasury
+   - Distributes HITZ rewards to entry pools
 
-## Actions
+## HITZ Token Economics
 
-All spend/invest actions ultimately call the same contract function `invest(user, id, amount)` with different `amount` values (converted to stroops × 1e7). Whether you earn shares depends on the single-call amount compared to the 0.3 XLM threshold.
+### Supply Model
 
-- Mine
-  - Total cost: 1.0 XLM split by the APR math (see “APR Math & Mining Partition”)
-  - Two contract invests: a micro-spend, inits escrow (≤ 0.3 XLM, no shares) and an equity invest (typically > 0.3 XLM, grants shares)
-  - Also includes a fee payment to the contract admin (Skyhitz comission)
+| Parameter | Value |
+|-----------|-------|
+| **Max Supply** | 21,000,000 HITZ |
+| **Decimals** | 7 (210,000,000,000,000 stroops) |
+| **Pre-mint** | 0 (all tokens released through rewards) |
+| **Distribution** | On-demand via user actions |
 
-- Like
-  - Micro-spend (≤ 0.3 XLM), increases escrow only
-  - No shares are granted; can raise APR for all holders
+### Emission Schedule (Bitcoin-style Halving)
 
-- Download
-  - Micro-spend (≤ 0.3 XLM) required before downloading
-  - Increases escrow only; no shares
+The HITZ token follows Bitcoin's emission model with halvings every 4 years:
 
-- Stream (completion)
-  - Micro-spend (≤ 0.3 XLM) on track completion
-  - Increases escrow only; no shares
+```
+Epoch 0: 0.3 HITZ per unit (Years 0-4)
+Epoch 1: 0.15 HITZ per unit (Years 4-8)
+Epoch 2: 0.075 HITZ per unit (Years 8-12)
+Epoch 3: 0.0375 HITZ per unit (Years 12-16)
+...continues until epoch 64 (~256 years)
+```
 
-- Invest
-  - Any single invest amount strictly greater than 0.3 XLM grants shares and increases TVL.
-  - Shares are dilutive: ownership is `your_shares / tvl`. When others invest (> 0.3 XLM), `tvl` grows and your percentage may decrease unless you also invest. Your absolute shares (stroops) never decrease; only the fraction can change as TVL expands.
+**Halving Interval**: 126,144,000 seconds (exactly 4 years)
 
-- Creator Claim (not yet implemented in the app)
-  - After manual verification, the creator can claim ownership of an entry.
-  - Initial allocation: 25% of total shares at claim time.
-  - Promotional boost: If they promote post‑claim (criteria to be published), their allocation increases to 50%.
+### Emission Timeline Projection
 
-- Creator Takedown (not yet implemented in the app)
-  - After verification and a diligent process, an entry can be removed if necessary.
-  - TVL (invested funds) will be returned to users pro‑rata; shares and APR for the removed entry cease to exist.
+| Year | Epoch | Unit Reward (HITZ) | Approx. Total Released |
+|------|-------|-------------------|----------------------|
+| 0-4 | 0 | 0.3 | ~10.5M HITZ |
+| 4-8 | 1 | 0.15 | ~15.75M HITZ |
+| 8-12 | 2 | 0.075 | ~18.375M HITZ |
+| 12-16 | 3 | 0.0375 | ~19.6875M HITZ |
+| 16-20 | 4 | 0.01875 | ~20.34M HITZ |
+| 20-24 | 5 | 0.009375 | ~20.67M HITZ |
+| 24+ | 6+ | &lt;0.005 | Approaches 21M |
 
-- Internal Mine / Mint
-  - For exclusive collaborations initiated with Skyhitz. Creators can launch exclusives where the initial share split is agreed up‑front.
-  - The exact initial percentage for creators is case‑by‑case and defined during the agreement phase.
-  - To start the process, email ar@skyhitz.io (see landing page for more details).
+**Note**: ~99% of supply released in first 24 years, similar to Bitcoin's emission curve.
 
-## Claiming Earnings
+## User Actions
 
-Earnings are the surplus lumens that accumulate in contract escrow beyond the equity TVL. Holders claim based on their ownership fraction.
+### Action Types & Rewards
 
-Terminology (per entry):
+| Action | Difficulty | Base Fee | HITZ Reward (Epoch 0) | Stake Required | Type |
+|--------|-----------|----------|---------------------|----------------|------|
+| **Stream** | 1 | 0.01 XLM | 0.3 HITZ | No | Micro-spend (Escrow) |
+| **Like** | 2 | 0.02 XLM | 0.6 HITZ | No | Micro-spend (Escrow) |
+| **Download** | 3 | 0.03 XLM | 0.9 HITZ | No | Micro-spend (Escrow) |
+| **Mine** | 10 | 0.1 XLM | 3.0 HITZ | Yes (50 HITZ) | Equity (TVL) |
+| **Invest** | 10-1000+ | 0.3-100+ XLM | 3.0-300+ HITZ | Yes (variable) | Equity (TVL) |
 
-- Earnings pool: `max(escrow - tvl, 0)`
-- User fraction: `user_shares / tvl` (computed in‑contract using 6‑decimal scaling)
-- Previously withdrawn: `withdrawn_earnings[user]`
-- Claimable amount: `user_fraction * earnings_pool - previously_withdrawn`
+### Reward Calculation
 
-Flow:
+**Formula**: `HITZ Reward = difficulty × unit_reward(epoch)`
 
-1) Preview (read‑only): We expose a `claimableEarningsPreview` API that computes the same formula without invoking the contract, so the UI only enables “Claim” when the preview is > 0.
-2) Invoke: When preview > 0, the app calls `claim_earnings(user, id)` on the Soroban contract.
-3) Contract updates atomically:
-   - Decreases `escrow` by `claimable`
-   - Increases `withdrawn_earnings[user]` by `claimable`
-   - Recomputes `apr`
-   - Transfers `claimable` from contract to the user
+Where:
+- `difficulty` = action-specific multiplier (1 for stream, 10 for mine, etc.)
+- `unit_reward(epoch)` = current epoch reward (starts at 0.3 HITZ, halves every 4 years)
 
-Units & rounding:
+### Invest Action (Dynamic)
 
-- Contract uses stroops (`i128`); 1 XLM = 10,000,000 stroops
-- Proportional math uses a scale constant (1_000_000) to reduce rounding error
-- Client surfaces values in XLM with appropriate formatting
+The Invest action scales with the investment amount:
 
-Example:
+- **Minimum**: 0.3 XLM → 3 difficulty → 0.9 HITZ reward + 15 HITZ stake
+- **Scaling**: 10 difficulty units per 1 XLM
+- **Example**: 1 XLM → 10 difficulty → 3.0 HITZ reward + 50 HITZ stake
+- **Example**: 10 XLM → 100 difficulty → 30 HITZ reward + 5,000 HITZ stake
 
-- tvl = 10.0 XLM, escrow = 12.0 XLM → earnings pool = 2.0 XLM
-- user_shares = 2.5 XLM → user fraction = 2.5 / 10.0 = 25%
-- previously_withdrawn = 0.4 XLM
-- claimable = 25% × 2.0 − 0.4 = 0.1 XLM
+### Stake Requirements
 
-Edge cases & FAQs:
+**Stake Unit**: 5 HITZ (50,000,000 stroops) per difficulty unit
 
-- Why is claimable 0 even though escrow > tvl? You may have 0 shares, or your previously withdrawn amount equals your current entitlement.
-- Does claiming change my shares? No. Claiming only decreases `escrow` and increases `withdrawn_earnings[user]`.
-- Does claiming reduce APR? Often yes. Since APR is derived from `(escrow − tvl) / tvl`, paying out earnings lowers the numerator.
-- Can I spam claim? You can call again, but the second call typically returns 0 until new earnings accrue.
+| Action | Difficulty | Stake Required |
+|--------|-----------|----------------|
+| Mine | 10 | 50 HITZ |
+| Invest (0.3 XLM) | 3 | 15 HITZ |
+| Invest (1 XLM) | 10 | 50 HITZ |
+| Invest (10 XLM) | 100 | 500 HITZ |
+
+## Two Revenue Streams
+
+### 1. Escrow (Non-Equity Revenue)
+
+**Generated by**: Stream, Like, Download actions
+
+**Purpose**: Performance-based revenue that reflects how much users engage with the music
+
+**Flow**:
+1. User pays XLM fee (0.01-0.03 XLM)
+2. XLM goes to Treasury wallet
+3. User instantly receives HITZ reward
+4. Entry's `escrow_xlm` increases
+5. Treasury bot periodically converts XLM to HITZ
+6. HITZ distributed to entry reward pools based on escrow performance
+
+**Key Point**: These actions do NOT grant equity/shares, but they DO earn HITZ rewards and contribute to the entry's reward pool growth.
+
+### 2. TVL (Total Value Locked - Equity Revenue)
+
+**Generated by**: Mine, Invest actions
+
+**Purpose**: Entry valuation and long-term investment with equity stake
+
+**Flow**:
+1. User pays XLM fee + stakes HITZ tokens
+2. XLM goes to Treasury wallet
+3. HITZ tokens locked in contract as stake
+4. User receives HITZ reward
+5. Entry's `tvl_xlm` increases
+6. User gets proportional ownership stake
+7. User can claim proportional rewards from entry's reward pool
+
+**Key Point**: These actions DO grant equity/shares (proportional to stake), allowing users to claim ongoing rewards.
+
+## Action Details
+
+### Stream (Completion)
+- **Cost**: 0.01 XLM (1× base fee)
+- **Reward**: 0.3 HITZ (epoch 0)
+- **Difficulty**: 1
+- **Stake**: None
+- **Effect**: Increases entry's escrow; user earns instant HITZ reward
+- **When**: Triggered when user completes listening to a track
+
+### Like
+- **Cost**: 0.02 XLM (2× base fee)
+- **Reward**: 0.6 HITZ (epoch 0)
+- **Difficulty**: 2
+- **Stake**: None
+- **Effect**: Increases entry's escrow; user earns instant HITZ reward
+- **When**: User likes a track
+
+### Download
+- **Cost**: 0.03 XLM (3× base fee)
+- **Reward**: 0.9 HITZ (epoch 0)
+- **Difficulty**: 3
+- **Stake**: None
+- **Effect**: Increases entry's escrow; user earns instant HITZ reward; enables download
+- **When**: User wants to download a track
+
+### Mine
+- **Cost**: 0.1 XLM + 50 HITZ stake
+- **Reward**: 3.0 HITZ (epoch 0)
+- **Difficulty**: 10
+- **Stake**: 50 HITZ (automatically locked)
+- **Effect**: Creates new entry; increases TVL; user gets equity stake
+- **When**: User brings external music (from Audius, Sound.xyz, etc.) into Skyhitz
+- **Note**: Mining involves fetching metadata, pinning to R2 storage, and initializing on-chain
+
+### Invest
+- **Cost**: 0.3+ XLM + proportional HITZ stake
+- **Reward**: 0.9+ HITZ (epoch 0), scales with amount
+- **Difficulty**: Dynamic (10 per 1 XLM)
+- **Stake**: 5 HITZ per difficulty unit (50 HITZ per 1 XLM)
+- **Effect**: Increases entry's TVL; user gets equity stake
+- **When**: User wants to increase their stake in an existing entry
+
+## Staking & Ownership
+
+### How Staking Works
+
+When you Mine or Invest:
+1. Your HITZ tokens are locked in the contract
+2. Your stake is recorded for that specific entry
+3. Entry's total stake increases
+4. You gain proportional ownership: `your_stake / total_stake`
+
+### Ownership Benefits
+
+Your ownership percentage determines:
+- **Reward Claims**: Your share of the entry's reward pool
+- **Voting Power**: Future governance rights (planned)
+- **Entry Success**: As the entry performs well, reward pool grows
+
+### Dilution
+
+- When others stake in the same entry, total stake increases
+- Your absolute stake amount never decreases
+- Your ownership percentage may decrease if others stake more
+- However, if the entry performs well, your absolute rewards can still increase
+
+### Example
+
+```
+Entry has 1000 HITZ total stake
+You staked: 100 HITZ
+Your ownership: 10%
+
+Entry's reward pool grows to 500 HITZ
+Your claimable: 50 HITZ (10% of 500)
+
+Someone else stakes 500 HITZ
+New total: 1500 HITZ
+Your new ownership: 6.67% (100/1500)
+
+But if reward pool grows to 900 HITZ:
+Your claimable: 60 HITZ (6.67% of 900)
+You still earn more despite dilution!
+```
+
+## Claiming Rewards
+
+Users with equity stakes (from Mine or Invest) can claim accumulated HITZ rewards from the entry's reward pool.
+
+### How It Works
+
+**Terminology (per entry)**:
+- **Reward Pool**: Total HITZ allocated to this entry from Treasury distributions
+- **Total Stake**: Sum of all users' HITZ stakes in this entry
+- **User Stake**: Your HITZ stake in this entry
+- **Ownership**: `your_stake / total_stake`
+- **Already Claimed**: Total you've claimed from this entry previously
+- **Claimable**: Your share of the pool minus what you've already claimed
+
+**Formula**:
+```
+claimable = (your_stake / total_stake) × reward_pool - already_claimed
+```
+
+### Claiming Flow
+
+1. **Preview** (read-only): Check your claimable amount without invoking the contract
+   - Call `get_claimable_rewards(entry_id, user)`
+   - UI shows amount and enables "Claim" button if > 0
+
+2. **Claim** (transaction): When you have claimable rewards
+   - Call `claim_rewards(entry_id, claimer)`
+   - Contract verifies you have stake in the entry
+   - Calculates your claimable amount
+   - Records the claim in `claimed_rewards[user]`
+   - Transfers HITZ from contract to your wallet
+   - Returns claimed amount
+
+3. **Multiple Claims**: You can claim multiple times as rewards accumulate
+   - Each claim updates your `claimed_rewards` record
+   - Future claims only give you the new rewards since last claim
+
+### Example
+
+```
+Entry Stats:
+- Total Stake: 1,000 HITZ
+- Reward Pool: 500 HITZ
+- Your Stake: 200 HITZ (20% ownership)
+
+First Claim:
+- Your share: 20% × 500 = 100 HITZ
+- Already claimed: 0
+- Claimable: 100 HITZ ✓
+
+After First Claim:
+- Your claimed record: 100 HITZ
+
+Later, Reward Pool Grows to 800 HITZ:
+- Your share: 20% × 800 = 160 HITZ
+- Already claimed: 100 HITZ
+- Claimable: 60 HITZ ✓
+
+Second Claim:
+- You receive: 60 HITZ
+- Your claimed record: 160 HITZ
+```
+
+### Units & Precision
+
+- Contract uses stroops (`i128`): 1 HITZ = 10,000,000 stroops
+- Proportional math uses scale constant (1,000,000) for precision
+- UI displays values in HITZ with appropriate formatting
+
+### Claiming FAQs
+
+**Q: Why is my claimable amount 0 even though there's a reward pool?**
+- You may have no stake in this entry (only Mine/Invest grant stakes)
+- You may have already claimed all available rewards
+- The pool may not have grown since your last claim
+
+**Q: Does claiming reduce my stake?**
+- No! Claiming only transfers rewards, your stake remains unchanged
+- You continue earning on the same stake for future rewards
+
+**Q: Does claiming reduce the entry's APR?**
+- No. APR is calculated based on reward pool vs total stake
+- Your claim doesn't change the ratio for APR purposes
+- (Unlike the old system where claiming reduced escrow)
+
+**Q: Can I claim multiple entries at once?**
+- Currently, claims are per-entry
+- Batch claiming may be added in future updates
+
+**Q: How often should I claim?**
+- Claim whenever the amount is worth the transaction fee
+- There's no penalty for waiting
+- Your rewards are safely tracked on-chain
+
+## Creator Features (Planned)
+
+### Creator Claim
+- After manual verification, original creators can claim ownership of their entries
+- Initial allocation: 25% of total stake at claim time
+- Promotional boost: If they promote post-claim (criteria TBD), allocation increases to 50%
+- Status: Contract support ready; UI integration pending
+
+### Creator Takedown
+- After verification and diligent process, entries can be removed if necessary
+- TVL will be returned to stakers pro-rata
+- Stakes and rewards for removed entry cease to exist
+- Status: Admin function available; formal process being defined
+
+### Internal Mine / Mint
+- For exclusive collaborations with Skyhitz
+- Creators can launch exclusives with pre-agreed stake distribution
+- Initial percentage negotiated case-by-case
+- To start: email ar@skyhitz.io (see landing page)
+
+## Treasury System
+
+### Treasury Bot
+
+The Treasury bot automates the conversion of XLM fees to HITZ rewards:
+
+1. **Collect**: Accumulated XLM fees from user actions
+2. **Convert**: Buy HITZ on Stellar DEX with the collected XLM
+3. **Distribute**: Send HITZ to Core contract via `distribute_rewards()`
+4. **Auto-Allocate**: Contract distributes proportionally based on escrow performance
+
+**Key Point**: The bot doesn't need to know about individual entries—the Core contract handles all distribution logic automatically based on each entry's `escrow_xlm` performance.
+
+### Reward Distribution Formula
+
+```
+For each entry:
+  entry_share = (entry.escrow_xlm / total_escrow) × total_hitz_distributed
+```
+
+Entries with more escrow (more stream/like/download activity) receive a larger share of the HITZ reward pool, which benefits their stakers proportionally.
+
+## Economic Sustainability
+
+### Short-term (Years 0-4)
+- High emission rate (0.3 HITZ per unit)
+- Attracts early users and investors
+- Builds initial liquidity
+- Establishes entry valuations
+
+### Mid-term (Years 4-12)
+- Emission halves twice (0.15 → 0.075 HITZ)
+- Scarcity increases HITZ value
+- Established market dynamics
+- Mature staking ecosystem
+
+### Long-term (Years 12+)
+- Minimal new emission (&lt;0.0375 HITZ)
+- HITZ becomes scarce asset
+- Reward pools sustained by secondary market
+- Ecosystem fully self-sustaining
+
+## Key Takeaways
+
+1. **Dual Token System**: XLM for fees, HITZ for rewards and staking
+2. **Dual Revenue Streams**: Escrow (performance) and TVL (equity)
+3. **Instant Rewards**: All actions earn HITZ immediately
+4. **Equity Stakes**: Mine and Invest grant ownership for ongoing rewards
+5. **Proportional Claims**: Stakers claim rewards based on ownership percentage
+6. **Deflationary Supply**: Bitcoin-style halving ensures long-term scarcity
+7. **Automated Distribution**: Treasury bot and smart contract handle reward allocation
+8. **Sustainable Economics**: Designed for 20+ year ecosystem growth

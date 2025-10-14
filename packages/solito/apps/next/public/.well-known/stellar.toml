@@ -1,0 +1,40 @@
+# Stellar Info File for Skyhitz
+# This file provides metadata about the HITZ asset and Skyhitz organization
+# for Stellar Expert and other Stellar ecosystem services.
+# 
+# Reference: https://developers.stellar.org/docs/tokens/publishing-asset-info
+
+# Account Information
+# Replace with your actual ISSUER_ID from environment
+ACCOUNTS = [
+    "GCAETBNBFKVGLYFXKCLMKT6ZVHFXHRSDFSEW7ODIUJYC6R7H2QJ6OKGU"
+]
+
+# Organization Information
+[DOCUMENTATION]
+ORG_NAME = "Skyhitz"
+ORG_URL = "https://skyhitz.io"
+ORG_LOGO = "https://skyhitz.io/icon.png"
+ORG_DESCRIPTION = "Decentralized music platform on Stellar. Discover, stake, and earn from independent music."
+ORG_OFFICIAL_EMAIL = "support@skyhitz.io"
+ORG_TWITTER = "skyhitz"
+
+# Point of Contact Documentation
+[[PRINCIPALS]]
+name = "Skyhitz Team"
+email = "support@skyhitz.io"
+
+# Asset: HITZ Token
+[[CURRENCIES]]
+code = "HITZ"
+# Replace with your actual ISSUER_ID from environment
+issuer = "GCAETBNBFKVGLYFXKCLMKT6ZVHFXHRSDFSEW7ODIUJYC6R7H2QJ6OKGU"
+display_decimals = 7
+name = "Skyhitz Token"
+desc = "Platform token for staking and rewards on Skyhitz. Stake on music to earn from platform activity."
+conditions = "HITZ is the native utility token of the Skyhitz platform. Used for staking on music entries and earning rewards."
+image = "https://skyhitz.io/icon.png"
+is_asset_anchored = false
+is_unlimited = false
+max_number = 21000000
+

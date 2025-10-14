@@ -15,7 +15,12 @@
 		"testnet:contract:redeploy": "rm -r ./contract/.vars && npm run contract:setup",
 		"mainnet:contract:setup": "./contract/init.sh ${NETWORK:-mainnet}",
 		"mainnet:contract:upgrade": "./contract/upgrade.sh ${NETWORK:-mainnet}",
-		"mainnet:contract:bindings": "./contract/bindings.sh ${NETWORK:-mainnet}"
+		"mainnet:contract:bindings": "./contract/bindings.sh ${NETWORK:-mainnet}",
+		"restore:invest": "ts-node src/scripts/restore-invest.ts",
+		"restore:all-investments": "ts-node src/scripts/restore-all-investments.ts",
+		"verify:data": "ts-node src/scripts/verify-data.ts",
+		"create:entries": "ts-node src/scripts/create-entries.ts",
+		"parse:legacy": "ts-node src/scripts/parse-legacy-investments.ts"
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.1.0",
@@ -44,6 +49,7 @@
 		"stripe": "^17.5.0",
 		"tmp": "^0.2.3",
 		"tmp-promise": "^3.0.3",
+		"ts-node": "^10.9.2",
 		"yup": "^0.32.11"
 	},
 	"packageManager": "yarn@4.3.1"

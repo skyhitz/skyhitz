@@ -32,8 +32,8 @@ export function WithdrawModal({ visible, onClose }: Props) {
   const [xlmWithdraw] = useWithdrawToExternalWalletMutation()
   const [withdrawHitz] = useMutation(WITHDRAW_HITZ)
 
-  const { data: xlmData } = useQuery(USER_CREDITS, { fetchPolicy: 'network-only' })
-  const { data: hitzData } = useQuery(USER_HITZ_BALANCE, { fetchPolicy: 'network-only' })
+  const { data: xlmData, refetch: refetchXlm } = useQuery(USER_CREDITS, { fetchPolicy: 'network-only' })
+  const { data: hitzData, refetch: refetchHitz } = useQuery(USER_HITZ_BALANCE, { fetchPolicy: 'network-only' })
   const { data: priceData } = useQuery(XLM_PRICE, { fetchPolicy: 'cache-first' })
 
   const xlmBalance = (xlmData?.userCredits ?? 0) as number
@@ -70,10 +70,14 @@ export function WithdrawModal({ visible, onClose }: Props) {
         setLoading(true)
         if (selectedAsset === AssetType.XLM) {
           await xlmWithdraw({ variables: { address, amount } })
+          // Refetch XLM balance after successful withdrawal
+          await refetchXlm()
           toast.show('Amount successfully transferred to your external wallet', { type: 'success' })
         } else {
           const res = await withdrawHitz({ variables: { address, amount } })
           if (res?.data?.withdrawHitz?.success) {
+            // Refetch HITZ balance after successful withdrawal
+            await refetchHitz()
             toast.show(
               `Successfully sent ${res.data.withdrawHitz.amount.toFixed(2)} HITZ to external wallet`,
               { type: 'success' }
@@ -89,7 +93,7 @@ export function WithdrawModal({ visible, onClose }: Props) {
         setLoading(false)
       }
     },
-    [onClose, selectedAsset, toast, withdrawHitz, xlmWithdraw]
+    [onClose, selectedAsset, toast, withdrawHitz, xlmWithdraw, refetchXlm, refetchHitz]
   )
 
   const price = useMemo(() => parseFloat(priceData?.xlmPrice ?? '0') || 0, [priceData])

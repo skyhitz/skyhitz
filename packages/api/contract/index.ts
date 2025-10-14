@@ -1,4 +1,4 @@
-import { Horizon, Keypair, Transaction, hash, scValToNative, xdr } from '@stellar/stellar-sdk';
+import { Horizon, Keypair, Transaction, hash, scValToNative, xdr, Asset, TransactionBuilder, Operation, BASE_FEE } from '@stellar/stellar-sdk';
 import { Client, Entry } from './client';
 
 Horizon.AxiosClient.defaults.adapter = 'fetch' as any;
@@ -26,7 +26,6 @@ type NetworkPassphrase = typeof testnetNetworkPassphrase | typeof mainnetNetwork
 
 class ContractClient {
     private sourceKeys: Keypair;
-    private hitzTokenId: string;
 	private defaultOptions = { timeoutInSeconds: 60, fee: 100000000, restore: true };
 	private network: Network;
 	private horizonUrl: HorizonUrl;
@@ -43,7 +42,6 @@ class ContractClient {
         this.contractId = env.STELLAR_NETWORK === 'testnet' ? testnetContractId : mainnetContractId;
         this.networkPassphrase = env.STELLAR_NETWORK === 'testnet' ? testnetNetworkPassphrase : mainnetNetworkPassphrase;
         this.contract = this.getClientForKeypair(this.sourceKeys);
-        this.hitzTokenId = env.HITZ_TOKEN_ID;
     }
 
 	public getClientForKeypair(keys: Keypair) {
@@ -70,43 +68,11 @@ class ContractClient {
 		});
 	}
 
-    private getTokenClientForKeypair(keys: Keypair) {
-        return new Client({
-            contractId: this.hitzTokenId,
-            networkPassphrase: this.networkPassphrase,
-            rpcUrl: this.rpcUrl,
-            publicKey: keys.publicKey(),
-            signTransaction: async (tx: string) => {
-                const txFromXDR = new Transaction(tx, this.networkPassphrase);
-                txFromXDR.sign(keys);
-                return {
-                    signedTxXdr: txFromXDR.toXDR(),
-                    signerAddress: keys.publicKey(),
-                };
-            },
-            signAuthEntry: async (entryXdr) => {
-                const signedAuthEntry = keys.sign(hash(Buffer.from(entryXdr, 'base64'))).toString('base64');
-                return {
-                    signedAuthEntry,
-                    signerAddress: keys.publicKey(),
-                };
-            },
-        });
-    }
-
     /**
      * Read HITZ token symbol from the token contract
      */
     public getHitzSymbol = async () => {
-        try {
-            const tokenClient = this.getTokenClientForKeypair(this.sourceKeys);
-            const tx = await tokenClient.symbol(this.defaultOptions);
-            // Expect "HITZ"
-            return tx.result as string;
-        } catch (e) {
-            console.log('getHitzSymbol failed:', (e as any)?.message || e);
-            return 'HITZ';
-        }
+        return 'HITZ';
     };
 
 	public async fetchCurrentLedger() {
@@ -126,20 +92,58 @@ class ContractClient {
 
 	public getEntry = async (entry_id: string) => {
 		const tx = await this.contract.get_entry({ entry_id }, this.defaultOptions);
-		console.log(tx);
-		console.log(tx.simulationData);
-		// Entry fields are: created_at, escrow_xlm, tvl_xlm (no apr field)
-		if (!tx.result) {
+		
+		// Handle Option<Entry> return type - manually parse the raw result
+		// The TypeScript bindings struggle with Option types, so we parse the XDR directly
+		try {
+			const simulation = tx.simulation as any;
+			const rawResult = simulation?.result?.retval;
+			
+			if (!rawResult || rawResult._value === undefined) {
+				throw new Error(`Entry ${entry_id} not found`);
+			}
+			
+			// If it's a map (Some(Entry)), extract the values
+			if (rawResult._arm === 'map' && Array.isArray(rawResult._value)) {
+				const entryMap = rawResult._value;
+				const getValue = (key: string) => {
+					const item = entryMap.find((e: any) => {
+						const keyBuffer = e._attributes?.key?._value;
+						if (keyBuffer && keyBuffer.type === 'Buffer') {
+							const keyStr = Buffer.from(keyBuffer.data).toString('utf-8');
+							return keyStr === key;
+						}
+						return false;
+					});
+					
+					if (!item) return 0;
+					
+					const val = item._attributes?.val;
+					if (val?._arm === 'u64') {
+						return Number(val._value._value);
+					} else if (val?._arm === 'i128') {
+						return Number(val._value._attributes.lo._value);
+					}
+					return 0;
+				};
+				
+				return {
+					created_at: getValue('created_at'),
+					escrow_xlm: getValue('escrow_xlm'),
+					tvl_xlm: getValue('tvl_xlm'),
+					// For backwards compatibility
+					escrow: getValue('escrow_xlm'),
+					tvl: getValue('tvl_xlm'),
+				};
+			}
+			
+			// If None (void), entry doesn't exist
 			throw new Error(`Entry ${entry_id} not found`);
+			
+		} catch (e) {
+			console.error(`Error parsing entry ${entry_id}:`, (e as any)?.message);
+			throw e;
 		}
-		return {
-			created_at: Number(tx.result.created_at),
-			escrow_xlm: Number(tx.result.escrow_xlm),
-			tvl_xlm: Number(tx.result.tvl_xlm),
-			// For backwards compatibility, add these aliases
-			escrow: Number(tx.result.escrow_xlm),
-			tvl: Number(tx.result.tvl_xlm),
-		};
 	};
 
 	// Old methods removed - replaced by new contract methods:
@@ -270,13 +274,23 @@ class ContractClient {
 
 	/**
 	 * Get user's HITZ token balance
-	 * Uses the Soroban token client to query the HITZ contract
+	 * Uses Horizon API to query SAC token balance
 	 */
     public getHitzBalance = async (userPublicKey: string) => {
         try {
-            const tokenClient = this.getTokenClientForKeypair(this.sourceKeys);
-            const tx = await tokenClient.balance({ account: userPublicKey }, this.defaultOptions);
-            return Number(tx.result);
+            const server = new Horizon.Server(this.horizonUrl);
+            const account = await server.loadAccount(userPublicKey);
+            
+            // Find HITZ balance in account balances
+            const hitzBalance = account.balances.find((balance: any) => {
+                return balance.asset_code === 'HITZ' && 
+                       balance.asset_issuer === this.sourceKeys.publicKey();
+            });
+            
+            if (hitzBalance && 'balance' in hitzBalance) {
+                return Number(parseFloat(hitzBalance.balance) * 10_000_000); // Convert to stroops
+            }
+            return 0;
         } catch (error) {
             console.error('Error fetching HITZ balance:', error);
             return 0;
@@ -285,26 +299,43 @@ class ContractClient {
 
 	/**
 	 * Transfer HITZ tokens to another address
-	 * Uses the Soroban token transfer functionality
+	 * Uses the Stellar SDK for SAC token transfers
+	 * @param secret - User's secret key
+	 * @param toAddress - Destination Stellar address
+	 * @param amount - Amount in HITZ (not stroops) - e.g., 2000 for 2000 HITZ
 	 */
     public transferHitz = async (secret: string, toAddress: string, amount: number) => {
         try {
             const userKeys = Keypair.fromSecret(secret);
-            const fromAddress = userKeys.publicKey();
-            const amountInStroops = BigInt(Math.floor(amount * 10_000_000));
-
-            const tokenClient = this.getTokenClientForKeypair(userKeys);
-            const tx = await tokenClient.transfer(
-                { from: fromAddress, to: toAddress, amount: amountInStroops },
-                this.defaultOptions
-            );
-
-            const result = await tx.signAndSend();
-            const txHash = (result as any)?.getTransactionResponse?.hash || null;
-
+            const server = new Horizon.Server(this.horizonUrl);
+            const sourceAccount = await server.loadAccount(userKeys.publicKey());
+            
+            // Amount is already in human-readable HITZ format (e.g., 2000 HITZ)
+            // Just format it to 7 decimal places for Stellar
+            const amountStr = amount.toFixed(7);
+            
+            // Build payment operation
+            const asset = new Asset('HITZ', this.sourceKeys.publicKey());
+            const transaction = new TransactionBuilder(sourceAccount, {
+                fee: BASE_FEE,
+                networkPassphrase: this.networkPassphrase,
+            })
+                .addOperation(
+                    Operation.payment({
+                        destination: toAddress,
+                        asset: asset,
+                        amount: amountStr,
+                    })
+                )
+                .setTimeout(30)
+                .build();
+            
+            transaction.sign(userKeys);
+            const result = await server.submitTransaction(transaction);
+            
             return {
                 success: true,
-                txHash,
+                txHash: result.hash,
             };
         } catch (error) {
             console.error('Error transferring HITZ:', error);
@@ -327,6 +358,14 @@ class ContractClient {
 			rewardPool: Number(reward_pool),
 			apr: Number(apr),
 		};
+	};
+
+	/**
+	 * Get current base fee in stroops
+	 */
+	public getBaseFee = async () => {
+		const tx = await this.contract.get_base_fee(this.defaultOptions);
+		return Number(tx.result);
 	};
 
 	public unstake = async (secret: string, entryId: string, amount: number) => {
@@ -353,6 +392,68 @@ class ContractClient {
 			...result,
 			unstakedAmount: Number(result.result) || 0,
 		};
+	};
+
+	/**
+	 * Get oracle data (price and last update timestamp)
+	 * Returns [price_in_stroops, last_update_timestamp]
+	 */
+	public getOracleData = async (): Promise<readonly [bigint, bigint]> => {
+		const tx = await this.contract.get_oracle_data(this.defaultOptions);
+		return tx.result;
+	};
+
+	/**
+	 * Get entry count
+	 */
+	public getEntryCount = async (): Promise<number> => {
+		const tx = await this.contract.entry_count(this.defaultOptions);
+		return Number(tx.result);
+	};
+
+	/**
+	 * List entry IDs with pagination
+	 * @param start - Starting index
+	 * @param limit - Number of entries to fetch
+	 */
+	public listEntries = async (start: number, limit: number): Promise<string[]> => {
+		const tx = await this.contract.list_entries(
+			{ start: start, limit: limit },
+			this.defaultOptions
+		);
+		return tx.result as string[];
+	};
+
+	/**
+	 * Get all entry IDs (handles pagination automatically)
+	 */
+	public getAllEntryIds = async (): Promise<string[]> => {
+		const count = await this.getEntryCount();
+		const allEntryIds: string[] = [];
+		const batchSize = 100; // Fetch in batches of 100
+		
+		for (let i = 0; i < count; i += batchSize) {
+			const batch = await this.listEntries(i, Math.min(batchSize, count - i));
+			allEntryIds.push(...batch);
+		}
+		
+		return allEntryIds;
+	};
+
+	/**
+	 * Update oracle price (treasury-only)
+	 * This is called by the treasury bot to update market price
+	 */
+	public updateOraclePrice = async (newPriceStroops: bigint) => {
+		const tx = await this.contract.update_oracle_price(
+			{
+				caller: this.sourceKeys.publicKey(),
+				new_price: newPriceStroops,
+			},
+			this.defaultOptions
+		);
+		const result = await tx.signAndSend();
+		return result;
 	};
 }
 
