@@ -172,7 +172,7 @@ class StellarClient {
 
 	/**
 	 * Ensure a classic trustline exists for HITZ asset for the given account.
-	 * No-op if env.HITZ_ASSET_CODE/HITZ_ASSET_ISSUER are not set.
+	 * Sponsors the trustline creation so accounts with 0 balance can receive HITZ.
 	 */
 	async ensureHitzTrustline(seed: string) {
 		// Infer classic asset code from Soroban token symbol; issuer from ISSUER_ID
@@ -194,17 +194,33 @@ class StellarClient {
 		const hasTrustline = (account.balances || []).some((b: any) => b.asset_code === HITZ_ASSET_CODE && b.asset_issuer === HITZ_ASSET_ISSUER);
 		if (hasTrustline) return { created: false, reason: 'exists' };
 
+		// Build sponsored trustline transaction
+		// The issuer sponsors the trustline reserve so accounts with 0 XLM can receive HITZ
 		const asset = new Asset(HITZ_ASSET_CODE, HITZ_ASSET_ISSUER);
-		const tx = (await this.buildTransactionWithFee(accountId))
+		const txBuilder = await this.buildTransactionWithFee(this.sourceKeys.publicKey());
+		
+		txBuilder
+			.addOperation(
+				Operation.beginSponsoringFutureReserves({
+					sponsoredId: accountId,
+				})
+			)
 			.addOperation(
 				Operation.changeTrust({
 					asset,
+					source: accountId, // Important: source must be the user account
 				})
 			)
-			.setTimeout(0)
-			.build();
+			.addOperation(
+				Operation.endSponsoringFutureReserves({
+					source: accountId,
+				})
+			);
 
-		tx.sign(userKeys);
+		const tx = txBuilder.setTimeout(0).build();
+		
+		// Both issuer (sponsor) and user must sign
+		tx.sign(this.sourceKeys, userKeys);
 		const res = await this.submitTransaction(tx);
 		return { created: true, tx: res };
 	}
