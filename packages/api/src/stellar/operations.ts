@@ -64,7 +64,8 @@ class StellarClient {
 		let secret = pair.secret();
 		let publicAddress = pair.publicKey();
 		try {
-			await this.fundAccount(pair);
+			// Pass true to include HITZ trustline in sponsored account creation
+			await this.fundAccount(pair, true);
 		} catch (e: any) {
 			if (e && e.response) {
 				console.log(e.response);
@@ -85,12 +86,28 @@ class StellarClient {
 		});
 	}
 
-	async fundAccount(destinationKeys: Keypair) {
+	async fundAccount(destinationKeys: Keypair, includeHitzTrustline: boolean = false) {
 		if (!destinationKeys.publicKey()) {
 			throw 'Account does not exist';
 		}
 
-		let transaction = (await this.buildTransactionWithFee(this.sourceKeys.publicKey()))
+		let HITZ_ASSET_CODE = 'HITZ';
+		let HITZ_ASSET_ISSUER = this.env.ISSUER_ID;
+		
+		// Get HITZ asset info if we need to create trustline
+		if (includeHitzTrustline) {
+			try {
+				const contract = new ContractClient(this.env as any);
+				const symbol = await contract.getHitzSymbol();
+				HITZ_ASSET_CODE = symbol || 'HITZ';
+			} catch (_) {
+				HITZ_ASSET_CODE = 'HITZ';
+			}
+		}
+
+		const txBuilder = await this.buildTransactionWithFee(this.sourceKeys.publicKey());
+		
+		txBuilder
 			.addOperation(
 				Operation.beginSponsoringFutureReserves({
 					sponsoredId: destinationKeys.publicKey(),
@@ -101,14 +118,26 @@ class StellarClient {
 					destination: destinationKeys.publicKey(),
 					startingBalance: '0',
 				})
-			)
-			.addOperation(
-				Operation.endSponsoringFutureReserves({
-					source: destinationKeys.publicKey(),
+			);
+		
+		// Add HITZ trustline within sponsorship block if requested
+		if (includeHitzTrustline) {
+			const asset = new Asset(HITZ_ASSET_CODE, HITZ_ASSET_ISSUER);
+			txBuilder.addOperation(
+				Operation.changeTrust({
+					asset,
+					source: destinationKeys.publicKey(), // Important: source must be the new account
 				})
-			)
-			.setTimeout(0)
-			.build();
+			);
+		}
+		
+		txBuilder.addOperation(
+			Operation.endSponsoringFutureReserves({
+				source: destinationKeys.publicKey(),
+			})
+		);
+		
+		let transaction = txBuilder.setTimeout(0).build();
 		transaction.sign(this.sourceKeys, destinationKeys);
 		return this.submitTransaction(transaction);
 	}

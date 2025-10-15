@@ -80,6 +80,7 @@ export const createUserWithEmailResolver = async (_: any, args: any, ctx: Contex
 
 	try {
 		// create and sponsor a stellar account for the user if they don't have one yet
+		// HITZ trustline is automatically created and sponsored during account funding
 		if (!user.publicKey) {
 			let { publicAddress, secret } = await stellar.createAndFundAccount();
 			let seed = await encryption.encrypt(secret);
