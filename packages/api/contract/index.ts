@@ -344,6 +344,33 @@ class ContractClient {
     };
 
 	/**
+	 * Distribute rewards from Treasury to all entries proportionally
+	 * Requires Treasury keypair for auth entry signing
+	 */
+	public distributeRewards = async (treasurySecret: string, hitzAmount: bigint) => {
+		const treasuryKeys = Keypair.fromSecret(treasurySecret);
+		const tx = await this.contract.distribute_rewards(
+			{
+				caller: treasuryKeys.publicKey(),
+				hitz_amount: hitzAmount,
+			},
+			this.defaultOptions
+		);
+
+		// Auth entry signing pattern (same as claimRewards/unstake)
+		const jsonFromRoot = tx.toJSON();
+		const treasuryClient = this.getClientForKeypair(treasuryKeys);
+		const txTreasury = treasuryClient.fromJSON['distribute_rewards'](jsonFromRoot);
+		const ledger = (await this.fetchCurrentLedger()) + 100;
+		await txTreasury.signAuthEntries({ expiration: ledger });
+		const jsonFromTreasury = txTreasury.toJSON();
+		const txRoot = this.contract.fromJSON['distribute_rewards'](jsonFromTreasury);
+		const result = await txRoot.signAndSend();
+		
+		return result;
+	};
+
+	/**
 	 * Get entry stats
 	 * Returns: [tvl_xlm, escrow_xlm, total_staked, reward_pool, apr]
 	 */
@@ -443,16 +470,28 @@ class ContractClient {
 	/**
 	 * Update oracle price (treasury-only)
 	 * This is called by the treasury bot to update market price
+	 * Requires Treasury keypair for auth entry signing
 	 */
-	public updateOraclePrice = async (newPriceStroops: bigint) => {
+	public updateOraclePrice = async (treasurySecret: string, newPriceStroops: bigint) => {
+		const treasuryKeys = Keypair.fromSecret(treasurySecret);
 		const tx = await this.contract.update_oracle_price(
 			{
-				caller: this.sourceKeys.publicKey(),
+				caller: treasuryKeys.publicKey(),
 				new_price: newPriceStroops,
 			},
 			this.defaultOptions
 		);
-		const result = await tx.signAndSend();
+
+		// Auth entry signing pattern (same as other auth-required methods)
+		const jsonFromRoot = tx.toJSON();
+		const treasuryClient = this.getClientForKeypair(treasuryKeys);
+		const txTreasury = treasuryClient.fromJSON['update_oracle_price'](jsonFromRoot);
+		const ledger = (await this.fetchCurrentLedger()) + 100;
+		await txTreasury.signAuthEntries({ expiration: ledger });
+		const jsonFromTreasury = txTreasury.toJSON();
+		const txRoot = this.contract.fromJSON['update_oracle_price'](jsonFromTreasury);
+		const result = await txRoot.signAndSend();
+		
 		return result;
 	};
 }

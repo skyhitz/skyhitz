@@ -128,12 +128,11 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
 			if (currentHitzBalanceBigInt >= MIN_DISTRIBUTION_AMOUNT) {
 				console.log(`Distributing ${Number(currentHitzBalance) / 10_000_000} HITZ from treasury...`);
 				
-				const treasuryClient = contract.getClientForKeypair(treasuryKeys);
-				const distTx = await treasuryClient.distribute_rewards(
-					{ caller: treasuryAddress, hitz_amount: currentHitzBalanceBigInt },
-					{ timeoutInSeconds: 60 }
+				// Use the proper distributeRewards wrapper that handles auth entry signing
+				const distResult = await contract.distributeRewards(
+					env.TREASURY_SEED as string,
+					currentHitzBalanceBigInt
 				);
-				const distResult = await distTx.signAndSend();
 				console.log('✅ Distribution successful!', distResult);
 
 				// Sync APRs to Algolia after successful distribution

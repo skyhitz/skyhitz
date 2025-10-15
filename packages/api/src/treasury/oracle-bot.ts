@@ -135,17 +135,11 @@ export async function runOracleBot(env: Env): Promise<OracleRunResult> {
 			};
 		}
 
-		// Update oracle price on contract
-		const treasuryClient = contract.getClientForKeypair(treasuryKeys);
-		const tx = await treasuryClient.update_oracle_price(
-			{
-				caller: treasuryKeys.publicKey(),
-				new_price: BigInt(marketPriceStroops),
-			},
-			{ timeoutInSeconds: 60 }
+		// Update oracle price on contract (use wrapper with auth entry signing)
+		await contract.updateOraclePrice(
+			env.TREASURY_SEED,
+			BigInt(marketPriceStroops)
 		);
-
-		await tx.signAndSend();
 
 		console.log(
 			`Oracle updated: ${currentPriceXlm.toFixed(6)} → ${marketPriceXlm.toFixed(6)} XLM per HITZ`
