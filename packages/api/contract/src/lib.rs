@@ -599,13 +599,17 @@ impl SkyhitzCore {
         
         for i in 0..entry_count {
             let index_key = DataKey::EntryAt(i);
-            e.storage().persistent().extend_ttl(&index_key, STORAGE_LIFETIME_THRESHOLD, STORAGE_BUMP_AMOUNT);
             
             if let Some(entry_id) = e.storage().persistent().get::<DataKey, String>(&index_key) {
+                // Extend TTL AFTER confirming index key exists
+                e.storage().persistent().extend_ttl(&index_key, STORAGE_LIFETIME_THRESHOLD, STORAGE_BUMP_AMOUNT);
+                
                 let entry_key = DataKey::Entry(entry_id.clone());
-                e.storage().persistent().extend_ttl(&entry_key, STORAGE_LIFETIME_THRESHOLD, STORAGE_BUMP_AMOUNT);
                 
                 if let Some(entry) = e.storage().persistent().get::<DataKey, Entry>(&entry_key) {
+                    // Extend TTL AFTER confirming entry exists
+                    e.storage().persistent().extend_ttl(&entry_key, STORAGE_LIFETIME_THRESHOLD, STORAGE_BUMP_AMOUNT);
+                    
                     if entry.escrow_xlm > 0 {
                         total_escrow = total_escrow.saturating_add(entry.escrow_xlm);
                         entries_with_escrow.push_back((entry_id, entry.escrow_xlm));
@@ -624,7 +628,6 @@ impl SkyhitzCore {
         
         for (entry_id, escrow) in entries_with_escrow.iter() {
             let pool_key = DataKey::RewardPool(entry_id.clone());
-            e.storage().persistent().extend_ttl(&pool_key, STORAGE_LIFETIME_THRESHOLD, STORAGE_BUMP_AMOUNT);
             
             // Calculate share with proper rounding (no dust attack)
             let entry_share = (hitz_amount.saturating_mul(escrow))
@@ -634,6 +637,8 @@ impl SkyhitzCore {
             if entry_share > 0 {
                 let current_pool: i128 = e.storage().persistent().get(&pool_key).unwrap_or(0);
                 e.storage().persistent().set(&pool_key, &current_pool.saturating_add(entry_share));
+                // Extend TTL AFTER setting the value (so key exists)
+                e.storage().persistent().extend_ttl(&pool_key, STORAGE_LIFETIME_THRESHOLD, STORAGE_BUMP_AMOUNT);
                 distributed_total = distributed_total.saturating_add(entry_share);
 
                 log!(
@@ -853,10 +858,11 @@ impl SkyhitzCore {
         
         // Update total stake
         let total_key = DataKey::StakeTotal(entry_id.clone());
-        e.storage().persistent().extend_ttl(&total_key, STORAGE_LIFETIME_THRESHOLD, STORAGE_BUMP_AMOUNT);
         let total_stake: i128 = e.storage().persistent().get(&total_key).unwrap_or(0);
         let new_total = total_stake.saturating_sub(amount);
         e.storage().persistent().set(&total_key, &new_total);
+        // Extend TTL AFTER setting the value (so key exists)
+        e.storage().persistent().extend_ttl(&total_key, STORAGE_LIFETIME_THRESHOLD, STORAGE_BUMP_AMOUNT);
         
         // SECURITY FIX H2: Transfer HITZ back to user with verification
         let hitz_token: Address = e.storage().instance().get(&DataKey::HitzToken).unwrap();
