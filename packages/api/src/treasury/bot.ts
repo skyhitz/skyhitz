@@ -128,12 +128,14 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
 			if (currentHitzBalanceBigInt >= MIN_DISTRIBUTION_AMOUNT) {
 				console.log(`Distributing ${Number(currentHitzBalance) / 10_000_000} HITZ from treasury...`);
 				
-				// Use the proper distributeRewards wrapper that handles auth entry signing
-				const distResult = await contract.distributeRewards(
+				// Use batched distribution to handle systems with many entries
+				// This automatically processes entries in batches to stay under storage footprint limits
+				const distResult = await contract.distributeRewardsBatch(
 					env.TREASURY_SEED as string,
-					currentHitzBalanceBigInt
+					currentHitzBalanceBigInt,
+					20 // Process 20 entries per batch (stays well under 100 storage entry limit)
 				);
-				console.log('✅ Distribution successful!', distResult);
+				console.log(`✅ Distribution successful! Processed ${distResult.batchesProcessed} batches for ${distResult.totalEntries} entries`);
 
 				// Sync APRs to Algolia after successful distribution
 				console.log('Syncing APRs to Algolia...');

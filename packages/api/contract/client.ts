@@ -33,7 +33,7 @@ if (typeof window !== 'undefined') {
 
 
 
-export type DataKey = {tag: "Admin", values: void} | {tag: "Treasury", values: void} | {tag: "HitzToken", values: void} | {tag: "XlmToken", values: void} | {tag: "BaseFee", values: void} | {tag: "EmissionStartTs", values: void} | {tag: "EmissionIntervalSec", values: void} | {tag: "EmissionEpoch0UnitReward", values: void} | {tag: "OraclePrice", values: void} | {tag: "OracleLastUpdate", values: void} | {tag: "Entry", values: readonly [string]} | {tag: "Stake", values: readonly [readonly [string, string]]} | {tag: "StakeTotal", values: readonly [string]} | {tag: "RewardPool", values: readonly [string]} | {tag: "Claimed", values: readonly [readonly [string, string]]} | {tag: "EntryAt", values: readonly [u32]} | {tag: "EntryCount", values: void} | {tag: "TotalMinted", values: void};
+export type DataKey = {tag: "Admin", values: void} | {tag: "Treasury", values: void} | {tag: "HitzToken", values: void} | {tag: "XlmToken", values: void} | {tag: "BaseFee", values: void} | {tag: "EmissionStartTs", values: void} | {tag: "EmissionIntervalSec", values: void} | {tag: "EmissionEpoch0UnitReward", values: void} | {tag: "OraclePrice", values: void} | {tag: "OracleLastUpdate", values: void} | {tag: "Entry", values: readonly [string]} | {tag: "Stake", values: readonly [readonly [string, string]]} | {tag: "StakeTotal", values: readonly [string]} | {tag: "RewardPool", values: readonly [string]} | {tag: "Claimed", values: readonly [readonly [string, string]]} | {tag: "EntryAt", values: readonly [u32]} | {tag: "EntryCount", values: void} | {tag: "TotalMinted", values: void} | {tag: "BatchDistTotalEscrow", values: void} | {tag: "BatchDistHitzAmount", values: void};
 
 
 export interface Entry {
@@ -517,6 +517,44 @@ export interface Client {
   }) => Promise<AssembledTransaction<null>>
 
   /**
+   * Construct and simulate a distribute_rewards_batch transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Distribute HITZ rewards in batches to handle large entry counts
+   * 
+   * This function processes entries in batches to stay within Stellar's
+   * 100 storage entry footprint limit per transaction.
+   * 
+   * # Arguments
+   * * `caller` - Treasury address that holds the HITZ
+   * * `hitz_amount` - Total HITZ to distribute (only needed on first batch)
+   * * `start_index` - Starting entry index for this batch
+   * * `batch_size` - Number of entries to process in this batch (max 20)
+   * 
+   * # Returns
+   * * `u32` - Next start_index to use, or entry_count if complete
+   * 
+   * # Usage
+   * 1. First call: start_index=0, hitz_amount=total, batch_size=20
+   * 2. Subsequent calls: start_index=returned_value, hitz_amount=0, batch_size=20
+   * 3. Continue until returned value >= total entry count
+   */
+  distribute_rewards_batch: ({caller, hitz_amount, start_index, batch_size}: {caller: string, hitz_amount: i128, start_index: u32, batch_size: u32}, options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<u32>>
+
+  /**
    * Construct and simulate a allocate_rewards transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    * Allocate HITZ rewards to a specific entry's reward pool
    * 
@@ -813,7 +851,7 @@ export class Client extends ContractClient {
   }
   constructor(public readonly options: ContractClientOptions) {
     super(
-      new ContractSpec([ "AAAAAgAAAAAAAAAAAAAAB0RhdGFLZXkAAAAAEgAAAAAAAAAAAAAABUFkbWluAAAAAAAAAAAAAAAAAAAIVHJlYXN1cnkAAAAAAAAAAAAAAAlIaXR6VG9rZW4AAAAAAAAAAAAAAAAAAAhYbG1Ub2tlbgAAAAAAAAAAAAAAB0Jhc2VGZWUAAAAAAAAAAAAAAAAPRW1pc3Npb25TdGFydFRzAAAAAAAAAAAAAAAAE0VtaXNzaW9uSW50ZXJ2YWxTZWMAAAAAAAAAAAAAAAAYRW1pc3Npb25FcG9jaDBVbml0UmV3YXJkAAAAAAAAAAAAAAALT3JhY2xlUHJpY2UAAAAAAAAAAAAAAAAQT3JhY2xlTGFzdFVwZGF0ZQAAAAEAAAAAAAAABUVudHJ5AAAAAAAAAQAAABAAAAABAAAAAAAAAAVTdGFrZQAAAAAAAAEAAAPtAAAAAgAAABAAAAATAAAAAQAAAAAAAAAKU3Rha2VUb3RhbAAAAAAAAQAAABAAAAABAAAAAAAAAApSZXdhcmRQb29sAAAAAAABAAAAEAAAAAEAAAAAAAAAB0NsYWltZWQAAAAAAQAAA+0AAAACAAAAEAAAABMAAAABAAAAAAAAAAdFbnRyeUF0AAAAAAEAAAAEAAAAAAAAAAAAAAAKRW50cnlDb3VudAAAAAAAAAAAAAAAAAALVG90YWxNaW50ZWQA",
+      new ContractSpec([ "AAAAAgAAAAAAAAAAAAAAB0RhdGFLZXkAAAAAFAAAAAAAAAAAAAAABUFkbWluAAAAAAAAAAAAAAAAAAAIVHJlYXN1cnkAAAAAAAAAAAAAAAlIaXR6VG9rZW4AAAAAAAAAAAAAAAAAAAhYbG1Ub2tlbgAAAAAAAAAAAAAAB0Jhc2VGZWUAAAAAAAAAAAAAAAAPRW1pc3Npb25TdGFydFRzAAAAAAAAAAAAAAAAE0VtaXNzaW9uSW50ZXJ2YWxTZWMAAAAAAAAAAAAAAAAYRW1pc3Npb25FcG9jaDBVbml0UmV3YXJkAAAAAAAAAAAAAAALT3JhY2xlUHJpY2UAAAAAAAAAAAAAAAAQT3JhY2xlTGFzdFVwZGF0ZQAAAAEAAAAAAAAABUVudHJ5AAAAAAAAAQAAABAAAAABAAAAAAAAAAVTdGFrZQAAAAAAAAEAAAPtAAAAAgAAABAAAAATAAAAAQAAAAAAAAAKU3Rha2VUb3RhbAAAAAAAAQAAABAAAAABAAAAAAAAAApSZXdhcmRQb29sAAAAAAABAAAAEAAAAAEAAAAAAAAAB0NsYWltZWQAAAAAAQAAA+0AAAACAAAAEAAAABMAAAABAAAAAAAAAAdFbnRyeUF0AAAAAAEAAAAEAAAAAAAAAAAAAAAKRW50cnlDb3VudAAAAAAAAAAAAAAAAAALVG90YWxNaW50ZWQAAAAAAAAAAAAAAAAUQmF0Y2hEaXN0VG90YWxFc2Nyb3cAAAAAAAAAAAAAABNCYXRjaERpc3RIaXR6QW1vdW50AA==",
         "AAAAAQAAAAAAAAAAAAAABUVudHJ5AAAAAAAAAwAAAAAAAAAKY3JlYXRlZF9hdAAAAAAABgAAAAAAAAAKZXNjcm93X3hsbQAAAAAACwAAAAAAAAAHdHZsX3hsbQAAAAAL",
         "AAAAAAAAAIVVcGdyYWRlIGNvcmUgY29udHJhY3QgdG8gbmV3IFdBU00gY29kZSAoYWRtaW4tb25seSkKTm90ZTogTmFtZWQgYHVwZ3JhZGVfY29yZWAgdG8gYXZvaWQgZXhwb3J0IG5hbWUgY29sbGlzaW9uIHdpdGggdG9rZW4ncyBgdXBncmFkZWAuAAAAAAAADHVwZ3JhZGVfY29yZQAAAAEAAAAAAAAADW5ld193YXNtX2hhc2gAAAAAAAPuAAAAIAAAAAA=",
         "AAAAAAAAAc1SZXNldCBpbnN0YW5jZSBzdG9yYWdlIChhZG1pbi1vbmx5KQoKQ1JJVElDQUw6IFRoaXMgY2xlYXJzIGluc3RhbmNlIGNvbmZpZ3VyYXRpb24uIENvbnRyYWN0IHdpbGwgYmUgdW51c2FibGUgdW50aWwgcmUtaW5pdGlhbGl6ZWQuClVzZSB3aXRoIGV4dHJlbWUgY2F1dGlvbiBkdXJpbmcgdXBncmFkZXMgb25seSB3aGVuIHlvdSBuZWVkIHRvIGNoYW5nZSBjb3JlIHBhcmFtZXRlcnMuCgpDbGVhcnM6IEFkbWluLCBUcmVhc3VyeSwgSGl0elRva2VuLCBYbG1Ub2tlbiwgQmFzZUZlZSwgT3JhY2xlIHNldHRpbmdzLCBFbWlzc2lvbiBzZXR0aW5ncwpQcmVzZXJ2ZXM6IFBlcnNpc3RlbnQgZGF0YSAoZW50cmllcywgc3Rha2VzLCByZXdhcmRzLCBUb3RhbE1pbnRlZCwgRW50cnlDb3VudCkKCkFmdGVyIGNhbGxpbmcgdGhpcywgeW91IE1VU1QgY2FsbCBpbml0KCkgYWdhaW4gdG8gcmVzdG9yZSBmdW5jdGlvbmFsaXR5LgAAAAAAAA5yZXNldF9pbnN0YW5jZQAAAAAAAAAAAAA=",
@@ -835,6 +873,7 @@ export class Client extends ContractClient {
         "AAAAAAAAAB1HZXQgdXNlcidzIHN0YWtlIGZvciBhbiBlbnRyeQAAAAAAAAlnZXRfc3Rha2UAAAAAAAACAAAAAAAAAAhlbnRyeV9pZAAAABAAAAAAAAAABW93bmVyAAAAAAAAEwAAAAEAAAAL",
         "AAAAAAAAABxHZXQgdG90YWwgc3Rha2UgZm9yIGFuIGVudHJ5AAAAD2dldF9zdGFrZV90b3RhbAAAAAABAAAAAAAAAAhlbnRyeV9pZAAAABAAAAABAAAACw==",
         "AAAAAAAAAdtDb250cmFjdCB2ZXJzaW9uCkRpc3RyaWJ1dGUgSElUWiByZXdhcmRzIHByb3BvcnRpb25hbGx5IGJhc2VkIG9uIGVzY3JvdyBwZXJmb3JtYW5jZQoKVHJlYXN1cnkgYm90IGNhbGxzIHRoaXMgYWZ0ZXIgYnV5aW5nIEhJVFogd2l0aCBhY2N1bXVsYXRlZCBYTE0gZmVlcy4KQ29udHJhY3QgYXV0b21hdGljYWxseSBkaXN0cmlidXRlcyB0byBlbnRyaWVzIGJhc2VkIG9uIHRoZWlyIGVzY3Jvd194bG0uCgojIEFyZ3VtZW50cwoqIGBjYWxsZXJgIC0gVHJlYXN1cnkgYWRkcmVzcyB0aGF0IGhvbGRzIHRoZSBISVRaCiogYGhpdHpfYW1vdW50YCAtIFRvdGFsIEhJVFogdG8gZGlzdHJpYnV0ZSBhY3Jvc3MgYWxsIGVudHJpZXMKCiMgUGVyZm9ybWFuY2UKT3B0aW1pemVkIHRvIHNpbmdsZSBsb29wIC0gTyhuKSB3aGVyZSBuID0gbnVtYmVyIG9mIGVudHJpZXMKU0VDVVJJVFk6IExpbWl0ZWQgdG8gMTAwMCBlbnRyaWVzIHRvIHByZXZlbnQgRE9TAAAAABJkaXN0cmlidXRlX3Jld2FyZHMAAAAAAAIAAAAAAAAABmNhbGxlcgAAAAAAEwAAAAAAAAALaGl0el9hbW91bnQAAAAACwAAAAA=",
+        "AAAAAAAAAs5EaXN0cmlidXRlIEhJVFogcmV3YXJkcyBpbiBiYXRjaGVzIHRvIGhhbmRsZSBsYXJnZSBlbnRyeSBjb3VudHMKClRoaXMgZnVuY3Rpb24gcHJvY2Vzc2VzIGVudHJpZXMgaW4gYmF0Y2hlcyB0byBzdGF5IHdpdGhpbiBTdGVsbGFyJ3MKMTAwIHN0b3JhZ2UgZW50cnkgZm9vdHByaW50IGxpbWl0IHBlciB0cmFuc2FjdGlvbi4KCiMgQXJndW1lbnRzCiogYGNhbGxlcmAgLSBUcmVhc3VyeSBhZGRyZXNzIHRoYXQgaG9sZHMgdGhlIEhJVFoKKiBgaGl0el9hbW91bnRgIC0gVG90YWwgSElUWiB0byBkaXN0cmlidXRlIChvbmx5IG5lZWRlZCBvbiBmaXJzdCBiYXRjaCkKKiBgc3RhcnRfaW5kZXhgIC0gU3RhcnRpbmcgZW50cnkgaW5kZXggZm9yIHRoaXMgYmF0Y2gKKiBgYmF0Y2hfc2l6ZWAgLSBOdW1iZXIgb2YgZW50cmllcyB0byBwcm9jZXNzIGluIHRoaXMgYmF0Y2ggKG1heCAyMCkKCiMgUmV0dXJucwoqIGB1MzJgIC0gTmV4dCBzdGFydF9pbmRleCB0byB1c2UsIG9yIGVudHJ5X2NvdW50IGlmIGNvbXBsZXRlCgojIFVzYWdlCjEuIEZpcnN0IGNhbGw6IHN0YXJ0X2luZGV4PTAsIGhpdHpfYW1vdW50PXRvdGFsLCBiYXRjaF9zaXplPTIwCjIuIFN1YnNlcXVlbnQgY2FsbHM6IHN0YXJ0X2luZGV4PXJldHVybmVkX3ZhbHVlLCBoaXR6X2Ftb3VudD0wLCBiYXRjaF9zaXplPTIwCjMuIENvbnRpbnVlIHVudGlsIHJldHVybmVkIHZhbHVlID49IHRvdGFsIGVudHJ5IGNvdW50AAAAAAAYZGlzdHJpYnV0ZV9yZXdhcmRzX2JhdGNoAAAABAAAAAAAAAAGY2FsbGVyAAAAAAATAAAAAAAAAAtoaXR6X2Ftb3VudAAAAAALAAAAAAAAAAtzdGFydF9pbmRleAAAAAAEAAAAAAAAAApiYXRjaF9zaXplAAAAAAAEAAAAAQAAAAQ=",
         "AAAAAAAAAIVBbGxvY2F0ZSBISVRaIHJld2FyZHMgdG8gYSBzcGVjaWZpYyBlbnRyeSdzIHJld2FyZCBwb29sCgpBZG1pbi1vbmx5IGZ1bmN0aW9uIGZvciBtYW51YWwgcmV3YXJkIGFsbG9jYXRpb24gKGUuZy4sIHByb21vdGlvbnMsIGJvbnVzZXMpAAAAAAAAEGFsbG9jYXRlX3Jld2FyZHMAAAACAAAAAAAAAAhlbnRyeV9pZAAAABAAAAAAAAAAC2hpdHpfYW1vdW50AAAAAAsAAAAA",
         "AAAAAAAAAHdCYXRjaCBhbGxvY2F0ZSByZXdhcmRzIHRvIG11bHRpcGxlIGVudHJpZXMKCkFkbWluLW9ubHkgZnVuY3Rpb24gZm9yIG1hbnVhbCBiYXRjaCBhbGxvY2F0aW9uIChlLmcuLCBjYW1wYWlnbnMsIGFpcmRyb3BzKQAAAAAWYmF0Y2hfYWxsb2NhdGVfcmV3YXJkcwAAAAAAAgAAAAAAAAAJZW50cnlfaWRzAAAAAAAD6gAAABAAAAAAAAAAB2Ftb3VudHMAAAAD6gAAAAsAAAAA",
         "AAAAAAAAALRDbGFpbSBISVRaIHJld2FyZHMgZnJvbSBhbiBlbnRyeSdzIHJld2FyZCBwb29sCgpTdGFrZXJzIHJlY2VpdmUgcmV3YXJkcyBwcm9wb3J0aW9uYWwgdG8gdGhlaXIgc3Rha2UKRm9ybXVsYTogY2xhaW1hYmxlID0gKHJld2FyZF9wb29sIMOXIHVzZXJfc3Rha2UpIC8gdG90YWxfc3Rha2UgLSBhbHJlYWR5X2NsYWltZWQAAAANY2xhaW1fcmV3YXJkcwAAAAAAAAIAAAAAAAAACGVudHJ5X2lkAAAAEAAAAAAAAAAHY2xhaW1lcgAAAAATAAAAAQAAAAs=",
@@ -870,6 +909,7 @@ export class Client extends ContractClient {
         get_stake: this.txFromJSON<i128>,
         get_stake_total: this.txFromJSON<i128>,
         distribute_rewards: this.txFromJSON<null>,
+        distribute_rewards_batch: this.txFromJSON<u32>,
         allocate_rewards: this.txFromJSON<null>,
         batch_allocate_rewards: this.txFromJSON<null>,
         claim_rewards: this.txFromJSON<i128>,

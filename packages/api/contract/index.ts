@@ -346,6 +346,9 @@ class ContractClient {
 	/**
 	 * Distribute rewards from Treasury to all entries proportionally
 	 * Requires Treasury keypair for auth entry signing
+	 * 
+	 * NOTE: This function may fail with storage footprint errors if there are too many entries.
+	 * Use distributeRewardsBatch() instead for systems with many entries.
 	 */
 	public distributeRewards = async (treasurySecret: string, hitzAmount: bigint) => {
 		const treasuryKeys = Keypair.fromSecret(treasurySecret);
@@ -368,6 +371,84 @@ class ContractClient {
 		const result = await txRoot.signAndSend();
 		
 		return result;
+	};
+
+	/**
+	 * Distribute rewards from Treasury in batches to handle large entry counts
+	 * This automatically handles systems with more entries than fit in a single transaction
+	 * 
+	 * @param treasurySecret - Treasury secret key
+	 * @param hitzAmount - Total HITZ to distribute across all entries
+	 * @param batchSize - Number of entries per batch (default: 20, max: 20)
+	 * @returns Array of transaction results for each batch
+	 */
+	public distributeRewardsBatch = async (
+		treasurySecret: string, 
+		hitzAmount: bigint,
+		batchSize: number = 20
+	) => {
+		const treasuryKeys = Keypair.fromSecret(treasurySecret);
+		const entryCount = await this.getEntryCount();
+		
+		if (entryCount === 0) {
+			throw new Error('No entries to distribute to');
+		}
+
+		console.log(`Starting batched distribution: ${entryCount} entries, batch size ${batchSize}`);
+		
+		const results = [];
+		let startIndex = 0;
+		let batchNum = 0;
+
+		while (startIndex < entryCount) {
+			batchNum++;
+			console.log(`Processing batch ${batchNum}: indices ${startIndex}-${Math.min(startIndex + batchSize - 1, entryCount - 1)}`);
+
+			try {
+				const tx = await this.contract.distribute_rewards_batch(
+					{
+						caller: treasuryKeys.publicKey(),
+						hitz_amount: startIndex === 0 ? hitzAmount : BigInt(0), // Only send amount on first batch
+						start_index: startIndex,
+						batch_size: batchSize,
+					},
+					this.defaultOptions
+				);
+
+				// Auth entry signing pattern
+				const jsonFromRoot = tx.toJSON();
+				const treasuryClient = this.getClientForKeypair(treasuryKeys);
+				const txTreasury = treasuryClient.fromJSON['distribute_rewards_batch'](jsonFromRoot);
+				const ledger = (await this.fetchCurrentLedger()) + 100;
+				await txTreasury.signAuthEntries({ expiration: ledger });
+				const jsonFromTreasury = txTreasury.toJSON();
+				const txRoot = this.contract.fromJSON['distribute_rewards_batch'](jsonFromTreasury);
+				const result = await txRoot.signAndSend();
+				
+				results.push(result);
+
+				// Get next start index from result
+				const nextIndex = Number(result.result);
+				console.log(`Batch ${batchNum} complete. Next index: ${nextIndex}`);
+				
+				if (nextIndex >= entryCount) {
+					console.log('✅ All batches complete!');
+					break;
+				}
+				
+				startIndex = nextIndex;
+			} catch (error: any) {
+				console.error(`Batch ${batchNum} failed:`, error?.message || error);
+				throw new Error(`Distribution failed at batch ${batchNum}: ${error?.message || error}`);
+			}
+		}
+
+		return {
+			success: true,
+			batchesProcessed: batchNum,
+			totalEntries: entryCount,
+			results,
+		};
 	};
 
 	/**
