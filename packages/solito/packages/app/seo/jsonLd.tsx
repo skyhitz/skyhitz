@@ -40,36 +40,107 @@ export default function JsonLdScript({
   if (landing) {
     jsonLd = {
       '@context': 'https://schema.org',
-      '@type': 'Organization',
-      name: 'Skyhitz',
-      alternateName: 'Skyhitz',
-      legalName: footer.companyName,
-      description: homeContent.header.desc,
-      logo: {
-        '@type': 'ImageObject',
-        url: `${Config.APP_URL}/icon.png`,
-      },
-      url: Config.APP_URL,
-      '@id': `${Config.APP_URL}#mission`,
-      areaServed: 'Worldwide',
-      award: 'Stellar Community Fund',
-      sameAs: [
-        'https://www.facebook.com/skyhitzio',
-        'https://instagram.com/skyhitz',
-        'https://www.youtube.com/@skyhitzio',
-        'https://www.linkedin.com/company/skyhitz',
-        'https://www.tiktok.com/@skyhitz',
-        'https://twitter.com/skyhitz',
-        'https://communityfund.stellar.org/project/skyhitz',
+      '@graph': [
+        {
+          '@type': 'Organization',
+          '@id': `${Config.APP_URL}#organization`,
+          name: 'Skyhitz',
+          alternateName: 'Skyhitz',
+          legalName: footer.companyName,
+          description: homeContent.header.desc,
+          logo: {
+            '@type': 'ImageObject',
+            url: `${Config.APP_URL}/icon.png`,
+            width: 512,
+            height: 512,
+          },
+          url: Config.APP_URL,
+          areaServed: 'Worldwide',
+          award: 'Stellar Community Fund',
+          slogan: 'Collect, stream and trade valuable music NFTs',
+          sameAs: [
+            'https://www.facebook.com/skyhitzio',
+            'https://instagram.com/skyhitz',
+            'https://www.youtube.com/@skyhitzio',
+            'https://www.linkedin.com/company/skyhitz',
+            'https://www.tiktok.com/@skyhitz',
+            'https://twitter.com/skyhitz',
+            'https://communityfund.stellar.org/project/skyhitz',
+            'https://github.com/skyhitz',
+          ],
+          founder: {
+            '@type': 'Person',
+            name: 'Alejo Mendoza',
+            url: 'https://twitter.com/alejoskyhitz',
+          },
+          contactPoint: {
+            '@type': 'ContactPoint',
+            email: 'support@skyhitz.io',
+            contactType: 'Customer Service',
+            availableLanguage: 'English',
+          },
+          keywords: keywords,
+          knowsAbout: [
+            'Music NFTs',
+            'Blockchain Music',
+            'Stellar Network',
+            'Smart Contracts',
+            'Music Investing',
+            'Digital Collectibles',
+            'Web3 Music',
+          ],
+          foundingDate: '2022-05-26',
+          foundingLocation: {
+            '@type': 'Place',
+            name: 'United States',
+          },
+          nonprofitStatus: false,
+        },
+        {
+          '@type': 'WebSite',
+          '@id': `${Config.APP_URL}#website`,
+          url: Config.APP_URL,
+          name: 'Skyhitz',
+          description: homeContent.header.desc,
+          publisher: {
+            '@id': `${Config.APP_URL}#organization`,
+          },
+          potentialAction: {
+            '@type': 'SearchAction',
+            target: {
+              '@type': 'EntryPoint',
+              urlTemplate: `${Config.APP_URL}/search?q={search_term_string}`,
+            },
+            'query-input': 'required name=search_term_string',
+          },
+          inLanguage: 'en-US',
+        },
+        {
+          '@type': 'WebApplication',
+          '@id': `${Config.APP_URL}#application`,
+          name: 'Skyhitz',
+          description: 'Music NFT marketplace and streaming platform',
+          url: Config.APP_URL,
+          applicationCategory: 'MultimediaApplication',
+          applicationSubCategory: 'Music Marketplace',
+          operatingSystem: 'Web Browser',
+          offers: {
+            '@type': 'Offer',
+            price: '0',
+            priceCurrency: 'USD',
+          },
+          featureList: [
+            'Music NFT Marketplace',
+            'Fractional Ownership',
+            'Music Streaming',
+            'Free Downloads',
+            'Staking Rewards',
+            'Trending Charts',
+            'Non-custodial Wallet',
+          ],
+          screenshot: `${Config.APP_URL}/img/landing-2.webp`,
+        },
       ],
-      founder: {
-        '@type': 'Person',
-        name: 'Alejo Mendoza',
-      },
-      email: 'support@skyhitz.io',
-      keywords: keywords,
-      knowsAbout: 'Music NFTs',
-      foundingDate: '2022-05-26T08:30:00.000Z',
     }
   }
 
@@ -150,15 +221,50 @@ export default function JsonLdScript({
   }
 
   if (entry) {
+    const trackName = entry.artist ? `${entry.artist} - ${entry.title}` : entry.title
     jsonLd = {
       '@context': 'https://schema.org',
-      '@type': 'Product',
-      url: `${Config.APP_URL}/music/${entry.id}`,
-      name: entry.artist ? `${entry.artist} ${entry.title}` : entry.title,
-      image: imageUrlMedium(entry.imageUrl),
-      ...(entry.description ? { description: entry.description } : {}),
-      category: 'Music NFTs',
-      aggregateRating: getAggregateRating(),
+      '@graph': [
+        {
+          '@type': 'MusicRecording',
+          '@id': `${Config.APP_URL}/music/${entry.id}#recording`,
+          name: trackName,
+          ...(entry.artist ? { byArtist: { '@type': 'MusicGroup', name: entry.artist } } : {}),
+          image: imageUrlMedium(entry.imageUrl),
+          ...(entry.description ? { description: entry.description } : {}),
+          url: `${Config.APP_URL}/music/${entry.id}`,
+          ...(entry.publishedAtTimestamp ? { datePublished: formattedISODate(entry.publishedAtTimestamp) } : {}),
+          genre: 'Electronic Music',
+          inLanguage: 'en',
+          recordingOf: {
+            '@type': 'MusicComposition',
+            name: entry.title,
+            ...(entry.artist ? { composer: { '@type': 'Person', name: entry.artist } } : {}),
+          },
+        },
+        {
+          '@type': 'Product',
+          '@id': `${Config.APP_URL}/music/${entry.id}#product`,
+          name: `${trackName} (Music NFT)`,
+          image: imageUrlMedium(entry.imageUrl),
+          ...(entry.description ? { description: entry.description } : {}),
+          category: 'Music NFTs',
+          brand: {
+            '@type': 'Brand',
+            name: 'Skyhitz',
+          },
+          offers: {
+            '@type': 'Offer',
+            availability: 'https://schema.org/InStock',
+            url: `${Config.APP_URL}/music/${entry.id}`,
+          },
+          aggregateRating: getAggregateRating(),
+          mainEntityOfPage: {
+            '@type': 'WebPage',
+            '@id': `${Config.APP_URL}/music/${entry.id}`,
+          },
+        },
+      ],
     }
   }
 

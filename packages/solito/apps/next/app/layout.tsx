@@ -19,12 +19,15 @@ export const metadata: Metadata = {
   authors: [{ name: 'Skyhitz' }],
   creator: 'Skyhitz',
   publisher: orgName,
+  category: 'Music',
+  classification: 'Music NFT Marketplace',
   openGraph: {
     type: 'website',
     url: Config.APP_URL,
     siteName: 'Skyhitz',
     title: siteTitle,
     description: socialDesc,
+    locale: 'en_US',
     images: [
       {
         url: `${Config.APP_URL}/icon-128.png`,
@@ -56,11 +59,24 @@ export const metadata: Metadata = {
   robots: {
     index: true,
     follow: true,
+    'max-image-preview': 'large',
+    'max-snippet': -1,
+    'max-video-preview': -1,
   },
   icons: {
     icon: '/icon.png',
     shortcut: '/icon.png',
     apple: '/icon.png',
+  },
+  other: {
+    // AI and LLM discovery
+    'llms-txt': `${Config.APP_URL}/llms.txt`,
+    'ai-info': `${Config.APP_URL}/.well-known/ai.txt`,
+    'llm-manifest': `${Config.APP_URL}/.well-known/llm-manifest.json`,
+    'ai-plugin': `${Config.APP_URL}/.well-known/ai-plugin.json`,
+    // Additional semantic info
+    'theme-color': '#000000',
+    'color-scheme': 'dark light',
   },
 }
 
@@ -76,11 +92,22 @@ export default function RootLayout({
       style={{ visibility: 'visible' }}
       suppressHydrationWarning
     >
-      <ThemeProvider>
-        <Provider>
-          <MainLayout>{children}</MainLayout>
-        </Provider>
-      </ThemeProvider>
+      <head>
+        {/* AI Discovery Links */}
+        <link rel="alternate" type="text/plain" href="/llms.txt" title="LLMs Info" />
+        <link rel="alternate" type="text/plain" href="/.well-known/ai.txt" title="AI Info" />
+        <link rel="manifest" href="/.well-known/llm-manifest.json" />
+        {/* API Documentation */}
+        <link rel="alternate" type="application/x-yaml" href="/openapi.yaml" title="OpenAPI Spec" />
+        <link rel="help" href="https://docs.skyhitz.io" title="Documentation" />
+      </head>
+      <body>
+        <ThemeProvider>
+          <Provider>
+            <MainLayout>{children}</MainLayout>
+          </Provider>
+        </ThemeProvider>
+      </body>
     </html>
   )
 }

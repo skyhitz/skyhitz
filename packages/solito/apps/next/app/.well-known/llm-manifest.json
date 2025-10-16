@@ -1,14 +1,52 @@
 {
-  "version": "1",
+  "version": "1.0",
   "name": "Skyhitz",
-  "description": "Music discovery and investing. Public pages: /, /search, /chart, /music/{id}, /blog.",
+  "short_name": "Skyhitz",
+  "description": "Decentralized music NFT marketplace built on Stellar blockchain. Discover, collect, stream, and invest in curated music NFTs. Features fractional ownership, staking rewards, free downloads, and interactive charts.",
+  "url": "https://skyhitz.io",
+  "icon": "https://skyhitz.io/icon-128.png",
   "capabilities": {
     "webhook": false,
-    "actions": false
+    "actions": false,
+    "search": true,
+    "browse": true
+  },
+  "content_types": [
+    "music",
+    "nft",
+    "audio",
+    "video",
+    "blog"
+  ],
+  "blockchain": {
+    "network": "stellar",
+    "contract_type": "soroban",
+    "token": "HITZ"
   },
   "links": {
+    "llms": "/llms.txt",
     "sitemap": "/sitemap.xml",
-    "openapi": "/openapi.yaml"
+    "openapi": "/openapi.yaml",
+    "robots": "/robots.txt",
+    "ai_plugin": "/.well-known/ai-plugin.json",
+    "docs": "https://docs.skyhitz.io",
+    "terms": "/terms",
+    "privacy": "/privacy"
+  },
+  "public_pages": {
+    "home": "/",
+    "search": "/search",
+    "chart": "/chart",
+    "music": "/music/{id}",
+    "entry": "/entry/{id}",
+    "user": "/users/{userId}",
+    "blog": "/blog",
+    "blog_post": "/blog/{slug}"
+  },
+  "contact": {
+    "email": "support@skyhitz.io",
+    "twitter": "@skyhitz",
+    "discord": "https://discord.com/invite/2C3HzsPEuZ"
   }
 }
 

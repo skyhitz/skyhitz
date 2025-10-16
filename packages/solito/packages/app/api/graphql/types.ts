@@ -8,6 +8,8 @@ export interface Entry {
   tvl?: number
   apr?: number
   escrow?: number
+  publishedAt?: string
+  publishedAtTimestamp?: number
 }
 
 export interface EntryDetail extends Entry {

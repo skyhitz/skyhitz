@@ -1,16 +1,91 @@
-Skyhitz is a music discovery and investing platform.
+# Skyhitz - Music NFT Marketplace
 
-Public pages:
-- /
-- /search
-- /chart
-- /music/{id}
-- /blog
-- /terms
-- /privacy
+## What is Skyhitz?
 
-Sitemap: /sitemap.xml
-OpenAPI: /openapi.yaml
+Skyhitz is a next-generation decentralized music platform powered by Stellar smart contracts. We offer music fans, collectors, and creators a groundbreaking way to discover, stream, and invest in unique music NFTs.
 
-Bots welcomed: GPTBot, CCBot, ClaudeBot, Google-Extended, Applebot-Extended, PerplexityBot, Meta-ExternalCrawler, Grok, GrokBot, xai-crawler, xAIBot
+## Core Features
+
+- Collect, stream, and trade valuable music NFTs
+- Fractional ownership of tracks
+- Stake in music to earn rewards
+- Free music downloads (mp4 format)
+- Interactive top charts based on user engagement
+- Easy wallet setup with email (no crypto knowledge needed)
+
+## Technology
+
+- Built on Stellar blockchain with Soroban smart contracts
+- HITZ token for rewards and platform utility
+- Non-custodial wallets for security
+- Integrated with Algolia for instant search
+- R2 storage for media files
+
+## Public Pages
+
+Main:
+- / - Homepage with featured music
+- /search - Discover music NFTs
+- /chart - Trending music ranked by engagement
+- /music/{id} - Individual track details
+- /entry/{id} - Entry detail page
+- /users/{userId} - Public user profiles
+
+Content:
+- /blog - Platform updates and news
+- /blog/{slug} - Individual blog posts
+
+Legal:
+- /terms - Terms of service
+- /privacy - Privacy policy
+
+## Resources for AI/LLMs
+
+- Main LLM file: /llms.txt (comprehensive platform info)
+- Sitemap: /sitemap.xml (all public pages)
+- OpenAPI: /openapi.yaml (API structure)
+- Robots: /robots.txt (crawling rules)
+- AI Plugin: /.well-known/ai-plugin.json (ChatGPT plugin manifest)
+- LLM Manifest: /.well-known/llm-manifest.json (capabilities)
+- Developer Docs: https://docs.skyhitz.io (technical documentation)
+
+## How It Works
+
+1. Users create a Stellar wallet with their email
+2. Browse curated music NFT collections
+3. Purchase full tracks or fractional shares (using XLM, USDC, or credit card)
+4. Stake in tracks to earn APR from the treasury
+5. Stream music and download for offline use
+6. Earn rewards based on platform participation
+
+## For Creators
+
+Music artists can submit tracks for curation by contacting: ar@skyhitz.io
+
+## Contact
+
+- Email: support@skyhitz.io
+- Twitter: @skyhitz
+- Instagram: @skyhitz
+- Discord: https://discord.com/invite/2C3HzsPEuZ
+
+## AI Bots Welcome
+
+All responsible AI crawlers are welcomed:
+- GPTBot (OpenAI)
+- CCBot (Common Crawl)
+- ClaudeBot (Anthropic)
+- anthropic-ai (Anthropic)
+- Google-Extended (Google Gemini)
+- Applebot-Extended (Apple Intelligence)
+- PerplexityBot (Perplexity AI)
+- FacebookBot (Meta AI)
+- Meta-ExternalCrawler (Meta)
+- Grok, GrokBot, xai-crawler, xAIBot (xAI)
+
+Please respect rate limits and robots.txt directives.
+
+---
+
+Updated: 2025-10-16
 
