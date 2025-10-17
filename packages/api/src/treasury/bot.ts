@@ -128,14 +128,21 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
 			if (currentHitzBalanceBigInt >= MIN_DISTRIBUTION_AMOUNT) {
 				console.log(`Distributing ${Number(currentHitzBalance) / 10_000_000} HITZ from treasury...`);
 				
-				// Use batched distribution to handle systems with many entries
-				// This automatically processes entries in batches to stay under storage footprint limits
+				// Use 3-phase batched distribution to handle systems with many entries
+				// Phase 1: Calculate total escrow (40 entries per batch, read-only)
+				// Phase 2: Initialize distribution with HITZ transfer
+				// Phase 3: Distribute rewards (15 entries per batch, write operations)
 				const distResult = await contract.distributeRewardsBatch(
 					env.TREASURY_SEED as string,
-					currentHitzBalanceBigInt,
-					20 // Process 20 entries per batch (stays well under 100 storage entry limit)
+					currentHitzBalanceBigInt
+					// Using default batch sizes: calcBatchSize=40, distBatchSize=15
 				);
-				console.log(`✅ Distribution successful! Processed ${distResult.batchesProcessed} batches for ${distResult.totalEntries} entries`);
+				console.log(`✅ Distribution successful!`);
+				console.log(`  Phase 1: ${distResult.phase1Batches} calculation batches`);
+				console.log(`  Phase 3: ${distResult.phase3Batches} distribution batches`);
+				console.log(`  Total entries: ${distResult.totalEntries}`);
+				console.log(`  Total escrow: ${distResult.totalEscrow} XLM`);
+				console.log(`  HITZ distributed: ${distResult.hitzDistributed} HITZ`);
 
 				// Sync APRs to Algolia after successful distribution
 				console.log('Syncing APRs to Algolia...');

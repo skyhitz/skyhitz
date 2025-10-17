@@ -96,7 +96,7 @@ CTR_ID=$(cat ./.vars/$CTR)
 retry stellar contract invoke $ARGS \
   --id "$CTR_ID" \
   -- \
-  upgrade \
+  upgrade_core \
   --new_wasm_hash "$WASM_ID"
 
 # Verify version with higher timeout/fee (non-fatal if it fails once)

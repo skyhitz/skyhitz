@@ -663,43 +663,154 @@ impl SkyhitzCore {
         }
     }
 
-    /// Distribute HITZ rewards in batches to handle large entry counts
+    /// Calculate total escrow in batches (Phase 1 of 3-phase distribution)
     ///
-    /// This function processes entries in batches to stay within Stellar's
-    /// 100 storage entry footprint limit per transaction.
+    /// # Arguments
+    /// * `caller` - Treasury address
+    /// * `start_index` - Starting entry index for this batch
+    /// * `batch_size` - Number of entries to process (max 40 for read-only)
+    ///
+    /// # Returns
+    /// * `(u32, i128)` - (next_start_index, running_total_escrow)
+    ///
+    /// # Usage
+    /// Call repeatedly with increasing start_index until next_start_index >= entry_count
+    pub fn calculate_total_escrow_batch(
+        e: Env,
+        caller: Address,
+        start_index: u32,
+        batch_size: u32,
+    ) -> (u32, i128) {
+        caller.require_auth();
+
+        let treasury: Address = e.storage().instance().get(&DataKey::Treasury).unwrap();
+        if caller != treasury {
+            panic!("Only Treasury can calculate escrow");
+        }
+
+        // Allow larger batches for read-only operations (max 40)
+        const MAX_BATCH_SIZE: u32 = 40;
+        if batch_size == 0 || batch_size > MAX_BATCH_SIZE {
+            panic!("Batch size must be 1-40");
+        }
+
+        let entry_count: u32 = e.storage().persistent().get(&DataKey::EntryCount).unwrap_or(0);
+        if entry_count == 0 {
+            panic!("No entries to calculate");
+        }
+        
+        if start_index >= entry_count {
+            panic!("Start index out of range");
+        }
+
+        // Get or initialize running total
+        let mut running_total: i128 = if start_index == 0 {
+            0
+        } else {
+            e.storage().instance().get(&DataKey::BatchDistTotalEscrow).unwrap_or(0)
+        };
+
+        // Calculate escrow for this batch
+        let end_index = u32::min(start_index + batch_size, entry_count);
+        
+        for i in start_index..end_index {
+            let index_key = DataKey::EntryAt(i);
+            if let Some(entry_id) = e.storage().persistent().get::<DataKey, String>(&index_key) {
+                let entry_key = DataKey::Entry(entry_id.clone());
+                if let Some(entry) = e.storage().persistent().get::<DataKey, Entry>(&entry_key) {
+                    if entry.escrow_xlm > 0 {
+                        running_total = running_total.saturating_add(entry.escrow_xlm);
+                    }
+                }
+            }
+        }
+
+        // Store running total
+        e.storage().instance().set(&DataKey::BatchDistTotalEscrow, &running_total);
+
+        log!(
+            &e,
+            "Escrow calculation batch: indices {}-{}, running total: {} XLM",
+            start_index,
+            end_index - 1,
+            running_total
+        );
+
+        (end_index, running_total)
+    }
+
+    /// Initialize distribution with HITZ transfer (Phase 2 of 3-phase distribution)
+    ///
+    /// Call this AFTER calculate_total_escrow_batch is complete
     ///
     /// # Arguments
     /// * `caller` - Treasury address that holds the HITZ
-    /// * `hitz_amount` - Total HITZ to distribute (only needed on first batch)
+    /// * `hitz_amount` - Total HITZ to distribute
+    pub fn initialize_distribution(e: Env, caller: Address, hitz_amount: i128) {
+        caller.require_auth();
+
+        let treasury: Address = e.storage().instance().get(&DataKey::Treasury).unwrap();
+        if caller != treasury {
+            panic!("Only Treasury can initialize distribution");
+        }
+
+        if hitz_amount <= 0 {
+            panic!("Amount must be positive");
+        }
+
+        // Verify total escrow was calculated
+        let total_escrow: i128 = e.storage().instance()
+            .get(&DataKey::BatchDistTotalEscrow)
+            .expect("Must calculate total escrow first");
+
+        if total_escrow == 0 {
+            panic!("No escrow to distribute to");
+        }
+
+        // Store HITZ amount
+        e.storage().instance().set(&DataKey::BatchDistHitzAmount, &hitz_amount);
+
+        // Transfer HITZ from Treasury to contract
+        let hitz_token: Address = e.storage().instance().get(&DataKey::HitzToken).unwrap();
+        let contract_addr = e.current_contract_address();
+        safe_transfer(&e, &hitz_token, &caller, &contract_addr, &hitz_amount, "batch reward distribution");
+
+        log!(&e, "Distribution initialized: {} HITZ across {} XLM total escrow", hitz_amount, total_escrow);
+    }
+
+    /// Distribute HITZ rewards in batches (Phase 3 of 3-phase distribution)
+    ///
+    /// Call this AFTER initialize_distribution
+    ///
+    /// # Arguments
+    /// * `caller` - Treasury address
     /// * `start_index` - Starting entry index for this batch
-    /// * `batch_size` - Number of entries to process in this batch (max 20)
+    /// * `batch_size` - Number of entries to process in this batch (max 15)
     ///
     /// # Returns
     /// * `u32` - Next start_index to use, or entry_count if complete
     ///
     /// # Usage
-    /// 1. First call: start_index=0, hitz_amount=total, batch_size=20
-    /// 2. Subsequent calls: start_index=returned_value, hitz_amount=0, batch_size=20
-    /// 3. Continue until returned value >= total entry count
+    /// 1. First: Call calculate_total_escrow_batch repeatedly until complete
+    /// 2. Then: Call initialize_distribution once with total HITZ amount
+    /// 3. Finally: Call distribute_rewards_batch repeatedly until complete
     pub fn distribute_rewards_batch(
         e: Env,
         caller: Address,
-        hitz_amount: i128,
         start_index: u32,
         batch_size: u32,
     ) -> u32 {
         caller.require_auth();
 
-        // Verify caller is the Treasury
         let treasury: Address = e.storage().instance().get(&DataKey::Treasury).unwrap();
         if caller != treasury {
             panic!("Only Treasury can distribute rewards");
         }
 
-        // Validate batch size (max 20 to ensure we stay well under 100 storage entry limit)
-        const MAX_BATCH_SIZE: u32 = 20;
+        // Smaller batch size for write operations (max 15)
+        const MAX_BATCH_SIZE: u32 = 15;
         if batch_size == 0 || batch_size > MAX_BATCH_SIZE {
-            panic!("Batch size must be 1-20");
+            panic!("Batch size must be 1-15");
         }
 
         let entry_count: u32 = e.storage().persistent().get(&DataKey::EntryCount).unwrap_or(0);
@@ -707,47 +818,13 @@ impl SkyhitzCore {
             panic!("Start index out of range");
         }
 
-        // First batch: calculate total escrow and transfer HITZ
-        if start_index == 0 {
-            if hitz_amount <= 0 {
-                panic!("Amount must be positive on first batch");
-            }
-
-            // Calculate total escrow across ALL entries (read-only pass)
-            let mut total_escrow: i128 = 0;
-            for i in 0..entry_count {
-                let index_key = DataKey::EntryAt(i);
-                if let Some(entry_id) = e.storage().persistent().get::<DataKey, String>(&index_key) {
-                    let entry_key = DataKey::Entry(entry_id.clone());
-                    if let Some(entry) = e.storage().persistent().get::<DataKey, Entry>(&entry_key) {
-                        if entry.escrow_xlm > 0 {
-                            total_escrow = total_escrow.saturating_add(entry.escrow_xlm);
-                        }
-                    }
-                }
-            }
-
-            if total_escrow == 0 {
-                panic!("No escrow to distribute to");
-            }
-
-            // Store distribution state
-            e.storage().instance().set(&DataKey::BatchDistTotalEscrow, &total_escrow);
-            e.storage().instance().set(&DataKey::BatchDistHitzAmount, &hitz_amount);
-
-            // Transfer HITZ from Treasury to contract
-            let hitz_token: Address = e.storage().instance().get(&DataKey::HitzToken).unwrap();
-            let contract_addr = e.current_contract_address();
-            safe_transfer(&e, &hitz_token, &caller, &contract_addr, &hitz_amount, "batch reward distribution");
-
-            log!(&e, "Batch distribution started: {} HITZ across {} total escrow", hitz_amount, total_escrow);
-        }
-
-        // Load distribution state
-        let total_escrow: i128 = e.storage().instance().get(&DataKey::BatchDistTotalEscrow)
-            .expect("Batch distribution not initialized");
-        let total_hitz: i128 = e.storage().instance().get(&DataKey::BatchDistHitzAmount)
-            .expect("Batch distribution not initialized");
+        // Load distribution state (must be initialized first)
+        let total_escrow: i128 = e.storage().instance()
+            .get(&DataKey::BatchDistTotalEscrow)
+            .expect("Distribution not initialized");
+        let total_hitz: i128 = e.storage().instance()
+            .get(&DataKey::BatchDistHitzAmount)
+            .expect("Distribution not initialized");
 
         // Process this batch of entries
         let end_index = u32::min(start_index + batch_size, entry_count);

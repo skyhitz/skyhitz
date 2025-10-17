@@ -374,18 +374,22 @@ class ContractClient {
 	};
 
 	/**
-	 * Distribute rewards from Treasury in batches to handle large entry counts
-	 * This automatically handles systems with more entries than fit in a single transaction
+	 * Distribute rewards from Treasury in batches - 3-phase process
+	 * Phase 1: Calculate total escrow across all entries in batches
+	 * Phase 2: Initialize distribution with HITZ transfer
+	 * Phase 3: Distribute rewards to entries in batches
 	 * 
 	 * @param treasurySecret - Treasury secret key
 	 * @param hitzAmount - Total HITZ to distribute across all entries
-	 * @param batchSize - Number of entries per batch (default: 20, max: 20)
-	 * @returns Array of transaction results for each batch
+	 * @param calcBatchSize - Entries per batch for escrow calculation (default: 40, read-only)
+	 * @param distBatchSize - Entries per batch for distribution (default: 15, write operations)
+	 * @returns Summary of distribution process
 	 */
 	public distributeRewardsBatch = async (
 		treasurySecret: string, 
 		hitzAmount: bigint,
-		batchSize: number = 20
+		calcBatchSize: number = 40,
+		distBatchSize: number = 15
 	) => {
 		const treasuryKeys = Keypair.fromSecret(treasurySecret);
 		const entryCount = await this.getEntryCount();
@@ -394,28 +398,101 @@ class ContractClient {
 			throw new Error('No entries to distribute to');
 		}
 
-		console.log(`Starting batched distribution: ${entryCount} entries, batch size ${batchSize}`);
+		console.log(`Starting 3-phase batched distribution: ${entryCount} entries`);
+		console.log(`Phase 1: Calculating total escrow (batch size: ${calcBatchSize})`);
 		
-		const results = [];
+		// PHASE 1: Calculate total escrow in batches
 		let startIndex = 0;
 		let batchNum = 0;
+		let totalEscrow = BigInt(0);
 
 		while (startIndex < entryCount) {
 			batchNum++;
-			console.log(`Processing batch ${batchNum}: indices ${startIndex}-${Math.min(startIndex + batchSize - 1, entryCount - 1)}`);
+			console.log(`  Calculation batch ${batchNum}: indices ${startIndex}-${Math.min(startIndex + calcBatchSize - 1, entryCount - 1)}`);
+
+			try {
+				const tx = await this.contract.calculate_total_escrow_batch(
+					{
+						caller: treasuryKeys.publicKey(),
+						start_index: startIndex,
+						batch_size: calcBatchSize,
+					},
+					this.defaultOptions
+				);
+
+				const jsonFromRoot = tx.toJSON();
+				const treasuryClient = this.getClientForKeypair(treasuryKeys);
+				const txTreasury = treasuryClient.fromJSON['calculate_total_escrow_batch'](jsonFromRoot);
+				const ledger = (await this.fetchCurrentLedger()) + 100;
+				await txTreasury.signAuthEntries({ expiration: ledger });
+				const jsonFromTreasury = txTreasury.toJSON();
+				const txRoot = this.contract.fromJSON['calculate_total_escrow_batch'](jsonFromTreasury);
+				const result = await txRoot.signAndSend();
+				
+				// Result is tuple: [next_index, running_total]
+				const [nextIndex, runningTotal] = result.result as [number, bigint];
+				totalEscrow = runningTotal;
+				console.log(`  Batch ${batchNum} complete. Running total escrow: ${Number(runningTotal) / 10_000_000} XLM`);
+				
+				if (nextIndex >= entryCount) {
+					console.log(`✅ Phase 1 complete! Total escrow: ${Number(totalEscrow) / 10_000_000} XLM`);
+					break;
+				}
+				
+				startIndex = nextIndex;
+			} catch (error: any) {
+				console.error(`Calculation batch ${batchNum} failed:`, error?.message || error);
+				throw new Error(`Escrow calculation failed at batch ${batchNum}: ${error?.message || error}`);
+			}
+		}
+
+		// PHASE 2: Initialize distribution with HITZ transfer
+		console.log(`Phase 2: Initializing distribution with ${Number(hitzAmount) / 10_000_000} HITZ`);
+		try {
+			const tx = await this.contract.initialize_distribution(
+				{
+					caller: treasuryKeys.publicKey(),
+					hitz_amount: hitzAmount,
+				},
+				this.defaultOptions
+			);
+
+			const jsonFromRoot = tx.toJSON();
+			const treasuryClient = this.getClientForKeypair(treasuryKeys);
+			const txTreasury = treasuryClient.fromJSON['initialize_distribution'](jsonFromRoot);
+			const ledger = (await this.fetchCurrentLedger()) + 100;
+			await txTreasury.signAuthEntries({ expiration: ledger });
+			const jsonFromTreasury = txTreasury.toJSON();
+			const txRoot = this.contract.fromJSON['initialize_distribution'](jsonFromTreasury);
+			await txRoot.signAndSend();
+			
+			console.log('✅ Phase 2 complete! Distribution initialized');
+		} catch (error: any) {
+			console.error('Distribution initialization failed:', error?.message || error);
+			throw new Error(`Distribution initialization failed: ${error?.message || error}`);
+		}
+
+		// PHASE 3: Distribute rewards in batches
+		console.log(`Phase 3: Distributing rewards to entries (batch size: ${distBatchSize})`);
+		
+		startIndex = 0;
+		batchNum = 0;
+		const distResults = [];
+
+		while (startIndex < entryCount) {
+			batchNum++;
+			console.log(`  Distribution batch ${batchNum}: indices ${startIndex}-${Math.min(startIndex + distBatchSize - 1, entryCount - 1)}`);
 
 			try {
 				const tx = await this.contract.distribute_rewards_batch(
 					{
 						caller: treasuryKeys.publicKey(),
-						hitz_amount: startIndex === 0 ? hitzAmount : BigInt(0), // Only send amount on first batch
 						start_index: startIndex,
-						batch_size: batchSize,
+						batch_size: distBatchSize,
 					},
 					this.defaultOptions
 				);
 
-				// Auth entry signing pattern
 				const jsonFromRoot = tx.toJSON();
 				const treasuryClient = this.getClientForKeypair(treasuryKeys);
 				const txTreasury = treasuryClient.fromJSON['distribute_rewards_batch'](jsonFromRoot);
@@ -425,29 +502,32 @@ class ContractClient {
 				const txRoot = this.contract.fromJSON['distribute_rewards_batch'](jsonFromTreasury);
 				const result = await txRoot.signAndSend();
 				
-				results.push(result);
+				distResults.push(result);
 
 				// Get next start index from result
 				const nextIndex = Number(result.result);
-				console.log(`Batch ${batchNum} complete. Next index: ${nextIndex}`);
+				console.log(`  Batch ${batchNum} complete. Next index: ${nextIndex}`);
 				
 				if (nextIndex >= entryCount) {
-					console.log('✅ All batches complete!');
+					console.log('✅ Phase 3 complete! All rewards distributed');
 					break;
 				}
 				
 				startIndex = nextIndex;
 			} catch (error: any) {
-				console.error(`Batch ${batchNum} failed:`, error?.message || error);
+				console.error(`Distribution batch ${batchNum} failed:`, error?.message || error);
 				throw new Error(`Distribution failed at batch ${batchNum}: ${error?.message || error}`);
 			}
 		}
 
 		return {
 			success: true,
-			batchesProcessed: batchNum,
+			phase1Batches: Math.ceil(entryCount / calcBatchSize),
+			phase3Batches: batchNum,
 			totalEntries: entryCount,
-			results,
+			totalEscrow: Number(totalEscrow) / 10_000_000,
+			hitzDistributed: Number(hitzAmount) / 10_000_000,
+			results: distResults,
 		};
 	};
 

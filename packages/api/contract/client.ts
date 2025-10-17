@@ -517,27 +517,84 @@ export interface Client {
   }) => Promise<AssembledTransaction<null>>
 
   /**
-   * Construct and simulate a distribute_rewards_batch transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   * Distribute HITZ rewards in batches to handle large entry counts
+   * Construct and simulate a calculate_total_escrow_batch transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Calculate total escrow in batches (Phase 1 of 3-phase distribution)
    * 
-   * This function processes entries in batches to stay within Stellar's
-   * 100 storage entry footprint limit per transaction.
+   * # Arguments
+   * * `caller` - Treasury address
+   * * `start_index` - Starting entry index for this batch
+   * * `batch_size` - Number of entries to process (max 40 for read-only)
+   * 
+   * # Returns
+   * * `(u32, i128)` - (next_start_index, running_total_escrow)
+   * 
+   * # Usage
+   * Call repeatedly with increasing start_index until next_start_index >= entry_count
+   */
+  calculate_total_escrow_batch: ({caller, start_index, batch_size}: {caller: string, start_index: u32, batch_size: u32}, options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<readonly [u32, i128]>>
+
+  /**
+   * Construct and simulate a initialize_distribution transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Initialize distribution with HITZ transfer (Phase 2 of 3-phase distribution)
+   * 
+   * Call this AFTER calculate_total_escrow_batch is complete
    * 
    * # Arguments
    * * `caller` - Treasury address that holds the HITZ
-   * * `hitz_amount` - Total HITZ to distribute (only needed on first batch)
+   * * `hitz_amount` - Total HITZ to distribute
+   */
+  initialize_distribution: ({caller, hitz_amount}: {caller: string, hitz_amount: i128}, options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<null>>
+
+  /**
+   * Construct and simulate a distribute_rewards_batch transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Distribute HITZ rewards in batches (Phase 3 of 3-phase distribution)
+   * 
+   * Call this AFTER initialize_distribution
+   * 
+   * # Arguments
+   * * `caller` - Treasury address
    * * `start_index` - Starting entry index for this batch
-   * * `batch_size` - Number of entries to process in this batch (max 20)
+   * * `batch_size` - Number of entries to process in this batch (max 15)
    * 
    * # Returns
    * * `u32` - Next start_index to use, or entry_count if complete
    * 
    * # Usage
-   * 1. First call: start_index=0, hitz_amount=total, batch_size=20
-   * 2. Subsequent calls: start_index=returned_value, hitz_amount=0, batch_size=20
-   * 3. Continue until returned value >= total entry count
+   * 1. First: Call calculate_total_escrow_batch repeatedly until complete
+   * 2. Then: Call initialize_distribution once with total HITZ amount
+   * 3. Finally: Call distribute_rewards_batch repeatedly until complete
    */
-  distribute_rewards_batch: ({caller, hitz_amount, start_index, batch_size}: {caller: string, hitz_amount: i128, start_index: u32, batch_size: u32}, options?: {
+  distribute_rewards_batch: ({caller, start_index, batch_size}: {caller: string, start_index: u32, batch_size: u32}, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -873,7 +930,9 @@ export class Client extends ContractClient {
         "AAAAAAAAAB1HZXQgdXNlcidzIHN0YWtlIGZvciBhbiBlbnRyeQAAAAAAAAlnZXRfc3Rha2UAAAAAAAACAAAAAAAAAAhlbnRyeV9pZAAAABAAAAAAAAAABW93bmVyAAAAAAAAEwAAAAEAAAAL",
         "AAAAAAAAABxHZXQgdG90YWwgc3Rha2UgZm9yIGFuIGVudHJ5AAAAD2dldF9zdGFrZV90b3RhbAAAAAABAAAAAAAAAAhlbnRyeV9pZAAAABAAAAABAAAACw==",
         "AAAAAAAAAdtDb250cmFjdCB2ZXJzaW9uCkRpc3RyaWJ1dGUgSElUWiByZXdhcmRzIHByb3BvcnRpb25hbGx5IGJhc2VkIG9uIGVzY3JvdyBwZXJmb3JtYW5jZQoKVHJlYXN1cnkgYm90IGNhbGxzIHRoaXMgYWZ0ZXIgYnV5aW5nIEhJVFogd2l0aCBhY2N1bXVsYXRlZCBYTE0gZmVlcy4KQ29udHJhY3QgYXV0b21hdGljYWxseSBkaXN0cmlidXRlcyB0byBlbnRyaWVzIGJhc2VkIG9uIHRoZWlyIGVzY3Jvd194bG0uCgojIEFyZ3VtZW50cwoqIGBjYWxsZXJgIC0gVHJlYXN1cnkgYWRkcmVzcyB0aGF0IGhvbGRzIHRoZSBISVRaCiogYGhpdHpfYW1vdW50YCAtIFRvdGFsIEhJVFogdG8gZGlzdHJpYnV0ZSBhY3Jvc3MgYWxsIGVudHJpZXMKCiMgUGVyZm9ybWFuY2UKT3B0aW1pemVkIHRvIHNpbmdsZSBsb29wIC0gTyhuKSB3aGVyZSBuID0gbnVtYmVyIG9mIGVudHJpZXMKU0VDVVJJVFk6IExpbWl0ZWQgdG8gMTAwMCBlbnRyaWVzIHRvIHByZXZlbnQgRE9TAAAAABJkaXN0cmlidXRlX3Jld2FyZHMAAAAAAAIAAAAAAAAABmNhbGxlcgAAAAAAEwAAAAAAAAALaGl0el9hbW91bnQAAAAACwAAAAA=",
-        "AAAAAAAAAs5EaXN0cmlidXRlIEhJVFogcmV3YXJkcyBpbiBiYXRjaGVzIHRvIGhhbmRsZSBsYXJnZSBlbnRyeSBjb3VudHMKClRoaXMgZnVuY3Rpb24gcHJvY2Vzc2VzIGVudHJpZXMgaW4gYmF0Y2hlcyB0byBzdGF5IHdpdGhpbiBTdGVsbGFyJ3MKMTAwIHN0b3JhZ2UgZW50cnkgZm9vdHByaW50IGxpbWl0IHBlciB0cmFuc2FjdGlvbi4KCiMgQXJndW1lbnRzCiogYGNhbGxlcmAgLSBUcmVhc3VyeSBhZGRyZXNzIHRoYXQgaG9sZHMgdGhlIEhJVFoKKiBgaGl0el9hbW91bnRgIC0gVG90YWwgSElUWiB0byBkaXN0cmlidXRlIChvbmx5IG5lZWRlZCBvbiBmaXJzdCBiYXRjaCkKKiBgc3RhcnRfaW5kZXhgIC0gU3RhcnRpbmcgZW50cnkgaW5kZXggZm9yIHRoaXMgYmF0Y2gKKiBgYmF0Y2hfc2l6ZWAgLSBOdW1iZXIgb2YgZW50cmllcyB0byBwcm9jZXNzIGluIHRoaXMgYmF0Y2ggKG1heCAyMCkKCiMgUmV0dXJucwoqIGB1MzJgIC0gTmV4dCBzdGFydF9pbmRleCB0byB1c2UsIG9yIGVudHJ5X2NvdW50IGlmIGNvbXBsZXRlCgojIFVzYWdlCjEuIEZpcnN0IGNhbGw6IHN0YXJ0X2luZGV4PTAsIGhpdHpfYW1vdW50PXRvdGFsLCBiYXRjaF9zaXplPTIwCjIuIFN1YnNlcXVlbnQgY2FsbHM6IHN0YXJ0X2luZGV4PXJldHVybmVkX3ZhbHVlLCBoaXR6X2Ftb3VudD0wLCBiYXRjaF9zaXplPTIwCjMuIENvbnRpbnVlIHVudGlsIHJldHVybmVkIHZhbHVlID49IHRvdGFsIGVudHJ5IGNvdW50AAAAAAAYZGlzdHJpYnV0ZV9yZXdhcmRzX2JhdGNoAAAABAAAAAAAAAAGY2FsbGVyAAAAAAATAAAAAAAAAAtoaXR6X2Ftb3VudAAAAAALAAAAAAAAAAtzdGFydF9pbmRleAAAAAAEAAAAAAAAAApiYXRjaF9zaXplAAAAAAAEAAAAAQAAAAQ=",
+        "AAAAAAAAAYpDYWxjdWxhdGUgdG90YWwgZXNjcm93IGluIGJhdGNoZXMgKFBoYXNlIDEgb2YgMy1waGFzZSBkaXN0cmlidXRpb24pCgojIEFyZ3VtZW50cwoqIGBjYWxsZXJgIC0gVHJlYXN1cnkgYWRkcmVzcwoqIGBzdGFydF9pbmRleGAgLSBTdGFydGluZyBlbnRyeSBpbmRleCBmb3IgdGhpcyBiYXRjaAoqIGBiYXRjaF9zaXplYCAtIE51bWJlciBvZiBlbnRyaWVzIHRvIHByb2Nlc3MgKG1heCA0MCBmb3IgcmVhZC1vbmx5KQoKIyBSZXR1cm5zCiogYCh1MzIsIGkxMjgpYCAtIChuZXh0X3N0YXJ0X2luZGV4LCBydW5uaW5nX3RvdGFsX2VzY3JvdykKCiMgVXNhZ2UKQ2FsbCByZXBlYXRlZGx5IHdpdGggaW5jcmVhc2luZyBzdGFydF9pbmRleCB1bnRpbCBuZXh0X3N0YXJ0X2luZGV4ID49IGVudHJ5X2NvdW50AAAAAAAcY2FsY3VsYXRlX3RvdGFsX2VzY3Jvd19iYXRjaAAAAAMAAAAAAAAABmNhbGxlcgAAAAAAEwAAAAAAAAALc3RhcnRfaW5kZXgAAAAABAAAAAAAAAAKYmF0Y2hfc2l6ZQAAAAAABAAAAAEAAAPtAAAAAgAAAAQAAAAL",
+        "AAAAAAAAAPBJbml0aWFsaXplIGRpc3RyaWJ1dGlvbiB3aXRoIEhJVFogdHJhbnNmZXIgKFBoYXNlIDIgb2YgMy1waGFzZSBkaXN0cmlidXRpb24pCgpDYWxsIHRoaXMgQUZURVIgY2FsY3VsYXRlX3RvdGFsX2VzY3Jvd19iYXRjaCBpcyBjb21wbGV0ZQoKIyBBcmd1bWVudHMKKiBgY2FsbGVyYCAtIFRyZWFzdXJ5IGFkZHJlc3MgdGhhdCBob2xkcyB0aGUgSElUWgoqIGBoaXR6X2Ftb3VudGAgLSBUb3RhbCBISVRaIHRvIGRpc3RyaWJ1dGUAAAAXaW5pdGlhbGl6ZV9kaXN0cmlidXRpb24AAAAAAgAAAAAAAAAGY2FsbGVyAAAAAAATAAAAAAAAAAtoaXR6X2Ftb3VudAAAAAALAAAAAA==",
+        "AAAAAAAAAjFEaXN0cmlidXRlIEhJVFogcmV3YXJkcyBpbiBiYXRjaGVzIChQaGFzZSAzIG9mIDMtcGhhc2UgZGlzdHJpYnV0aW9uKQoKQ2FsbCB0aGlzIEFGVEVSIGluaXRpYWxpemVfZGlzdHJpYnV0aW9uCgojIEFyZ3VtZW50cwoqIGBjYWxsZXJgIC0gVHJlYXN1cnkgYWRkcmVzcwoqIGBzdGFydF9pbmRleGAgLSBTdGFydGluZyBlbnRyeSBpbmRleCBmb3IgdGhpcyBiYXRjaAoqIGBiYXRjaF9zaXplYCAtIE51bWJlciBvZiBlbnRyaWVzIHRvIHByb2Nlc3MgaW4gdGhpcyBiYXRjaCAobWF4IDE1KQoKIyBSZXR1cm5zCiogYHUzMmAgLSBOZXh0IHN0YXJ0X2luZGV4IHRvIHVzZSwgb3IgZW50cnlfY291bnQgaWYgY29tcGxldGUKCiMgVXNhZ2UKMS4gRmlyc3Q6IENhbGwgY2FsY3VsYXRlX3RvdGFsX2VzY3Jvd19iYXRjaCByZXBlYXRlZGx5IHVudGlsIGNvbXBsZXRlCjIuIFRoZW46IENhbGwgaW5pdGlhbGl6ZV9kaXN0cmlidXRpb24gb25jZSB3aXRoIHRvdGFsIEhJVFogYW1vdW50CjMuIEZpbmFsbHk6IENhbGwgZGlzdHJpYnV0ZV9yZXdhcmRzX2JhdGNoIHJlcGVhdGVkbHkgdW50aWwgY29tcGxldGUAAAAAAAAYZGlzdHJpYnV0ZV9yZXdhcmRzX2JhdGNoAAAAAwAAAAAAAAAGY2FsbGVyAAAAAAATAAAAAAAAAAtzdGFydF9pbmRleAAAAAAEAAAAAAAAAApiYXRjaF9zaXplAAAAAAAEAAAAAQAAAAQ=",
         "AAAAAAAAAIVBbGxvY2F0ZSBISVRaIHJld2FyZHMgdG8gYSBzcGVjaWZpYyBlbnRyeSdzIHJld2FyZCBwb29sCgpBZG1pbi1vbmx5IGZ1bmN0aW9uIGZvciBtYW51YWwgcmV3YXJkIGFsbG9jYXRpb24gKGUuZy4sIHByb21vdGlvbnMsIGJvbnVzZXMpAAAAAAAAEGFsbG9jYXRlX3Jld2FyZHMAAAACAAAAAAAAAAhlbnRyeV9pZAAAABAAAAAAAAAAC2hpdHpfYW1vdW50AAAAAAsAAAAA",
         "AAAAAAAAAHdCYXRjaCBhbGxvY2F0ZSByZXdhcmRzIHRvIG11bHRpcGxlIGVudHJpZXMKCkFkbWluLW9ubHkgZnVuY3Rpb24gZm9yIG1hbnVhbCBiYXRjaCBhbGxvY2F0aW9uIChlLmcuLCBjYW1wYWlnbnMsIGFpcmRyb3BzKQAAAAAWYmF0Y2hfYWxsb2NhdGVfcmV3YXJkcwAAAAAAAgAAAAAAAAAJZW50cnlfaWRzAAAAAAAD6gAAABAAAAAAAAAAB2Ftb3VudHMAAAAD6gAAAAsAAAAA",
         "AAAAAAAAALRDbGFpbSBISVRaIHJld2FyZHMgZnJvbSBhbiBlbnRyeSdzIHJld2FyZCBwb29sCgpTdGFrZXJzIHJlY2VpdmUgcmV3YXJkcyBwcm9wb3J0aW9uYWwgdG8gdGhlaXIgc3Rha2UKRm9ybXVsYTogY2xhaW1hYmxlID0gKHJld2FyZF9wb29sIMOXIHVzZXJfc3Rha2UpIC8gdG90YWxfc3Rha2UgLSBhbHJlYWR5X2NsYWltZWQAAAANY2xhaW1fcmV3YXJkcwAAAAAAAAIAAAAAAAAACGVudHJ5X2lkAAAAEAAAAAAAAAAHY2xhaW1lcgAAAAATAAAAAQAAAAs=",
@@ -909,6 +968,8 @@ export class Client extends ContractClient {
         get_stake: this.txFromJSON<i128>,
         get_stake_total: this.txFromJSON<i128>,
         distribute_rewards: this.txFromJSON<null>,
+        calculate_total_escrow_batch: this.txFromJSON<readonly [u32, i128]>,
+        initialize_distribution: this.txFromJSON<null>,
         distribute_rewards_batch: this.txFromJSON<u32>,
         allocate_rewards: this.txFromJSON<null>,
         batch_allocate_rewards: this.txFromJSON<null>,
