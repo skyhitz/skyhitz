@@ -75,27 +75,27 @@ export function InvestSection({ entry }: Props) {
       return
     }
 
-    if (Number(entry.tvl) === 0 || !entry?.tvl) {
+    const totalStaked = Number(entry.totalStaked || 0) * 10_000_000 // Convert to stroops
+    if (totalStaked === 0) {
       setEquityToBuy('100')
       return
     }
 
     const amountInStroops = Math.trunc(lumensToStroops(parseFloat(amountToInvest)))
-    const entryTvl = Number(entry.tvl)
-    const newTvl = entryTvl + amountInStroops
+    const newTotalStaked = totalStaked + amountInStroops
     const currentOwnershipPercentage =
-      entryTvl > 0 ? (shares / entryTvl) * 100 : 0
+      totalStaked > 0 ? (shares / totalStaked) * 100 : 0
 
     // Calculate the user's new ownership percentage after the investment
-    const newUserStroops = shares + amountInStroops
-    const newOwnershipPercentage = (newUserStroops / newTvl) * 100
+    const newUserStake = shares + amountInStroops
+    const newOwnershipPercentage = (newUserStake / newTotalStaked) * 100
 
     // Calculate the additional percentage (what they're buying)
     const additionalPercentage =
       newOwnershipPercentage - currentOwnershipPercentage
 
     setEquityToBuy(additionalPercentage.toFixed(4))
-  }, [amountToInvest, entry.tvl, shares])
+  }, [amountToInvest, entry.totalStaked, shares])
 
   // Minimum investment in XLM (eligible for shares)
   const MIN_INVESTMENT_XLM = INVEST_MIN_XLM
@@ -147,7 +147,8 @@ export function InvestSection({ entry }: Props) {
 
   // Calculate available credits and ownership percentage
   const userCredits = creditsData?.userCredits || 0
-  const ownershipPercentage = entry.tvl ? (shares / Number(entry.tvl)) * 100 : 0
+  const totalStakedStroops = Number(entry.totalStaked || 0) * 10_000_000
+  const ownershipPercentage = totalStakedStroops > 0 ? (shares / totalStakedStroops) * 100 : 0
 
   return (
     <View className="my-6 w-full rounded-lg bg-[--bg-secondary-color] p-4">
@@ -157,7 +158,7 @@ export function InvestSection({ entry }: Props) {
             TVL:{' '}
           </P>
           <P className="font-unbounded text-xs">
-            {`${stroopsToLumens(Number(entry.tvl || 0))} XLM`}
+            {`${(entry.totalStaked || 0).toFixed(2)} HITZ`}
           </P>
         </View>
         <View className="flex-row">

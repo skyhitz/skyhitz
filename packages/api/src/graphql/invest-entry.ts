@@ -65,6 +65,7 @@ export const investEntryResolver = async (_: any, args: any, context: Context) =
 				tvl: Number(sorobanEntry.tvl_xlm) / 10_000_000,
 				apr: Number(stats.apr) / 100, // APR is stored as basis points (e.g., 1250 = 12.50%)
 				escrow: Number(sorobanEntry.escrow_xlm) / 10_000_000,
+				totalStaked: Number(stats.totalStaked) / 10_000_000, // Total HITZ staked
 				objectID: id,
 			});
 

@@ -191,12 +191,14 @@ export const mineExternalEntryResolver = async (_: any, { input }: { input: Exte
       tvl: Number(chainEntry.tvl_xlm) / 10_000_000,      // NEW: tvl_xlm field
       escrow: Number(chainEntry.escrow_xlm) / 10_000_000, // NEW: escrow_xlm field
       apr: Number(stats.apr) / 100,                        // APR in basis points -> percentage
+      totalStaked: Number(stats.totalStaked) / 10_000_000, // Total HITZ staked
     });
     
     console.log('✅ Algolia updated:', {
       tvl: (Number(chainEntry.tvl_xlm) / 10_000_000).toFixed(2),
       escrow: (Number(chainEntry.escrow_xlm) / 10_000_000).toFixed(2),
       apr: (Number(stats.apr) / 100).toFixed(2) + '%',
+      totalStaked: (Number(stats.totalStaked) / 10_000_000).toFixed(2) + ' HITZ',
     });
   } catch (e) {
     console.error('❌ Post-index update failed:', e);

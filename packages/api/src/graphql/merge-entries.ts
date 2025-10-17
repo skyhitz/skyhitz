@@ -37,6 +37,7 @@ export const mergeEntriesResolver = async (_: any, { fromId, toId }: any, ctx: C
 				tvl: Number(onchainTo.tvl_xlm) / 10_000_000,
 				apr: Number(stats.apr) / 100,
 				escrow: Number(onchainTo.escrow_xlm) / 10_000_000,
+				totalStaked: Number(stats.totalStaked) / 10_000_000, // Total HITZ staked
 			});
 			
 			// Update per-user stakes (formerly "shares") based on on-chain data

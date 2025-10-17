@@ -46,6 +46,7 @@ export type Entry = {
 	tvl?: number;
 	apr?: number;
 	escrow?: number;
+	totalStaked?: number;
 	shares?: Map<string, number>;
 };
 
