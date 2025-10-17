@@ -180,29 +180,50 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
 				price = bestAsk;
 			}
         } catch (_) {}
-		const buffer = DEFAULT_BUFFER;
+	const buffer = DEFAULT_BUFFER;
 
         const account: AccountData = await fetchJson(`${horizonUrl}/accounts/${treasuryKeys.publicKey()}`);
         const nativeBalance = (account.balances || []).find((b: any) => b.asset_type === 'native');
-		if (!nativeBalance) {
-			throw new Error('Treasury account has no XLM balance');
-		}
+	if (!nativeBalance) {
+		throw new Error('Treasury account has no XLM balance');
+	}
         const totalXlm = parseFloat((nativeBalance as any).balance);
         const minBalance = computeMinBalance(account) + buffer;
-		const spendable = totalXlm - minBalance;
-		if (spendable <= price) {
-			return { status: 'skipped', reason: 'Insufficient spendable XLM' };
-		}
-		const buyAmount = Math.max(0, spendable / price);
-		const buyAmountFormatted = toStellarAmount(buyAmount);
-		if (parseFloat(buyAmountFormatted) <= 0) {
-			return { status: 'skipped', reason: 'Rounded buy amount is zero' };
-		}
 
+	// Check if trustline exists and count existing offers BEFORE calculating spendable
+	// This ensures we account for transaction fees in our spendable calculation
         const hasTrustline = (account.balances || []).some(
             (b: any) => b.asset_code === hitzAssetCode && b.asset_issuer === env.ISSUER_ID
         );
         const offers = await fetchOffers(horizonUrl, treasuryKeys.publicKey(), hitzAssetCode, env.ISSUER_ID);
+
+	// Calculate how many operations we'll need for the transaction
+	const baseFee = Number.parseInt(typeof BASE_FEE === 'string' ? BASE_FEE : `${BASE_FEE}`, 10) || 100;
+	let numOperations = 1; // Always at least 1 (create new offer)
+	if (!hasTrustline) {
+		numOperations++; // Add trustline operation
+	}
+	numOperations += offers.length; // Add operations to delete old offers
+	
+	// Calculate total transaction fee in XLM (fee is in stroops, convert to XLM)
+	const transactionFeeXlm = (baseFee * numOperations) / 10_000_000;
+	
+	// Reserve extra 1 XLM as safety buffer beyond transaction fees
+	const safetyBuffer = 1.0;
+	
+	// Calculate spendable amount: total - min balance - transaction fee - safety buffer
+	const spendable = totalXlm - minBalance - transactionFeeXlm - safetyBuffer;
+	
+	console.log(`Treasury balance: ${totalXlm.toFixed(2)} XLM, min reserve: ${minBalance.toFixed(2)} XLM, tx fee: ${transactionFeeXlm.toFixed(4)} XLM (${numOperations} ops), safety: ${safetyBuffer} XLM, spendable: ${spendable.toFixed(2)} XLM`);
+	
+	if (spendable <= price) {
+		return { status: 'skipped', reason: `Insufficient spendable XLM (${spendable.toFixed(2)} XLM available, ${price.toFixed(2)} XLM minimum)` };
+	}
+	const buyAmount = Math.max(0, spendable / price);
+	const buyAmountFormatted = toStellarAmount(buyAmount);
+	if (parseFloat(buyAmountFormatted) <= 0) {
+		return { status: 'skipped', reason: 'Rounded buy amount is zero' };
+	}
 
         const operations: any[] = [];
 		if (!hasTrustline) {
@@ -229,14 +250,14 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
 				buying: hitzAsset,
 				buyAmount: buyAmountFormatted,
 				price: price.toFixed(7),
-			})
-		);
+		})
+	);
 
-		const baseFee = Number.parseInt(typeof BASE_FEE === 'string' ? BASE_FEE : `${BASE_FEE}`, 10) || 100;
+	// baseFee already calculated above when computing spendable amount
         const builder = new TransactionBuilder(new Account(account.id, account.sequence), {
-			fee: (baseFee * Math.max(operations.length, 1)).toString(),
-			networkPassphrase,
-		});
+		fee: (baseFee * Math.max(operations.length, 1)).toString(),
+		networkPassphrase,
+	});
 		operations.forEach((op) => builder.addOperation(op));
 		const transaction = builder.setTimeout(0).build();
 		transaction.sign(treasuryKeys);
