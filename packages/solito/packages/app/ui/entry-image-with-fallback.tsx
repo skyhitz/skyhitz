@@ -1,6 +1,6 @@
 'use client'
 import * as React from 'react'
-import { View } from 'react-native'
+import { View, Image as RNImage, Platform } from 'react-native'
 import { SolitoImage } from 'app/design/solito-image'
 import { EntryImagePlaceholder } from 'app/ui/entry-image-placeholder'
 import { isExternalUrl } from 'app/utils/external-entry'
@@ -39,10 +39,68 @@ export function EntryImageWithFallback({
   placeholderSize = 'small',
 }: EntryImageWithFallbackProps) {
   const [imageError, setImageError] = React.useState(false)
+  const [isLoading, setIsLoading] = React.useState(true)
+  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null)
   
   // Reset error state when src changes
   React.useEffect(() => {
     setImageError(false)
+    setIsLoading(true)
+    
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+    }
+    
+    // For external URLs, test if the image can load
+    if (src && isExternalUrl(src)) {
+      // Set a timeout to show placeholder if image takes too long
+      timeoutRef.current = setTimeout(() => {
+        if (isLoading) {
+          console.log('[EntryImageWithFallback] Image load timeout:', src)
+          setImageError(true)
+          setIsLoading(false)
+        }
+      }, 5000) // 5 second timeout
+      
+      // Test if image can load using Image.prefetch (web) or just Image (native)
+      if (Platform.OS === 'web') {
+        // On web, try to load the image
+        const img = new window.Image()
+        img.onload = () => {
+          setIsLoading(false)
+          if (timeoutRef.current) clearTimeout(timeoutRef.current)
+        }
+        img.onerror = () => {
+          console.log('[EntryImageWithFallback] Image load error:', src)
+          setImageError(true)
+          setIsLoading(false)
+          if (timeoutRef.current) clearTimeout(timeoutRef.current)
+        }
+        img.src = src
+      } else {
+        // On native, use RNImage.prefetch
+        RNImage.prefetch(src)
+          .then(() => {
+            setIsLoading(false)
+            if (timeoutRef.current) clearTimeout(timeoutRef.current)
+          })
+          .catch(() => {
+            console.log('[EntryImageWithFallback] Image prefetch failed:', src)
+            setImageError(true)
+            setIsLoading(false)
+            if (timeoutRef.current) clearTimeout(timeoutRef.current)
+          })
+      }
+    } else {
+      setIsLoading(false)
+    }
+    
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+      }
+    }
   }, [src])
 
   // Show placeholder if no src or if image failed to load
@@ -54,15 +112,31 @@ export function EntryImageWithFallback({
           entryId={entryId}
           size={placeholderSize}
           style={style}
+          className={className}
         />
       </View>
     )
   }
 
-  // For external URLs (like from Audius/Sound.xyz), wrap in error boundary
+  // Show placeholder while loading external images
+  if (isExternalUrl(src) && isLoading) {
+    return (
+      <View className={className} style={style}>
+        <EntryImagePlaceholder
+          title={title || alt}
+          entryId={entryId}
+          size={placeholderSize}
+          style={style}
+          className={className}
+        />
+      </View>
+    )
+  }
+
+  // For external URLs that passed validation, show the image
   if (isExternalUrl(src)) {
     return (
-      <View className={className}>
+      <View className={className} style={style}>
         <SolitoImage
           src={src}
           alt={alt}
@@ -70,9 +144,6 @@ export function EntryImageWithFallback({
           contentFit={contentFit}
           sizes={sizes}
           style={style}
-          // Note: onError might not work on all platforms with SolitoImage
-          // If image fails to load, it will just show broken image
-          // The imageError state is more for explicit error handling
         />
       </View>
     )

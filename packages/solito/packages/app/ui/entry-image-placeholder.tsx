@@ -77,8 +77,10 @@ export function EntryImagePlaceholder({
       className={`flex items-center justify-center ${className}`}
       style={[
         {
-          width: sizeValue,
-          height: sizeValue,
+          width: '100%',
+          height: '100%',
+          minWidth: sizeValue,
+          minHeight: sizeValue,
           backgroundColor: gradientColors[0],
           ...(Platform.OS === 'web' ? {
             // @ts-ignore - this is valid in web but not in React Native types
