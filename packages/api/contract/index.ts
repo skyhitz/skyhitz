@@ -575,6 +575,22 @@ class ContractClient {
 		
 		return result;
 	};
+
+	/**
+	 * Merge one entry into another (admin-only)
+	 * Moves escrow, TVL, reward pool, and stakes from fromId to toId
+	 * @param fromId - Source entry ID
+	 * @param toId - Destination entry ID
+	 * @param stakers - List of staker addresses to migrate (empty array to skip stake migration)
+	 */
+	public mergeEntries = async (fromId: string, toId: string, stakers: string[] = []) => {
+		const tx = await this.contract.merge_entries(
+			{ from_id: fromId, into_id: toId, stakers },
+			this.defaultOptions
+		);
+		const result = await tx.signAndSend();
+		return result;
+	};
 }
 
 export default ContractClient;

@@ -35,7 +35,7 @@ export const unstakeEntryResolver = async (_: any, args: any, context: Context) 
 		const userSecret = await encryption.decrypt(user.seed);
 		const res = await contract.unstake(userSecret, id, amount);
 		
-		console.log('✅ Unstake result:', res?.status, 'Amount:', res.unstakedAmount);
+		console.log('✅ Unstake result:', res?.sendTransactionResponse?.status, 'Amount:', res.unstakedAmount);
 
 		// 2. Get updated entry data from contract
 		const sorobanEntry = await contract.getEntry(id);
@@ -74,7 +74,7 @@ export const unstakeEntryResolver = async (_: any, args: any, context: Context) 
 
 		// 6. Return success response
 		return {
-			success: res?.status === 'SUCCESS',
+			success: !!(res && res.unstakedAmount),
 			message: `Successfully unstaked ${amount / 10_000_000} HITZ`,
 			unstakedAmount: res.unstakedAmount / 10_000_000, // Convert to HITZ
 		};

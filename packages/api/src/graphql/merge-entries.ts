@@ -12,8 +12,22 @@ export const mergeEntriesResolver = async (_: any, { fromId, toId }: any, ctx: C
 	const algolia = new AlgoliaClient(ctx.env);
 	const contract = new ContractClient(ctx.env);
 
+	// Get list of stakers (public keys) from Algolia for migration
+	let stakers: string[] = [];
 	try {
-		await contract.mergeEntries(fromId, toId);
+		const shares = await algolia.getSharesByEntry(fromId);
+		for (const share of shares) {
+			const user = await algolia.getUser(share.userId);
+			if (user?.publicKey) {
+				stakers.push(user.publicKey);
+			}
+		}
+	} catch (e) {
+		console.log('merge-entries: failed to fetch stakers', e);
+	}
+
+	try {
+		await contract.mergeEntries(fromId, toId, stakers);
 	} catch (e) {
 		console.log('merge-entries: contract merge failed', e);
 		return false;
