@@ -30,26 +30,27 @@ export async function syncAllAPRsToAlgolia(env: Env): Promise<{
 		}
 
 		// Batch update entries in chunks to avoid overwhelming Algolia
-		const BATCH_SIZE = 50;
-		const updates: Array<{ objectID: string; tvl: number; escrow: number; apr: number }> = [];
+	const BATCH_SIZE = 50;
+	const updates: Array<{ objectID: string; tvl: number; escrow: number; apr: number; totalStaked: number }> = [];
 
-		for (let i = 0; i < entryIds.length; i++) {
-			const entryId = entryIds[i];
+	for (let i = 0; i < entryIds.length; i++) {
+		const entryId = entryIds[i];
 
-			try {
-				// Get entry stats from contract
-				const stats = await contract.getEntryStats(entryId);
+		try {
+			// Get entry stats from contract
+			const stats = await contract.getEntryStats(entryId);
 
-				// Convert from stroops to XLM and basis points to percentage
-				const update = {
-					objectID: entryId,
-					tvl: stats.tvlXlm / 10_000_000,
-					escrow: stats.escrowXlm / 10_000_000,
-					apr: stats.apr / 100, // basis points to percentage
-				};
+			// Convert from stroops to XLM/HITZ and basis points to percentage
+			const update = {
+				objectID: entryId,
+				tvl: stats.tvlXlm / 10_000_000,
+				escrow: stats.escrowXlm / 10_000_000,
+				apr: stats.apr / 100, // basis points to percentage
+				totalStaked: stats.totalStaked / 10_000_000, // Total HITZ staked (stroops to HITZ)
+			};
 
-				updates.push(update);
-				entriesSynced++;
+			updates.push(update);
+			entriesSynced++;
 
 				// Batch update every BATCH_SIZE entries or at the end
 				if (updates.length >= BATCH_SIZE || i === entryIds.length - 1) {

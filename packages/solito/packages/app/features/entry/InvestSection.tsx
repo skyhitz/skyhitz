@@ -155,7 +155,7 @@ export function InvestSection({ entry }: Props) {
       <View className="mb-4 gap-2">
         <View className="flex-row">
           <P className="text-[--text-secondary-color] mr-1 font-unbounded text-xs">
-            TVL:{' '}
+            Total Staked:{' '}
           </P>
           <P className="font-unbounded text-xs">
             {`${(entry.totalStaked || 0).toFixed(2)} HITZ`}
