@@ -316,6 +316,7 @@ function ExternalTrackRow({ track, onSelect }: { track: ExternalTrack; onSelect:
             sizes="4rem"
             style={{ borderRadius: 6 }}
             placeholderSize="small"
+            className="w-12 h-12"
           />
         </View>
         <View className="ml-2 flex flex-1 justify-center pr-2">
