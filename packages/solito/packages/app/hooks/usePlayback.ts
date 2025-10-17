@@ -16,6 +16,7 @@ import { useMutation, useQuery } from '@apollo/client'
 import { useTopUpModalStore } from 'app/state/topup'
 import { useEffect } from 'react'
 import { trackStream } from 'app/utils/analytics'
+import { isExternalPreview } from 'app/utils/external-entry'
 
 export function usePlayback() {
   // Get user data
@@ -115,6 +116,12 @@ export function usePlayback() {
   // Handle track completion - record stream action
   const onDidJustFinish = async () => {
     if (!entry || !user) return;
+
+    // Skip recording for external preview entries
+    if (isExternalPreview(entry.id)) {
+      console.log('[usePlayback] Skipping record action for external preview:', entry.id)
+      return
+    }
 
     const available = Number(creditsData?.userCredits ?? 0)
     if (!available || available < MICRO_SPEND_PLAYBACK_COMPLETE_XLM) {

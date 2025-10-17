@@ -10,6 +10,7 @@ import { RECORD_ACTION, USER_CREDITS } from 'app/api/graphql/operations'
 import { useTopUpModalStore } from 'app/state/topup'
 import { MICRO_SPEND_DOWNLOAD_XLM } from 'app/constants/constants'
 import { trackDownload } from 'app/utils/analytics'
+import { isExternalPreview } from 'app/utils/external-entry'
 
 const DownloadBtn = ({ size = 24, className = '', entry }: DownloadButtonProps) => {
   const toast = useToast()
@@ -22,6 +23,12 @@ const DownloadBtn = ({ size = 24, className = '', entry }: DownloadButtonProps) 
   const handleDownload = async () => {
     if (!user) {
       push('/sign-in')
+      return
+    }
+
+    // Disable download for external preview entries
+    if (isExternalPreview(entry.id)) {
+      console.log('[DownloadBtn] Download disabled for external preview:', entry.id)
       return
     }
 
@@ -60,6 +67,11 @@ const DownloadBtn = ({ size = 24, className = '', entry }: DownloadButtonProps) 
       console.error('Failed to record download action:', error)
       toast.show('Download failed', { type: 'error' })
     }
+  }
+
+  // Hide download button for external previews
+  if (isExternalPreview(entry.id)) {
+    return null
   }
 
   return (

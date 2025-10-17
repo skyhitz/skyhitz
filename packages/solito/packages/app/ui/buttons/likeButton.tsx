@@ -12,6 +12,7 @@ import { LIKE_ENTRY, RECORD_ACTION, USER_LIKES, USER_CREDITS } from 'app/api/gra
 import { useTopUpModalStore } from 'app/state/topup'
 import { useToast } from 'app/provider/toast'
 import { trackLike } from 'app/utils/analytics'
+import { isExternalPreview } from 'app/utils/external-entry'
 
 // Using imported GraphQL operations from operations.ts
 
@@ -44,6 +45,12 @@ function LikeButton({ size = 24, className, entry }: Props) {
   // Handle press event
   const handlePress = async () => {
     if (!user) return push('/sign-in')
+
+    // Disable liking for external preview entries
+    if (isExternalPreview(entry.id)) {
+      console.log('[LikeButton] Like disabled for external preview:', entry.id)
+      return
+    }
 
     // Optimistically update the UI through cache manipulation
     isLiked ? removeLikeFromCache(entry) : addLikeToCache(entry)
@@ -93,6 +100,11 @@ function LikeButton({ size = 24, className, entry }: Props) {
       isLiked ? addLikeToCache(entry) : removeLikeFromCache(entry)
       console.error('Like error:', error)
     }
+  }
+
+  // Hide like button for external previews
+  if (isExternalPreview(entry.id)) {
+    return null
   }
 
   return (

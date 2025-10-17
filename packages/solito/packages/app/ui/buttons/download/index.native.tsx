@@ -11,6 +11,7 @@ import { RECORD_ACTION, USER_CREDITS } from 'app/api/graphql/operations'
 import { useTopUpModalStore } from 'app/state/topup'
 import { MICRO_SPEND_DOWNLOAD_XLM } from 'app/constants/constants'
 import { trackDownload } from 'app/utils/analytics'
+import { isExternalPreview } from 'app/utils/external-entry'
 
 // Safely check for FileSystem support without importing it directly
 // This prevents crashes in Expo Go during component initialization
@@ -32,6 +33,12 @@ const DownloadBtn = ({
   const handleDownload = async () => {
     if (!user) {
       push('/sign-in')
+      return
+    }
+
+    // Disable download for external preview entries
+    if (isExternalPreview(entry.id)) {
+      console.log('[DownloadBtn] Download disabled for external preview:', entry.id)
       return
     }
 
@@ -167,6 +174,11 @@ const DownloadBtn = ({
     } finally {
       setDownloading(false)
     }
+  }
+
+  // Hide download button for external previews
+  if (isExternalPreview(entry.id)) {
+    return null
   }
 
   return (

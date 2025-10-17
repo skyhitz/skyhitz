@@ -22,6 +22,7 @@ import { Button } from 'app/design/button'
 import { useUserStore } from 'app/state/user'
 import { useToast } from 'app/provider/toast'
 import { trackMine } from 'app/utils/analytics'
+import { EntryImageWithFallback } from 'app/ui/entry-image-with-fallback'
 
 // Define a union type for our search results
 type SearchResult = {
@@ -297,20 +298,24 @@ function ExternalTrackRow({ track, onSelect }: { track: ExternalTrack; onSelect:
   const isAuthed = !!user
   const [mining, setMining] = useState(false)
   const toast = useToast()
+
   return (
     <Pressable onPress={onSelect} className="flex">
       <View
         className="flex flex-row items-center py-2 border-b border-[--border-color]"
         style={{ borderBottomWidth: 0.5 }}
       >
-        <View className="aspect-[2/2] w-12 object-cover">
-          <SolitoImage
-            src={track.imageUrl || 'https://skyhitz.io/icon.png'}
+        <View className="aspect-[2/2] w-12 object-cover overflow-hidden" style={{ borderRadius: 6 }}>
+          <EntryImageWithFallback
+            src={track.imageUrl}
             alt={track.title || ''}
+            title={track.title}
+            entryId={track.id}
             contentFit="cover"
             fill
             sizes="4rem"
             style={{ borderRadius: 6 }}
+            placeholderSize="small"
           />
         </View>
         <View className="ml-2 flex flex-1 justify-center pr-2">
