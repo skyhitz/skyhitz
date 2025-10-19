@@ -71,7 +71,7 @@ export const mineExternalEntryResolver = async (_: any, { input }: { input: Exte
     description: `${input.artist || ''} - ${input.title}`.trim(),
     external_url: input.url || '',
     image: pinnedImageHash ? `ipfs://${pinnedImageHash}` : '',
-    name: input.title,
+    name: `${input.artist || ''} - ${input.title}`.trim(), // FIX: name must be "artist - title" format for parsing
     image_hash: pinnedImageHash || '',
     animation_url: `ipfs://${pinnedAudio.IpfsHash}`,
     networks: {},
@@ -110,15 +110,16 @@ export const mineExternalEntryResolver = async (_: any, { input }: { input: Exte
     entry: metaCid 
   });
 
-  // STEP 2: Escrow investment (adds to entry.escrow_xlm, no stake)
-  // This goes to the escrow pool for performance-based rewards
+  // STEP 2: First investment stake (adds to entry.tvl_xlm, creates stake)
+  // This dynamic investment is based on the top APR to match competitive rates
+  // invest action: adds_to_tvl=true, requires_stake=true, difficulty scales with amount
   if (investEscrow > 0) {
     try {
-      console.log('📊 Recording escrow invest:', toStroops(investEscrow), 'stroops');
+      console.log('📊 Recording first invest (APR-based):', toStroops(investEscrow), 'stroops');
       await contract.recordAction(userSeed, metaCid, 'invest', toStroops(investEscrow));
     } catch (e: any) {
       const msg = (e && (e.message || e.toString())) || 'unknown';
-      console.error('❌ Escrow invest failed:', msg);
+      console.error('❌ First invest failed:', msg);
       throw new GraphQLError('INVEST_ESCROW_FAILED');
     }
   }
@@ -133,13 +134,13 @@ export const mineExternalEntryResolver = async (_: any, { input }: { input: Exte
     throw new GraphQLError('USER_PAYMENT_FAILED');
   }
 
-  // STEP 4: Mine action (adds to entry.tvl_xlm, creates stake, earns HITZ rewards)
-  // This is the key action that gives the user ownership and rewards
+  // STEP 4: Second investment stake (adds to entry.tvl_xlm, creates stake, earns HITZ rewards)
+  // This is the main mining stake that gives the user ownership and rewards
+  // Note: We use 'invest' instead of 'mine' to support variable amounts
+  // mine action: fixed 0.1 XLM fee, difficulty 10
+  // invest action: variable amount (min 0.3 XLM), difficulty = amount * 10 / 10M
   try {
-    console.log('⛏️  Recording mine action (stake):', toStroops(half), 'stroops');
-    // Note: mine action has difficulty 10, which with base_fee 0.01 XLM = 0.1 XLM fee
-    // But we're investing 'half' amount which should be ~0.35 XLM
-    // So we use 'invest' with the half amount instead
+    console.log('⛏️  Recording second invest (mine stake):', toStroops(half), 'stroops');
     await contract.recordAction(userSeed, metaCid, 'invest', toStroops(half));
   } catch (e: any) {
     const msg = (e && (e.message || e.toString())) || 'unknown';
