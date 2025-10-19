@@ -183,6 +183,8 @@ export function CombinedSearchResultList({
     []
   )
 
+  const toast = useToast()
+  
   const renderExternalItem = useCallback(
     (item: SearchResult) => {
       const t = item.data as ExternalTrack
@@ -190,22 +192,64 @@ export function CombinedSearchResultList({
         <ExternalTrackRow
           track={t}
           onSelect={async () => {
-            const { data } = await resolveAudioUrl({ variables: { id: t.id } })
-            const url = data?.externalAudioUrl as string | undefined
-            if (!url) return
-            const fakeEntry: Entry = {
-              id: t.id,
-              title: t.title,
-              artist: t.artist || '',
-              imageUrl: t.imageUrl || '',
-              videoUrl: url,
-            } as any
-            await playEntry(fakeEntry, [])
+            try {
+              console.log('[Search] Resolving audio URL for external track:', t.id)
+              
+              // Try up to 2 times - gives Audius a chance to route to different content nodes
+              let url: string | undefined
+              let lastError: any
+              
+              for (let attempt = 1; attempt <= 2; attempt++) {
+                console.log(`[Search] Attempt ${attempt}/2 to resolve audio URL`)
+                const { data, error } = await resolveAudioUrl({ 
+                  variables: { id: t.id },
+                  fetchPolicy: 'network-only' // Don't use cached results
+                })
+                
+                if (error) {
+                  lastError = error
+                  console.warn(`[Search] Attempt ${attempt} failed:`, error)
+                  if (attempt < 2) {
+                    await new Promise(resolve => setTimeout(resolve, 300))
+                    continue
+                  }
+                }
+                
+                url = data?.externalAudioUrl as string | undefined
+                if (url) {
+                  console.log(`[Search] Audio URL resolved on attempt ${attempt}:`, url)
+                  break
+                }
+                
+                if (attempt < 2) {
+                  console.log('[Search] No URL returned, retrying...')
+                  await new Promise(resolve => setTimeout(resolve, 300))
+                }
+              }
+              
+              if (!url) {
+                console.error('[Search] All attempts failed. Last error:', lastError)
+                toast.show('This track is currently unavailable for preview.', { type: 'danger' })
+                return
+              }
+              
+              const fakeEntry: Entry = {
+                id: t.id,
+                title: t.title,
+                artist: t.artist || '',
+                imageUrl: t.imageUrl || '',
+                videoUrl: url,
+              } as any
+              await playEntry(fakeEntry, [])
+            } catch (error) {
+              console.error('[Search] Error playing external track:', error)
+              toast.show('Unable to play this track. Please try again later.', { type: 'danger' })
+            }
           }}
         />
       )
     },
-    []
+    [toast, resolveAudioUrl, playEntry]
   )
 
   // Element to show when no results are found

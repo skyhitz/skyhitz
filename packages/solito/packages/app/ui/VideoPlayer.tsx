@@ -285,9 +285,21 @@ function WebVideoPlayer() {
               if (typeof msg === 'string' && msg.includes('interrupted by a new load request')) {
                 return
               }
-              logPlayerError(e)
-              // Ensure fallback only for the current active entry and URI
+              
+              // Log error with URL for external sources
               const state = usePlayerStore.getState()
+              const currentUri = state.playbackUri
+              if (currentUri && (currentUri.includes('audius') || currentUri.includes('sound.xyz'))) {
+                console.error('[VideoPlayer] External audio playback error:', {
+                  url: currentUri,
+                  error: e,
+                  entryId: state.entry?.id
+                })
+              }
+              
+              logPlayerError(e, playerRef.current?.getInternalPlayer?.(), currentUri)
+              
+              // Only attempt fallback for IPFS URLs
               const currentEntryId = state.entry?.id
               if (currentEntryId !== preflightTunedUrlForIOS.current) {
                 return
@@ -295,7 +307,7 @@ function WebVideoPlayer() {
               if (state.playbackUri !== playbackUri) {
                 return
               }
-              // Attempt fallback sequence: HLS -> MP4 -> raw index
+              // Attempt fallback sequence: HLS -> MP4 -> raw index (only for IPFS)
               const next = buildFallbackUri()
               if (next) {
                 usePlayerStore.getState().setPlaybackUri(next)

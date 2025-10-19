@@ -48,14 +48,18 @@ async function fetchAudius(query: string, limit = 20, signal?: AbortSignal): Pro
     const hostsRes = await fetch('https://api.audius.co', { signal })
     const hosts = (await hostsRes.json()) as { data: string[] }
     const host = hosts?.data?.[0]
-    if (!host) return []
+    if (!host) {
+      console.error('[searchExternalMusic] No Audius hosts available')
+      return []
+    }
 
     const url = `${host}/v1/tracks/search?query=${encodeURIComponent(query)}&app_name=skyhitz`
     const res = await fetch(url, { signal })
     const json = (await res.json()) as any
     const tracks = (json?.data || []) as any[]
+    console.log('[searchExternalMusic] Audius returned', tracks.length, 'tracks')
 
-    return tracks
+    const mapped = tracks
       .slice(0, limit)
       .map((t) => {
         const title = t.title || ''
@@ -63,8 +67,9 @@ async function fetchAudius(query: string, limit = 20, signal?: AbortSignal): Pro
         const genre = t.genre || t.mood
         const imageUrl = t.artwork?.['150x150'] || t.artwork?.['480x480'] || t.artwork?.['1000x1000']
         const permalink = t.permalink || t.perma_link
+        const trackId = t.track_id ?? t.id
         return {
-          id: `audius:${t.track_id ?? t.id ?? title}`,
+          id: `audius:${trackId ?? title}`,
           title,
           artist,
           genre,
@@ -80,7 +85,11 @@ async function fetchAudius(query: string, limit = 20, signal?: AbortSignal): Pro
           matchesQuery(t.title, query) ||
           matchesQuery(t.artist, query),
       )
-  } catch (_) {
+    
+    console.log('[searchExternalMusic] After filtering:', mapped.length, 'Audius tracks')
+    return mapped
+  } catch (error) {
+    console.error('[searchExternalMusic] Audius search failed:', error)
     return []
   }
 }
@@ -240,30 +249,89 @@ export const externalAudioUrlResolver = async (
   const [source, rawId] = id.split(':', 2)
   if (!source || !rawId) throw new GraphQLError('invalid id')
 
+  console.log('[externalAudioUrl] Resolving audio URL for:', { source, rawId })
+
   const ac = new AbortController()
   const { signal } = ac
   try {
     if (source === 'audius') {
       // Resolve Audius hosts and try each for stream; some hosts may 404 for certain ids
+      console.log('[externalAudioUrl] Fetching Audius hosts...')
       const hostsRes = await fetch('https://api.audius.co', { signal })
       const hostsJson = (await hostsRes.json()) as { data: string[] }
       const hosts = (hostsJson?.data || []).filter(Boolean)
-      if (!hosts.length) return null
+      console.log('[externalAudioUrl] Audius hosts found:', hosts.length)
+      if (!hosts.length) {
+        console.error('[externalAudioUrl] No Audius hosts available')
+        return null
+      }
 
+      // Try multiple hosts and check which content nodes they redirect to
+      // IMPORTANT: Return the API URL (not the final redirected URL) 
+      // because Audius uses signed URLs that are IP-specific and time-limited
+      // The browser needs to follow the redirect itself to get a signature valid for its IP
+      
+      // Known problematic content nodes (update based on failures)
+      const problematicNodes = [
+        'audius-content-10.cultur3stake.com',
+        'audius-content-11.cultur3stake.com',
+        'audius-content-12.cultur3stake.com',
+      ]
+      
+      // Track URLs with their content nodes
+      const verifiedUrls: Array<{ url: string; contentNode: string; isGood: boolean }> = []
+      
       for (const h of hosts) {
         const url = `${h}/v1/tracks/${encodeURIComponent(rawId)}/stream?app_name=skyhitz`
         try {
-          const r = await fetch(url, { method: 'HEAD', redirect: 'manual', signal })
-          if (r.status === 200 || r.status === 302) {
-            return url
+          // Verify the URL works by following redirect
+          const r = await fetch(url, { 
+            method: 'HEAD', 
+            signal,
+            redirect: 'follow'
+          })
+          
+          if (r.ok) {
+            // Extract the content node from the final URL
+            const finalUrl = r.url || url
+            const contentNodeMatch = finalUrl.match(/https?:\/\/([^\/]+)/)
+            const contentNode = contentNodeMatch ? contentNodeMatch[1] : 'unknown'
+            
+            // Check if this content node is known to be problematic
+            const isGood = !problematicNodes.some(node => contentNode.includes(node))
+            
+            console.log('[externalAudioUrl] Audius host verified:', {
+              discoveryProvider: h,
+              contentNode,
+              isGood,
+              url
+            })
+            
+            verifiedUrls.push({ url, contentNode, isGood })
+            
+            // If we found a good content node, return immediately
+            if (isGood) {
+              console.log('[externalAudioUrl] Using good content node:', contentNode)
+              return url
+            }
           }
-        } catch {}
+        } catch (e) {
+          console.log('[externalAudioUrl] HEAD request failed for host:', h)
+        }
       }
-      // As a fallback, try GET against first host (some environments disallow HEAD)
+      
+      // If no good nodes found but we have some verified URLs, use the first one
+      if (verifiedUrls.length > 0) {
+        const fallback = verifiedUrls[0]
+        console.log('[externalAudioUrl] No ideal nodes found, using:', fallback.contentNode)
+        return fallback.url
+      }
+      
+      // Last resort: try first host even if verification failed
+      // Audius stream endpoints are generally reliable
       const fallbackUrl = `${hosts[0]}/v1/tracks/${encodeURIComponent(rawId)}/stream?app_name=skyhitz`
-      const fr = await fetch(fallbackUrl, { method: 'GET', redirect: 'manual', signal })
-      if (fr.status === 200 || fr.status === 302) return fallbackUrl
-      return null
+      console.log('[externalAudioUrl] All verification failed, trying first host:', fallbackUrl)
+      return fallbackUrl
     }
 
     if (source === 'soundxyz') {
@@ -271,7 +339,11 @@ export const externalAudioUrlResolver = async (
       const authToken = (env as any).SOUND_API_KEY as string | undefined
       const clientKey = (env as any).SOUND_CLIENT_KEY as string | undefined
       const webappVersion = (env as any).SOUND_WEBAPP_VERSION as string | undefined
-      if (!authToken && !clientKey) return null
+      console.log('[externalAudioUrl] Sound.xyz credentials available:', { hasAuthToken: !!authToken, hasClientKey: !!clientKey, hasWebappVersion: !!webappVersion })
+      if (!authToken && !clientKey) {
+        console.warn('[externalAudioUrl] No Sound.xyz credentials configured - Sound.xyz tracks will not be playable')
+        return null
+      }
 
       const endpoint = 'https://api.sound.xyz/graphql'
       const trackInfoQuery = {
@@ -442,11 +514,13 @@ export const externalAudioUrlResolver = async (
     }
 
     return null
-  } catch (_) {
+  } catch (error) {
+    console.error('[externalAudioUrl] Error resolving audio URL:', error)
     return null
   } finally {
     ac.abort()
   }
 }
+
 
 
