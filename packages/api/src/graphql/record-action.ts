@@ -33,16 +33,30 @@ export const recordActionResolver = async (_: any, args: any, context: Context) 
     }
 
     try {
-        // 1. Call the NEW recordAction function in the contract
+        // 1. Get base fee from contract to calculate action fee
+        const baseFee = await contract.getBaseFee();
+        
+        // 2. Calculate fee based on action type (fee = base_fee × difficulty)
+        // Difficulty values from contract: stream=1, like=2, download=3
+        const difficultyMap: Record<string, number> = {
+            stream: 1,
+            like: 2,
+            download: 3,
+        };
+        const difficulty = difficultyMap[action] || 1;
+        const feeStroops = baseFee * difficulty;
+        const feeXLM = feeStroops / 10_000_000; // Convert stroops to XLM
+
+        // 3. Call the NEW recordAction function in the contract
         const result = await contract.recordAction(
             await encryption.decrypt(user.seed),
             id,
             action
         );
 
-        console.log('✅ Record action result:', result?.status);
+        console.log('✅ Record action result:', result?.status, 'fee:', feeXLM, 'XLM');
 
-        // 2. Get updated entry data from contract
+        // 4. Get updated entry data from contract
         const sorobanEntry = await contract.getEntry(id);
         const stats = await contract.getEntryStats(id);
 
@@ -51,7 +65,7 @@ export const recordActionResolver = async (_: any, args: any, context: Context) 
             apr: stats.apr,
         });
 
-        // 3. Update Algolia search index with new escrow data
+        // 5. Update Algolia search index with new escrow data
         try {
             await algolia.partialUpdateEntry({
                 escrow: Number(sorobanEntry.escrow_xlm) / 10_000_000,
@@ -63,11 +77,11 @@ export const recordActionResolver = async (_: any, args: any, context: Context) 
             console.error('❌ Algolia update failed:', e);
         }
 
-        // 4. Return success response
+        // 6. Return success response with actual fee
         return {
             success: result?.status === 'SUCCESS',
             message: `${action} recorded successfully`,
-            fee: 0,
+            fee: feeXLM,
         };
 
     } catch (error) {
