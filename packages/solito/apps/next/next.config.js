@@ -62,6 +62,29 @@ module.exports = {
   // reanimated doesn't support strict mode on web
   reactStrictMode: false,
 
+  // CORS headers for stellar.toml
+  async headers() {
+    return [
+      {
+        source: '/.well-known/stellar.toml',
+        headers: [
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: '*',
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET, OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type',
+          },
+        ],
+      },
+    ]
+  },
+
   // Redirects from old dashboard routes to new simplified routes
   async redirects() {
     return [
