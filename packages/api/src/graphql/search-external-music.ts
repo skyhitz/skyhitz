@@ -271,11 +271,11 @@ export const externalAudioUrlResolver = async (
       // because Audius uses signed URLs that are IP-specific and time-limited
       // The browser needs to follow the redirect itself to get a signature valid for its IP
       
-      // Known problematic content nodes (update based on failures)
-      const problematicNodes = [
-        'audius-content-10.cultur3stake.com',
-        'audius-content-11.cultur3stake.com',
-        'audius-content-12.cultur3stake.com',
+      // Known problematic content nodes and domains (update based on failures)
+      // Use domain patterns to block entire providers
+      const problematicPatterns = [
+        'cultur3stake.com', // Block entire cultur3stake domain (CORS/availability issues)
+        // Add more problematic domains here as discovered
       ]
       
       // Track URLs with their content nodes
@@ -297,8 +297,8 @@ export const externalAudioUrlResolver = async (
             const contentNodeMatch = finalUrl.match(/https?:\/\/([^\/]+)/)
             const contentNode = contentNodeMatch ? contentNodeMatch[1] : 'unknown'
             
-            // Check if this content node is known to be problematic
-            const isGood = !problematicNodes.some(node => contentNode.includes(node))
+            // Check if this content node matches any problematic patterns
+            const isGood = !problematicPatterns.some(pattern => contentNode.includes(pattern))
             
             console.log('[externalAudioUrl] Audius host verified:', {
               discoveryProvider: h,
