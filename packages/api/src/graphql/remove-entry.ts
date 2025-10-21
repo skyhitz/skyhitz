@@ -16,10 +16,29 @@ export const removeEntryResolver = async (_: any, { id }: any, ctx: Context) => 
 			entry = await algolia.getEntry(id);
 		} catch (_) {}
 
+		// Get all stakers for this entry from Algolia
+		let stakers: string[] = [];
+		try {
+			const shares = await algolia.getSharesByEntry(id);
+			if (shares.length > 0) {
+				// Get user objects to retrieve their publicKeys
+				const userIds = shares.map((share) => share.userId);
+				const users = await algolia.indices.usersIndex.getObjects(userIds);
+				// Filter out null results and extract publicKeys
+				stakers = users.results
+					.filter((user: any) => user !== null && user.publicKey)
+					.map((user: any) => user.publicKey);
+				console.log(`Found ${stakers.length} stakers for entry ${id}`);
+			}
+		} catch (e) {
+			console.log('Failed to fetch stakers from Algolia:', e);
+			// Continue with empty stakers array - will only work if entry has no stakes
+		}
+
 		// Remove from Soroban contract index (admin-only)
 		try {
 			const contract = new ContractClient(ctx.env);
-			await contract.removeEntry(id);
+			await contract.removeEntry(id, stakers);
 		} catch (e) {
 			console.log('Contract remove_entry failed', e);
 		}
@@ -69,8 +88,11 @@ export const removeEntryResolver = async (_: any, { id }: any, ctx: Context) => 
 			}
 		}
 
-		// Delete from Algolia last
-		await algolia.deleteEntry(id);
+		// Delete from Algolia last (entry and shares)
+		await Promise.all([
+			algolia.deleteEntry(id),
+			algolia.deleteSharesByEntry(id)
+		]);
 
 		return true;
 	}

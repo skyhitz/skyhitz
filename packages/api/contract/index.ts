@@ -671,6 +671,21 @@ class ContractClient {
 		const result = await tx.signAndSend();
 		return result;
 	};
+
+	/**
+	 * Remove an entry completely (admin-only)
+	 * Returns stakes to the provided list of stakers
+	 * @param entryId - Entry ID to remove
+	 * @param stakers - List of staker addresses to return stakes to (empty array if no stakes)
+	 */
+	public removeEntry = async (entryId: string, stakers: string[] = []) => {
+		const tx = await this.contract.remove_entry(
+			{ entry_id: entryId, stakers },
+			this.defaultOptions
+		);
+		const result = await tx.signAndSend();
+		return result;
+	};
 }
 
 export default ContractClient;
