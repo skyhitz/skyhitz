@@ -3,13 +3,13 @@ import { requireAuth } from 'src/auth/auth-context';
 import { Context } from 'src/util/types';
 import { S3Client, DeleteObjectsCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import ContractClient from '../../contract';
-const adminId = '-NpzLBvz8ypxJwnK3JVL';
+import { ADMIN_ID } from 'src/constants/constants';
 
 export const removeEntryResolver = async (_: any, { id }: any, ctx: Context) => {
 	const user = requireAuth(ctx);
 	const algolia = new AlgoliaClient(ctx.env);
 
-	if (user.id === adminId) {
+	if (user.id === ADMIN_ID) {
 		// Read entry first to gather associated media hashes
 		let entry: any = null;
 		try {

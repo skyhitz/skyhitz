@@ -2,12 +2,11 @@ import { AlgoliaClient } from 'src/algolia/algolia';
 import { requireAuth } from 'src/auth/auth-context';
 import { Context } from 'src/util/types';
 import ContractClient from '../../contract';
-
-const adminId = '-NpzLBvz8ypxJwnK3JVL';
+import { ADMIN_ID } from 'src/constants/constants';
 
 export const mergeEntriesResolver = async (_: any, { fromId, toId }: any, ctx: Context) => {
 	const user = requireAuth(ctx);
-	if (user.id !== adminId) return false;
+	if (user.id !== ADMIN_ID) return false;
 
 	const algolia = new AlgoliaClient(ctx.env);
 	const contract = new ContractClient(ctx.env);
