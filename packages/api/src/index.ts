@@ -29,6 +29,24 @@ export default {
 		if (request.method === 'POST' && new URL(request.url).pathname === '/upload') {
 			return handleUpload(request, env, context);
 		}
+		// Manual treasury bot trigger for testing/debugging
+		if (request.method === 'POST' && new URL(request.url).pathname === '/treasury-bot') {
+			try {
+				const result = await runTreasuryBot(env);
+				return new Response(JSON.stringify(result, null, 2), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' },
+				});
+			} catch (error: any) {
+				return new Response(JSON.stringify({ 
+					error: error?.message || 'Unknown error',
+					stack: error?.stack 
+				}, null, 2), {
+					status: 500,
+					headers: { 'Content-Type': 'application/json' },
+				});
+			}
+		}
 		let response = await handler(request, env, context);
 
 		response = new Response(response.body, response);
