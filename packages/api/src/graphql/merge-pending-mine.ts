@@ -107,8 +107,8 @@ export const mergePendingMineResolver = async (
       // Don't fail the whole operation
     }
 
-    // Update pending mine status to merged
-    await algolia.updatePendingMineStatus(id, 'merged', user.id, targetEntryId);
+    // Delete pending mine from Algolia (no longer needed)
+    await algolia.deletePendingMine(id);
 
     console.log('✅ Pending mine merged to existing entry:', targetEntryId);
 

@@ -148,8 +148,8 @@ export const approvePendingMineResolver = async (
       console.error('❌ Post-index update failed:', e);
     }
 
-    // Update pending mine status
-    await algolia.updatePendingMineStatus(id, 'approved', user.id);
+    // Delete pending mine from Algolia (no longer needed)
+    await algolia.deletePendingMine(id);
 
     console.log('✅ Pending mine approved and entry created:', metaCid);
 

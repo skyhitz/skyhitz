@@ -65,7 +65,9 @@ export const rejectPendingMineResolver = async (_: any, { id }: { id: string }, 
   const algolia = new AlgoliaClient(ctx.env);
   
   try {
-    await algolia.updatePendingMineStatus(id, 'rejected', user.id);
+    // Delete pending mine from Algolia (no longer needed)
+    await algolia.deletePendingMine(id);
+    console.log('✅ Pending mine rejected and deleted:', id);
     return true;
   } catch (error) {
     console.error('Failed to reject pending mine:', error);
