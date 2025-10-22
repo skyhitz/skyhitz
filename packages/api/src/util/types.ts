@@ -130,3 +130,31 @@ export interface KrakenAddOrderRes {
 	};
 	error: string[];
 }
+
+export interface PendingMine {
+	objectID: string; // Unique ID for the pending mine
+	userId: string; // User who attempted to mine
+	userEmail: string; // User's email
+	userName: string; // User's display name
+	track: {
+		id: string;
+		title: string;
+		artist?: string;
+		genre?: string;
+		source: 'audius' | 'soundxyz';
+		url?: string;
+		imageUrl?: string;
+	};
+	similarTracks: Array<{
+		id: string;
+		title: string;
+		artist?: string;
+		similarity: number;
+	}>;
+	status: 'pending' | 'approved' | 'merged' | 'rejected';
+	createdAt: string;
+	createdAtTimestamp: number;
+	resolvedAt?: string;
+	resolvedBy?: string; // Admin user ID who resolved it
+	mergedToId?: string; // If merged, the entry ID it was merged to
+}

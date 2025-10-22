@@ -70,6 +70,88 @@ Please create the user account manually and review the case.`;
 		});
 	}
 
+	async sendPendingMineNotification(params: {
+		userName: string;
+		userEmail: string;
+		trackTitle: string;
+		trackArtist?: string;
+		similarTracks: Array<{
+			id: string;
+			title: string;
+			artist?: string;
+			similarity: number;
+		}>;
+		pendingMineId: string;
+	}) {
+		const similarTracksText = params.similarTracks
+			.map((t, idx) => 
+				`${idx + 1}. "${t.title}" by ${t.artist || 'Unknown'} (${(t.similarity * 100).toFixed(1)}% match)\n   Entry ID: ${t.id}`
+			)
+			.join('\n');
+
+		const reviewLink = `${this.env.APP_URL}/admin/pending-mines/${params.pendingMineId}`;
+
+		const textBody = `A user attempted to mine a track that appears similar to existing content.
+
+User: ${params.userName} (${params.userEmail})
+New Track: "${params.trackTitle}" by ${params.trackArtist || 'Unknown'}
+
+Similar tracks found:
+${similarTracksText}
+
+Review and take action:
+${reviewLink}
+
+You can either:
+1. Approve the mine (create as new track)
+2. Merge to an existing similar track
+3. Reject the mine
+
+Pending Mine ID: ${params.pendingMineId}
+Timestamp: ${new Date().toISOString()}`;
+
+		const htmlBody = `
+			<h2>Pending Mine Review Required</h2>
+			<p>A user attempted to mine a track that appears similar to existing content.</p>
+			
+			<h3>User Information</h3>
+			<p><strong>Name:</strong> ${params.userName}<br>
+			<strong>Email:</strong> ${params.userEmail}</p>
+			
+			<h3>New Track</h3>
+			<p><strong>Title:</strong> ${params.trackTitle}<br>
+			<strong>Artist:</strong> ${params.trackArtist || 'Unknown'}</p>
+			
+			<h3>Similar Tracks Found</h3>
+			<ul>
+				${params.similarTracks.map((t) => 
+					`<li><strong>"${t.title}"</strong> by ${t.artist || 'Unknown'} 
+					<em>(${(t.similarity * 100).toFixed(1)}% match)</em><br>
+					<small>Entry ID: <code>${t.id}</code></small></li>`
+				).join('')}
+			</ul>
+			
+			<p><a href="${reviewLink}" style="display:inline-block;padding:10px 16px;background:#111827;color:#ffffff;text-decoration:none;border-radius:6px">Review Pending Mine</a></p>
+			
+			<h3>Available Actions</h3>
+			<ol>
+				<li>Approve the mine (create as new track)</li>
+				<li>Merge to an existing similar track</li>
+				<li>Reject the mine</li>
+			</ol>
+			
+			<p><small>Pending Mine ID: ${params.pendingMineId}<br>
+			Timestamp: ${new Date().toISOString()}</small></p>
+		`;
+
+		return this.sendEmailInternal({
+			to: 'support@skyhitz.io',
+			subject: `Pending Mine Review: "${params.trackTitle}" by ${params.trackArtist || 'Unknown'}`,
+			textBody,
+			htmlBody,
+		});
+	}
+
 	private async sendEmailInternal(params: {
 		to: string;
 		subject: string;

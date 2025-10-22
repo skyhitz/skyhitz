@@ -10,6 +10,8 @@ type Query {
   searchExternalMusic(query: String!, limit: Int, offset: Int): [ExternalTrack!]!
   externalAudioUrl(id: String!): String
   claimableEarningsPreview: ClaimEarningsResponse!
+  pendingMines: [PendingMine!]!
+  pendingMine(id: String!): PendingMine!
 }
 
 type Mutation {
@@ -50,6 +52,9 @@ type Mutation {
   withdrawHitz(address: String!, amount: Float!): WithdrawHitzResponse!
   mergeEntries(fromId: String!, toId: String!): Boolean!
   recordAction(id: String!, action: String!): RecordActionResponse!
+  approvePendingMine(id: String!): ApprovePendingMineResponse!
+  mergePendingMine(id: String!, targetEntryId: String!): MergePendingMineResponse!
+  rejectPendingMine(id: String!): Boolean!
   # REMOVED: sellShares - no longer supported in new contract
   # Users can only invest/stake/unstake, not sell stakes
 }
@@ -253,5 +258,49 @@ input ExternalTrackInput {
   source: String!
   url: String
   imageUrl: String
+}
+
+type PendingMine {
+  id: String!
+  userId: String!
+  userEmail: String!
+  userName: String!
+  track: PendingMineTrack!
+  similarTracks: [SimilarTrackInfo!]!
+  status: String!
+  createdAt: String!
+  createdAtTimestamp: Int!
+  resolvedAt: String
+  resolvedBy: String
+  mergedToId: String
+}
+
+type PendingMineTrack {
+  id: String!
+  title: String!
+  artist: String
+  genre: String
+  source: String!
+  url: String
+  imageUrl: String
+}
+
+type SimilarTrackInfo {
+  id: String!
+  title: String!
+  artist: String
+  similarity: Float!
+}
+
+type ApprovePendingMineResponse {
+  success: Boolean!
+  message: String!
+  entry: Entry
+}
+
+type MergePendingMineResponse {
+  success: Boolean!
+  message: String!
+  mergedToEntryId: String
 }
 `;

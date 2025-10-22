@@ -26,6 +26,9 @@ import { unstakeEntryResolver } from './unstake-entry';
 import { recordActionResolver } from './record-action';
 import { userHitzBalanceResolver } from './user-hitz-balance';
 import { withdrawHitzResolver } from './withdraw-hitz';
+import { pendingMinesResolver, pendingMineResolver, rejectPendingMineResolver } from './pending-mines';
+import { approvePendingMineResolver } from './approve-pending-mine';
+import { mergePendingMineResolver } from './merge-pending-mine';
 // REMOVED: sellSharesResolver - no longer supported in new contract
 
 const Query = {
@@ -39,6 +42,8 @@ const Query = {
 	searchExternalMusic: searchExternalMusicResolver,
 	externalAudioUrl: externalAudioUrlResolver,
 	claimableEarningsPreview: claimEarningsPreviewResolver,
+	pendingMines: pendingMinesResolver,
+	pendingMine: pendingMineResolver,
 };
 
 const Mutation = {
@@ -60,6 +65,9 @@ const Mutation = {
 	recordAction: recordActionResolver,
 	// REMOVED: sellShares - no longer supported
 	mergeEntries: mergeEntriesResolver,
+	approvePendingMine: approvePendingMineResolver,
+	mergePendingMine: mergePendingMineResolver,
+	rejectPendingMine: rejectPendingMineResolver,
 	updateUser: updateUserResolver,
 	withdrawToExternalWallet: withdrawToExternalAddressResolver,
 };

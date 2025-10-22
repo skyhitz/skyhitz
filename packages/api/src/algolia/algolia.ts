@@ -1,7 +1,7 @@
 import algoliasearch, { SearchIndex } from 'algoliasearch';
 import { createFetchRequester } from '@algolia/requester-fetch';
 
-import { Entry, KrakenWithdrawal, Share, Timestamp, User } from '../util/types';
+import { Entry, KrakenWithdrawal, PendingMine, Share, Timestamp, User } from '../util/types';
 
 export class AlgoliaClient {
 	public indices: {
@@ -17,6 +17,7 @@ export class AlgoliaClient {
 		timestampReplicaAsc: SearchIndex;
 		distributionTimestampsIndex: SearchIndex;
 		withdrawalsIndex: SearchIndex;
+		pendingMinesIndex: SearchIndex;
 	};
 
 	constructor(env: Env) {
@@ -38,6 +39,7 @@ export class AlgoliaClient {
 			timestampReplicaAsc: client.initIndex(`${appDomain}:entries_timestamp_asc`),
 			distributionTimestampsIndex: client.initIndex(`${appDomain}:distribution_timestamps`),
 			withdrawalsIndex: client.initIndex(`${appDomain}:withdrawals`),
+			pendingMinesIndex: client.initIndex(`${appDomain}:pending_mines`),
 		};
 	}
 
@@ -366,5 +368,39 @@ export class AlgoliaClient {
 
 	async deleteWithdrawal(refId: string) {
 		return this.indices.withdrawalsIndex.deleteObject(refId);
+	}
+
+	// Pending Mines methods
+	async savePendingMine(pendingMine: PendingMine) {
+		return this.indices.pendingMinesIndex.saveObject(pendingMine);
+	}
+
+	async getPendingMine(id: string): Promise<PendingMine> {
+		return this.indices.pendingMinesIndex.getObject(id);
+	}
+
+	async getAllPendingMines() {
+		const pendingMines = await this.indices.pendingMinesIndex.search('', {
+			filters: 'status:pending',
+			hitsPerPage: 1000,
+		});
+		return pendingMines.hits as unknown as PendingMine[];
+	}
+
+	async updatePendingMineStatus(id: string, status: 'approved' | 'merged' | 'rejected', resolvedBy: string, mergedToId?: string) {
+		const update: any = {
+			objectID: id,
+			status,
+			resolvedAt: new Date().toISOString(),
+			resolvedBy,
+		};
+		if (mergedToId) {
+			update.mergedToId = mergedToId;
+		}
+		return this.indices.pendingMinesIndex.partialUpdateObject(update);
+	}
+
+	async deletePendingMine(id: string) {
+		return this.indices.pendingMinesIndex.deleteObject(id);
 	}
 }
