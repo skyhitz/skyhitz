@@ -89,8 +89,6 @@ Please create the user account manually and review the case.`;
 			)
 			.join('\n');
 
-		const reviewLink = `${this.env.APP_URL}/admin/pending-mines/${params.pendingMineId}`;
-
 		const textBody = `A user attempted to mine a track that appears similar to existing content.
 
 User: ${params.userName} (${params.userEmail})
@@ -99,15 +97,13 @@ New Track: "${params.trackTitle}" by ${params.trackArtist || 'Unknown'}
 Similar tracks found:
 ${similarTracksText}
 
-Review and take action:
-${reviewLink}
-
-You can either:
-1. Approve the mine (create as new track)
-2. Merge to an existing similar track
-3. Reject the mine
-
 Pending Mine ID: ${params.pendingMineId}
+
+To review, use GraphQL with the following mutations:
+- approvePendingMine(id: "${params.pendingMineId}") - Create as new track
+- mergePendingMine(id: "${params.pendingMineId}", targetEntryId: "...") - Merge to existing
+- rejectPendingMine(id: "${params.pendingMineId}") - Reject
+
 Timestamp: ${new Date().toISOString()}`;
 
 		const htmlBody = `
@@ -131,17 +127,21 @@ Timestamp: ${new Date().toISOString()}`;
 				).join('')}
 			</ul>
 			
-			<p><a href="${reviewLink}" style="display:inline-block;padding:10px 16px;background:#111827;color:#ffffff;text-decoration:none;border-radius:6px">Review Pending Mine</a></p>
+			<h3>Pending Mine ID</h3>
+			<p><code>${params.pendingMineId}</code></p>
 			
-			<h3>Available Actions</h3>
+			<h3>Review Using GraphQL</h3>
+			<p>Use the following GraphQL mutations to take action:</p>
 			<ol>
-				<li>Approve the mine (create as new track)</li>
-				<li>Merge to an existing similar track</li>
-				<li>Reject the mine</li>
+				<li><strong>Approve (create new):</strong><br>
+				<code>approvePendingMine(id: "${params.pendingMineId}")</code></li>
+				<li><strong>Merge to existing:</strong><br>
+				<code>mergePendingMine(id: "${params.pendingMineId}", targetEntryId: "...")</code></li>
+				<li><strong>Reject:</strong><br>
+				<code>rejectPendingMine(id: "${params.pendingMineId}")</code></li>
 			</ol>
 			
-			<p><small>Pending Mine ID: ${params.pendingMineId}<br>
-			Timestamp: ${new Date().toISOString()}</small></p>
+			<p><small>Timestamp: ${new Date().toISOString()}</small></p>
 		`;
 
 		return this.sendEmailInternal({
