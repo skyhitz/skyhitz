@@ -5,9 +5,12 @@ import { syncAllAPRsToAlgolia } from './sync-aprs';
 
 const TESTNET_HORIZON_URL = 'https://horizon-testnet.stellar.org';
 const MAINNET_HORIZON_URL = 'https://horizon.stellar.org';
-const DEFAULT_PRICE = 0.01; // 0.01 XLM per HITZ
 const DEFAULT_BUFFER = 1; // Keep 1 XLM buffer by default
 const STROOPS = 10_000_000;
+
+// Aqua asset for path payment routing
+const AQUA_CODE = 'AQUA';
+const AQUA_ISSUER = 'GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA';
 
 function getNetworkPassphrase(network: string | undefined) {
 	return network === 'testnet' ? Networks.TESTNET : Networks.PUBLIC;
@@ -49,44 +52,54 @@ async function fetchJson<T = any>(url: string): Promise<T> {
     return (await res.json()) as T;
 }
 
-async function fetchOffers(horizonUrl: string, accountId: string, hitzCode: string, hitzIssuer: string) {
-    const offers: any[] = [];
-    let next: string | undefined = `${horizonUrl}/accounts/${accountId}/offers?limit=200`;
-    console.log('Fetching offers from:', next);
-    while (next) {
-        const page: any = await fetchJson(next);
-        console.log('Page response structure:', JSON.stringify(page, null, 2).substring(0, 500));
-        
-        // Check both possible response structures
-        const records: any[] = Array.isArray(page?.records) 
-            ? page.records 
-            : Array.isArray(page?._embedded?.records)
-            ? page._embedded.records
-            : [];
-        
-        console.log(`Received ${records.length} total offers from API`);
-        
-        for (const record of records) {
-            console.log(`Offer ${record.id}: selling ${record.selling?.asset_type || record.selling?.asset_code} for ${record.buying?.asset_type || record.buying?.asset_code}`);
-            
-            if (
-                record.selling?.asset_type === 'native' &&
-                record.buying?.asset_code === hitzCode &&
-                record.buying?.asset_issuer === hitzIssuer
-            ) {
-                console.log(`  ✓ Matched HITZ buy offer`);
-                offers.push(record);
-            } else {
-                console.log(`  ✗ Not matched (selling: ${record.selling?.asset_type || record.selling?.asset_code}, buying: ${record.buying?.asset_type || record.buying?.asset_code})`);
-            }
-        }
-        if (!page?._links?.next?.href || !records.length) {
-            break;
-        }
-        next = page._links.next.href;
-    }
-    console.log(`Total matching HITZ buy offers: ${offers.length}`);
-    return offers;
+/**
+ * Simulate a path payment to estimate how much HITZ we'll receive
+ * Uses Horizon's /paths/strict-send endpoint
+ */
+async function estimatePathPayment(
+	horizonUrl: string,
+	sourceAsset: Asset,
+	sourceAmount: string,
+	destinationAsset: Asset
+): Promise<{ estimatedAmount: string; path: Asset[] }> {
+	try {
+		const params = new URLSearchParams({
+			source_amount: sourceAmount,
+			source_asset_type: sourceAsset.isNative() ? 'native' : sourceAsset.getAssetType(),
+			destination_assets: `${destinationAsset.getCode()}:${destinationAsset.getIssuer()}`,
+		});
+
+		if (!sourceAsset.isNative()) {
+			params.set('source_asset_code', sourceAsset.getCode());
+			params.set('source_asset_issuer', sourceAsset.getIssuer());
+		}
+
+		const response: any = await fetchJson(`${horizonUrl}/paths/strict-send?${params.toString()}`);
+		
+		if (!response?._embedded?.records?.length) {
+			console.log('No payment paths found');
+			return { estimatedAmount: '0', path: [] };
+		}
+
+		// Get the best path (first one, they're sorted by best rate)
+		const bestPath = response._embedded.records[0];
+		const estimatedAmount = bestPath.destination_amount;
+		
+		// Parse the path assets
+		const pathAssets: Asset[] = bestPath.path.map((p: any) => {
+			if (p.asset_type === 'native') {
+				return Asset.native();
+			}
+			return new Asset(p.asset_code, p.asset_issuer);
+		});
+
+		console.log(`Path payment estimate: ${sourceAmount} XLM → ${estimatedAmount} HITZ via ${pathAssets.length} hop(s)`);
+		
+		return { estimatedAmount, path: pathAssets };
+	} catch (error) {
+		console.error('Failed to estimate path payment:', error);
+		return { estimatedAmount: '0', path: [] };
+	}
 }
 
 function ensureEnv(env: Env, key: keyof Env) {
@@ -126,8 +139,16 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
 		console.log('Timestamp:', new Date().toISOString());
 		
 		// Step 1: Update oracle price first (treasury bot will use this for dynamic emission)
-		const oracleResult = await runOracleBot(env);
-		console.log('Oracle bot result:', oracleResult);
+		// CRITICAL: Oracle bot now throws on failure - no fallbacks!
+		// If oracle fails, entire treasury bot should stop to prevent incorrect pricing
+		try {
+			const oracleResult = await runOracleBot(env);
+			console.log('Oracle bot result:', oracleResult);
+		} catch (oracleError: any) {
+			console.error('❌ CRITICAL: Oracle bot failed! Stopping treasury bot to prevent incorrect pricing.');
+			console.error('Oracle error:', oracleError?.message || oracleError);
+			throw new Error(`Oracle bot failure: ${oracleError?.message || 'Unknown error'}`);
+		}
 		
 		ensureEnv(env, 'TREASURY_SEED');
 		ensureEnv(env, 'ISSUER_ID');
@@ -185,25 +206,10 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
 		const hitzAssetCode = await resolveHitzSymbol(env);
 		console.log(`Resolved HITZ asset code: "${hitzAssetCode}"`);
 		console.log(`ISSUER_ID: ${env.ISSUER_ID}`);
+	
 		const hitzAsset = new Asset(hitzAssetCode, env.ISSUER_ID);
-		// Derive dynamic price from order book: follow market up and down; fallback to anchor if empty
-		// Note: We need the price in XLM per HITZ for calculating buy amounts
-		let priceXlmPerHitz = DEFAULT_PRICE;
-        try {
-            const params = new URLSearchParams({
-                selling_asset_type: 'credit_alphanum4',
-                selling_asset_code: hitzAssetCode,
-                selling_asset_issuer: env.ISSUER_ID,
-                buying_asset_type: 'native',
-            });
-			const data: any = await fetchJson(`${horizonUrl}/order_book?${params.toString()}`);
-			const bestAskStr = data?.asks?.[0]?.price;
-			const bestAsk = Number.parseFloat(bestAskStr);
-			if (Number.isFinite(bestAsk) && bestAsk > 0) {
-				priceXlmPerHitz = bestAsk;
-			}
-        } catch (_) {}
-	const buffer = DEFAULT_BUFFER;
+		const aquaAsset = new Asset(AQUA_CODE, AQUA_ISSUER);
+		const buffer = DEFAULT_BUFFER;
 
         const account: AccountData = await fetchJson(`${horizonUrl}/accounts/${treasuryKeys.publicKey()}`);
         const nativeBalance = (account.balances || []).find((b: any) => b.asset_type === 'native');
@@ -213,49 +219,25 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
         const totalXlm = parseFloat((nativeBalance as any).balance);
         const minBalance = computeMinBalance(account) + buffer;
 
-	// Check if trustline exists and count existing offers BEFORE calculating spendable
-	// This ensures we account for transaction fees in our spendable calculation
-        const hasTrustline = (account.balances || []).some(
+	// Check if trustlines exist for HITZ and AQUA
+        const hasHitzTrustline = (account.balances || []).some(
             (b: any) => b.asset_code === hitzAssetCode && b.asset_issuer === env.ISSUER_ID
         );
-        console.log(`Looking for offers: selling XLM, buying ${hitzAssetCode}:${env.ISSUER_ID}`);
-        const offers = await fetchOffers(horizonUrl, treasuryKeys.publicKey(), hitzAssetCode, env.ISSUER_ID);
-	console.log(`Found ${offers.length} existing offers to cancel`);
+		const hasAquaTrustline = (account.balances || []).some(
+            (b: any) => b.asset_code === AQUA_CODE && b.asset_issuer === AQUA_ISSUER
+        );
+		
+		console.log(`Trust lines: HITZ=${hasHitzTrustline}, AQUA=${hasAquaTrustline}`);
 	
-	// If no offers found, fetch all offers to debug
-	if (offers.length === 0) {
-		console.log('⚠️ No HITZ buy offers found. Fetching ALL offers for debugging...');
-		try {
-			const allOffersResponse: any = await fetchJson(`${horizonUrl}/accounts/${treasuryKeys.publicKey()}/offers?limit=200`);
-			const allOffers = allOffersResponse?._embedded?.records || allOffersResponse?.records || [];
-			console.log(`Total offers on account: ${allOffers.length}`);
-			allOffers.forEach((offer: any) => {
-				console.log(`  - Offer ${offer.id}:`);
-				console.log(`    Selling: ${offer.selling?.asset_type === 'native' ? 'XLM' : `${offer.selling?.asset_code}:${offer.selling?.asset_issuer}`}`);
-				console.log(`    Buying: ${offer.buying?.asset_type === 'native' ? 'XLM' : `${offer.buying?.asset_code}:${offer.buying?.asset_issuer}`}`);
-				console.log(`    Amount: ${offer.amount}, Price: ${offer.price}`);
-			});
-		} catch (e) {
-			console.error('Failed to fetch all offers for debugging:', e);
-		}
-	}
-	
-	// Calculate total XLM locked in existing offers
-	// Each offer has 'amount' (XLM selling) that's currently locked
-	const lockedXlm = offers.reduce((sum, offer) => {
-		const amount = parseFloat(offer.amount || '0');
-		console.log(`  Offer ID ${offer.id}: ${amount.toFixed(2)} XLM at price ${offer.price}`);
-		return sum + amount;
-	}, 0);
-	console.log(`XLM locked in existing offers: ${lockedXlm.toFixed(2)} XLM`);
-
 	// Calculate how many operations we'll need for the transaction
 	const baseFee = Number.parseInt(typeof BASE_FEE === 'string' ? BASE_FEE : `${BASE_FEE}`, 10) || 100;
-	let numOperations = 1; // Always at least 1 (create new offer)
-	if (!hasTrustline) {
-		numOperations++; // Add trustline operation
+	let numOperations = 1; // Path payment operation
+	if (!hasHitzTrustline) {
+		numOperations++; // Add HITZ trustline operation
 	}
-	numOperations += offers.length; // Add operations to delete old offers
+	if (!hasAquaTrustline) {
+		numOperations++; // Add AQUA trustline operation
+	}
 	
 	// Calculate total transaction fee in XLM (fee is in stroops, convert to XLM)
 	const transactionFeeXlm = (baseFee * numOperations) / 10_000_000;
@@ -263,216 +245,98 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
 	// Add a small extra buffer for transaction fee variance (0.01 XLM)
 	const feeBuffer = 0.01;
 	
-	// Calculate available XLM (excluding locked in offers)
-	const availableXlm = totalXlm - lockedXlm;
+	// Calculate spendable XLM (all available balance minus reserves and fees)
+	const spendable = totalXlm - minBalance - transactionFeeXlm - feeBuffer;
 	
-	// IMPORTANT: Stellar validates the ENTIRE transaction before executing any operations
-	// This means when validating the new offer, the old offer is still locked!
-	// So we can only use the currently available XLM for the new offer.
-	// 
-	// CRITICAL: Creating an offer adds a NEW SUBENTRY, which increases min balance by 0.5 XLM!
-	// We need to account for this in our calculation.
-	const newOfferSubentryReserve = 0.5; // Creating an offer adds 1 subentry = 0.5 XLM reserve
+	console.log(`Treasury balance: ${totalXlm.toFixed(2)} XLM`);
+	console.log(`Min reserve: ${minBalance.toFixed(2)} XLM, tx fee: ${transactionFeeXlm.toFixed(7)} XLM (${numOperations} ops), fee buffer: ${feeBuffer} XLM`);
+	console.log(`Spendable XLM: ${spendable.toFixed(7)} XLM`);
 	
-	// Calculate spendable amount for NEW offer (using only available XLM)
-	// The cancel operation will execute first, but validation happens before execution
-	const spendable = availableXlm - minBalance - newOfferSubentryReserve - transactionFeeXlm - feeBuffer;
-	
-	console.log(`Treasury balance: ${totalXlm.toFixed(2)} XLM (${lockedXlm.toFixed(2)} locked in offers, ${availableXlm.toFixed(2)} available)`);
-	console.log(`Min reserve: ${minBalance.toFixed(2)} XLM, new offer subentry: ${newOfferSubentryReserve} XLM, tx fee: ${transactionFeeXlm.toFixed(7)} XLM (${numOperations} ops), fee buffer: ${feeBuffer} XLM`);
-	console.log(`Spendable for new offer (using only available XLM): ${spendable.toFixed(7)} XLM`);
-	console.log(`Current price: ${priceXlmPerHitz.toFixed(7)} XLM per HITZ`);
-	
-	if (lockedXlm > 0) {
-		console.log(`⚠️ Note: ${lockedXlm.toFixed(2)} XLM is locked in existing offers and can't be used for the new offer in this transaction.`);
-		console.log(`   The old offer will be cancelled, but Stellar validates all operations before executing any.`);
-		console.log(`   Next bot run will use the full balance (~${(totalXlm - minBalance - transactionFeeXlm - feeBuffer).toFixed(2)} XLM).`);
+	if (spendable <= 1) {
+		console.log('❌ SKIPPING: Insufficient spendable XLM (minimum 1 XLM)');
+		return { status: 'skipped', reason: `Insufficient spendable XLM (${spendable.toFixed(2)} XLM available, need at least 1 XLM)` };
 	}
 	
-	if (spendable <= priceXlmPerHitz) {
-		console.log('❌ SKIPPING: Insufficient spendable XLM');
-		return { status: 'skipped', reason: `Insufficient spendable XLM (${spendable.toFixed(2)} XLM available, ${priceXlmPerHitz.toFixed(2)} XLM minimum)` };
+	const sendAmount = toStellarAmount(spendable); // Exactly how much XLM we'll send
+	
+	// Estimate how much HITZ we'll receive via path payment
+	const pathEstimate = await estimatePathPayment(horizonUrl, Asset.native(), sendAmount, hitzAsset);
+	
+	if (parseFloat(pathEstimate.estimatedAmount) <= 0) {
+		console.log('❌ SKIPPING: No valid payment path found or estimated amount is zero');
+		return { status: 'skipped', reason: 'No valid payment path found' };
 	}
-	// For manageBuyOffer, price = how much BUYING asset per 1 SELLING asset
-	// We're selling XLM, buying HITZ, so price = HITZ per XLM = 1 / priceXlmPerHitz
-	const offerPrice = 1 / priceXlmPerHitz;
-	const offerPriceFormatted = offerPrice.toFixed(7);
 	
-	// Use manageSellOffer instead of manageBuyOffer to avoid underfunding issues
-	// With manageSellOffer, we specify EXACTLY how much XLM to sell
-	// This eliminates ambiguity and Stellar's internal calculations
-	const sellAmount = toStellarAmount(spendable); // Exactly how much XLM we'll sell
-	const expectedBuyAmount = parseFloat(sellAmount) * offerPrice; // How much HITZ we expect to get
+	// Use 95% of estimated amount as minimum to allow for slippage
+	const minDestAmount = (parseFloat(pathEstimate.estimatedAmount) * 0.95).toFixed(7);
 	
-	const newMinBalanceAfterOffer = minBalance + newOfferSubentryReserve; // Min balance AFTER creating the offer
-	console.log(`Will sell ${sellAmount} XLM to buy ~${expectedBuyAmount.toFixed(2)} HITZ`);
-	console.log(`Offer price: ${offerPriceFormatted} HITZ per XLM (market: ${(1/priceXlmPerHitz).toFixed(2)} HITZ/XLM)`);
-	console.log(`Stellar validation: XLM sold (${sellAmount}) + NEW min balance (${newMinBalanceAfterOffer.toFixed(7)}) + tx fee (${transactionFeeXlm.toFixed(7)}) = ${(parseFloat(sellAmount) + newMinBalanceAfterOffer + transactionFeeXlm).toFixed(7)} <= ${totalXlm.toFixed(7)} available`);
-	
-	if (parseFloat(sellAmount) <= 0) {
-		console.log('❌ SKIPPING: Sell amount is zero');
-		return { status: 'skipped', reason: 'Sell amount is zero' };
-	}
+	console.log(`Will send ${sendAmount} XLM via path payment`);
+	console.log(`Estimated to receive: ${pathEstimate.estimatedAmount} HITZ`);
+	console.log(`Minimum accepted (95%): ${minDestAmount} HITZ`);
+	console.log(`Path: XLM → ${pathEstimate.path.map(a => a.isNative() ? 'XLM' : a.getCode()).join(' → ')} → HITZ`);
 
-		// If there are existing offers, we need TWO separate transactions:
-		// 1. Cancel old offers (frees up locked XLM)
-		// 2. Create new offer with full balance (after cancellation confirms)
-		// This avoids Stellar validation issues with overlapping liabilities
-		if (offers.length > 0) {
-			console.log(`⚠️ Strategy: Two-transaction approach to avoid validation overlap`);
-			console.log(`   Transaction 1: Cancel ${offers.length} existing offers (${lockedXlm.toFixed(2)} XLM)`);
-			console.log(`   Transaction 2: Create new offer with full balance (~${(totalXlm - minBalance - transactionFeeXlm - feeBuffer).toFixed(2)} XLM)`);
-			
-			// === TRANSACTION 1: Cancel existing offers ===
-			const cancelOps: any[] = [];
-			if (!hasTrustline) {
-				console.log('Adding trustline operation to cancellation tx');
-				cancelOps.push(
-					Operation.changeTrust({
-						asset: hitzAsset,
-					})
-				);
-			}
-			
-			for (const offer of offers) {
-				console.log(`Cancelling offer ID: ${offer.id} (${offer.amount} XLM)`);
-				cancelOps.push(
-					Operation.manageSellOffer({
-						selling: Asset.native(),
-						buying: hitzAsset,
-						amount: '0',
-						price: offerPriceFormatted,
-						offerId: offer.id,
-					})
-				);
-			}
-			
-			console.log(`Submitting cancellation transaction with ${cancelOps.length} operations...`);
-			const cancelBuilder = new TransactionBuilder(new Account(account.id, account.sequence), {
-				fee: (baseFee * cancelOps.length).toString(),
-				networkPassphrase,
-			});
-			cancelOps.forEach((op) => cancelBuilder.addOperation(op));
-			const cancelTx = cancelBuilder.setTimeout(0).build();
-			cancelTx.sign(treasuryKeys);
-			
-			const cancelXdr = cancelTx.toXDR();
-			const cancelResponse = await fetch(`${horizonUrl}/transactions?tx=${encodeURIComponent(cancelXdr)}`, { method: 'POST' });
-			if (!cancelResponse.ok) {
-				const errBody = await cancelResponse.text();
-				console.error('❌ Cancellation transaction failed:', errBody);
-				throw new Error(`Cancel transaction failed (${cancelResponse.status}): ${errBody}`);
-			}
-			const cancelResult: any = await cancelResponse.json();
-			console.log('✅ Cancellation successful! Hash:', cancelResult?.hash);
-			console.log(`   Freed ${lockedXlm.toFixed(2)} XLM from old offers`);
-			
-			// === TRANSACTION 2: Create new offer with full balance ===
-			console.log('Fetching updated account state...');
-			const updatedAccount: AccountData = await fetchJson(`${horizonUrl}/accounts/${treasuryKeys.publicKey()}`);
-			const updatedNativeBalance = (updatedAccount.balances || []).find((b: any) => b.asset_type === 'native');
-			const updatedTotalXlm = parseFloat((updatedNativeBalance as any).balance);
-			const updatedMinBalance = computeMinBalance(updatedAccount) + buffer;
-			
-			// Recalculate spendable with new sequence and no locked offers
-			const numOpsForNewOffer = 1; // Just the create offer operation
-			const newOfferTxFee = (baseFee * numOpsForNewOffer) / 10_000_000;
-			const newOfferSubentryReserve2 = 0.5; // Creating offer adds subentry
-			const newSpendable = updatedTotalXlm - updatedMinBalance - newOfferSubentryReserve2 - newOfferTxFee - feeBuffer;
-			const newSellAmount = toStellarAmount(newSpendable); // Exact XLM to sell
-			const newExpectedBuy = parseFloat(newSellAmount) * offerPrice;
-			
-			console.log(`Updated balance: ${updatedTotalXlm.toFixed(2)} XLM (all available, no locked)`);
-			console.log(`Creating new offer: selling ${newSellAmount} XLM at ${offerPriceFormatted} HITZ per XLM to buy ~${newExpectedBuy.toFixed(2)} HITZ`);
-			
-			const createOps = [
-				Operation.manageSellOffer({
-					selling: Asset.native(),
-					buying: hitzAsset,
-					amount: newSellAmount, // Exact XLM amount
-					price: offerPriceFormatted,
-				})
-			];
-			
-			console.log(`Submitting creation transaction with ${createOps.length} operations...`);
-			const createBuilder = new TransactionBuilder(new Account(updatedAccount.id, updatedAccount.sequence), {
-				fee: (baseFee * createOps.length).toString(),
-				networkPassphrase,
-			});
-			createOps.forEach((op) => createBuilder.addOperation(op));
-			const createTx = createBuilder.setTimeout(0).build();
-			createTx.sign(treasuryKeys);
-			
-			const createXdr = createTx.toXDR();
-			const createResponse = await fetch(`${horizonUrl}/transactions?tx=${encodeURIComponent(createXdr)}`, { method: 'POST' });
-			if (!createResponse.ok) {
-				const errBody = await createResponse.text();
-				console.error('❌ Creation transaction failed:', errBody);
-				throw new Error(`Create transaction failed (${createResponse.status}): ${errBody}`);
-			}
-			const createResult: any = await createResponse.json();
-			console.log('✅ Creation successful! Hash:', createResult?.hash);
-			
-			console.log('=== TREASURY BOT COMPLETED SUCCESSFULLY ===');
-			console.log(`Cancelled old offers and created new offer selling ${newSellAmount} XLM for ~${newExpectedBuy.toFixed(2)} HITZ`);
-			
-			return {
-				status: 'submitted',
-				txHash: createResult?.hash,
-				buyAmount: newExpectedBuy.toFixed(7),
-				spendAmount: newSellAmount,
-			};
-		} else {
-			// No existing offers, create new one with all available balance (single transaction)
-			// Use manageSellOffer to specify EXACT XLM amount (avoids underfunding issues)
-			console.log(`Creating new offer: selling ${sellAmount} XLM at ${offerPriceFormatted} HITZ per XLM to buy ~${expectedBuyAmount.toFixed(2)} HITZ`);
-			
-			const operations: any[] = [];
-			if (!hasTrustline) {
-				console.log('Adding trustline operation');
-				operations.push(
-					Operation.changeTrust({
-						asset: hitzAsset,
-					})
-				);
-			}
+		// Build path payment transaction
+		const operations: any[] = [];
+		
+		// Add trustlines if needed
+		if (!hasHitzTrustline) {
+			console.log('Adding HITZ trustline operation');
 			operations.push(
-				Operation.manageSellOffer({
-					selling: Asset.native(),
-					buying: hitzAsset,
-					amount: sellAmount, // Exact XLM amount to sell
-					price: offerPriceFormatted,
+				Operation.changeTrust({
+					asset: hitzAsset,
 				})
 			);
-			
-			console.log(`Submitting transaction with ${operations.length} operations...`);
-			const builder = new TransactionBuilder(new Account(account.id, account.sequence), {
-				fee: (baseFee * operations.length).toString(),
-				networkPassphrase,
-			});
-			operations.forEach((op) => builder.addOperation(op));
-			const transaction = builder.setTimeout(0).build();
-			transaction.sign(treasuryKeys);
-			
-			const xdr = transaction.toXDR();
-			const response = await fetch(`${horizonUrl}/transactions?tx=${encodeURIComponent(xdr)}`, { method: 'POST' });
-			if (!response.ok) {
-				const errBody = await response.text();
-				console.error('❌ Transaction submission failed:', errBody);
-				throw new Error(`submitTransaction failed (${response.status}): ${errBody}`);
-			}
-			const result: any = await response.json();
-			console.log('✅ Transaction successful! Hash:', result?.hash);
-			
-			console.log('=== TREASURY BOT COMPLETED SUCCESSFULLY ===');
-			
-			return {
-				status: 'submitted',
-				txHash: result?.hash,
-				buyAmount: expectedBuyAmount.toFixed(7),
-				spendAmount: sellAmount,
-			};
 		}
+		
+		if (!hasAquaTrustline) {
+			console.log('Adding AQUA trustline operation');
+			operations.push(
+				Operation.changeTrust({
+					asset: aquaAsset,
+				})
+			);
+		}
+		
+		// Add path payment strict send operation
+		operations.push(
+			Operation.pathPaymentStrictSend({
+				sendAsset: Asset.native(),
+				sendAmount: sendAmount,
+				destination: treasuryKeys.publicKey(), // Send HITZ back to treasury
+				destAsset: hitzAsset,
+				destMin: minDestAmount,
+				path: pathEstimate.path, // Use the path from Horizon's path finding
+			})
+		);
+		
+		console.log(`Submitting path payment transaction with ${operations.length} operations...`);
+		const builder = new TransactionBuilder(new Account(account.id, account.sequence), {
+			fee: (baseFee * operations.length).toString(),
+			networkPassphrase,
+		});
+		operations.forEach((op) => builder.addOperation(op));
+		const transaction = builder.setTimeout(0).build();
+		transaction.sign(treasuryKeys);
+		
+		const xdr = transaction.toXDR();
+		const response = await fetch(`${horizonUrl}/transactions?tx=${encodeURIComponent(xdr)}`, { method: 'POST' });
+		if (!response.ok) {
+			const errBody = await response.text();
+			console.error('❌ Path payment transaction failed:', errBody);
+			throw new Error(`Path payment failed (${response.status}): ${errBody}`);
+		}
+		const result: any = await response.json();
+		console.log('✅ Path payment successful! Hash:', result?.hash);
+		
+		console.log('=== TREASURY BOT COMPLETED SUCCESSFULLY ===');
+		console.log(`Sent ${sendAmount} XLM via path payment to buy HITZ`);
+		
+		return {
+			status: 'submitted',
+			txHash: result?.hash,
+			buyAmount: pathEstimate.estimatedAmount,
+			spendAmount: sendAmount,
+		};
 	} catch (error: any) {
 		console.error('=== TREASURY BOT FAILED ===');
 		console.error('Error message:', error?.message || error);

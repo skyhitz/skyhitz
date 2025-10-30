@@ -28,3 +28,4 @@ export const INVEST_MIN_XLM = 0.35 // Minimum amount to be considered an investm
 export const MICRO_SPEND_DOWNLOAD_XLM = 0.3 // Spend before download (no shares)
 export const MICRO_SPEND_LIKE_XLM = 0.2 // Spend on like (no shares)
 export const MICRO_SPEND_PLAYBACK_COMPLETE_XLM = 0.1 // Spend on track completion (no shares)
+export const ADMIN_ID = '-NpzLBvz8ypxJwnK3JVL'

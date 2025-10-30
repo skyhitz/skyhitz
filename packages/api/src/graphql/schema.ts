@@ -55,6 +55,7 @@ type Mutation {
   approvePendingMine(id: String!): ApprovePendingMineResponse!
   mergePendingMine(id: String!, targetEntryId: String!): MergePendingMineResponse!
   rejectPendingMine(id: String!): Boolean!
+  uploadMint(input: UploadMintInput!): UploadMintResponse!
   # REMOVED: sellShares - no longer supported in new contract
   # Users can only invest/stake/unstake, not sell stakes
 }
@@ -302,5 +303,22 @@ type MergePendingMineResponse {
   success: Boolean!
   message: String!
   mergedToEntryId: String
+}
+
+input UploadMintInput {
+  audioHash: String!
+  imageHash: String!
+  title: String!
+  artist: String!
+  description: String
+  qualityScore: Float!
+  mintCost: Float!
+}
+
+type UploadMintResponse {
+  success: Boolean!
+  message: String!
+  entryId: String
+  txHash: String
 }
 `;

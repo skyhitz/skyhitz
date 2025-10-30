@@ -10,6 +10,7 @@ import { ProfileRow } from './profileRow'
 import { Link, TextLink } from 'solito/link'
 import TopUp from 'app/ui/icons/top-up'
 import Send from 'app/ui/icons/send'
+import Upload from 'app/ui/icons/upload'
 import { useState, useEffect, useRef } from 'react'
 import { LowBalanceModal } from './LowBalanceModal'
 import { WithdrawModal } from './WithdrawModal'
@@ -27,6 +28,7 @@ import { useToast } from 'app/provider/toast'
 import Stellar from 'app/ui/icons/stellar'
 import Lock from 'app/ui/icons/lock'
 import { useAssetStore } from 'app/state/asset'
+import { ADMIN_ID } from 'app/constants/constants'
 import { AssetType, stroopsToToken } from 'app/types/asset'
 import { sharesIndex } from 'app/api/algolia'
 import { SkyhitzLogo } from 'app/ui/logo'
@@ -229,6 +231,18 @@ export function ProfileScreen({ user }: { user: User }) {
                 count={userCollectionData?.userEntries?.length || 0}
               />
             </TextLink>
+
+            {/* Upload feature - Admin only */}
+            {user.id === ADMIN_ID && (
+              <TextLink href="/upload">
+                <ProfileRow
+                  title="Upload"
+                  icon={
+                    <Upload className="h-5 w-5 fill-none stroke-current stroke-2 text-[--text-color]" />
+                  }
+                />
+              </TextLink>
+            )}
 
             <TextLink href="/top-up">
               <ProfileRow

@@ -1,7 +1,6 @@
-import { Keypair } from '@stellar/stellar-sdk';
 import ContractClient from '../../contract';
 
-const PRICE_UPDATE_THRESHOLD = 0.01; // 5% change triggers update
+const PRICE_UPDATE_THRESHOLD = 0.001; // 0.1% change triggers update (more sensitive to price changes)
 const UPDATE_INTERVAL = 3600; // 1 hour minimum between updates
 const MAINNET_HORIZON_URL = 'https://horizon.stellar.org';
 const TESTNET_HORIZON_URL = 'https://horizon-testnet.stellar.org';
@@ -28,46 +27,47 @@ async function fetchJson<T = any>(url: string): Promise<T> {
 }
 
 /**
- * Fetch current HITZ/XLM market price from Stellar DEX
+ * Fetch current HITZ/XLM market price from Stellar Expert API
+ * Converts USD prices to XLM-denominated price
+ * 
+ * CRITICAL: This function throws on any error - no fallbacks!
+ * Fallback prices could result in massive losses if oracle is set incorrectly.
  */
-async function fetchDexPrice(horizonUrl: string, hitzCode: string, hitzIssuer: string): Promise<number> {
-	try {
-		const params = new URLSearchParams({
-			selling_asset_type: 'credit_alphanum4',
-			selling_asset_code: hitzCode,
-			selling_asset_issuer: hitzIssuer,
-			buying_asset_type: 'native',
-		});
+async function fetchMarketPrice(hitzIssuer: string): Promise<number> {
+	// Fetch HITZ price in USD
+	const hitzUrl = `https://api.stellar.expert/explorer/public/asset/HITZ-${hitzIssuer}`;
+	console.log(`Fetching HITZ price from: ${hitzUrl}`);
+	const hitzData = await fetchJson<{ price: number }>(hitzUrl);
+	const hitzPriceUsd = hitzData.price;
 
-		const response = await fetchJson(`${horizonUrl}/order_book?${params.toString()}`);
-
-		// Get best ask price (what it costs to buy HITZ with XLM)
-		const bestAsk = parseFloat(response?.asks?.[0]?.price);
-
-		if (Number.isFinite(bestAsk) && bestAsk > 0) {
-			return bestAsk;
-		}
-
-		// Fallback: Check recent trades
-		const tradesUrl = `${horizonUrl}/trades?${params.toString()}&limit=10`;
-		const tradesResponse = await fetchJson(tradesUrl);
-
-		if (tradesResponse?._embedded?.records?.length > 0) {
-			// Average recent trade prices
-			const prices = tradesResponse._embedded.records
-				.map((t: any) => parseFloat(t.price))
-				.filter((p: number) => Number.isFinite(p) && p > 0);
-
-			if (prices.length > 0) {
-				return prices.reduce((a: number, b: number) => a + b) / prices.length;
-			}
-		}
-
-		return 0.01; // Default fallback
-	} catch (error) {
-		console.error('Failed to fetch DEX price:', error);
-		return 0.01;
+	if (!hitzPriceUsd || hitzPriceUsd <= 0 || !Number.isFinite(hitzPriceUsd)) {
+		throw new Error(`Invalid HITZ USD price from Stellar Expert: ${hitzPriceUsd}`);
 	}
+
+	// Fetch XLM price in USD
+	const xlmUrl = 'https://api.stellar.expert/explorer/public/asset/XLM';
+	console.log(`Fetching XLM price from: ${xlmUrl}`);
+	const xlmData = await fetchJson<{ price: number }>(xlmUrl);
+	const xlmPriceUsd = xlmData.price;
+
+	if (!xlmPriceUsd || xlmPriceUsd <= 0 || !Number.isFinite(xlmPriceUsd)) {
+		throw new Error(`Invalid XLM USD price from Stellar Expert: ${xlmPriceUsd}`);
+	}
+
+	// Calculate HITZ price in XLM: HITZ_USD / XLM_USD
+	// Example: HITZ = $0.064, XLM = $0.318 → 0.064/0.318 = 0.201 XLM per HITZ
+	const hitzPriceXlm = hitzPriceUsd / xlmPriceUsd;
+
+	if (!Number.isFinite(hitzPriceXlm) || hitzPriceXlm <= 0) {
+		throw new Error(`Invalid calculated HITZ/XLM price: ${hitzPriceXlm} (HITZ: $${hitzPriceUsd}, XLM: $${xlmPriceUsd})`);
+	}
+
+	console.log(`Oracle Stellar Expert API:`);
+	console.log(`  HITZ: $${hitzPriceUsd.toFixed(6)} USD`);
+	console.log(`  XLM: $${xlmPriceUsd.toFixed(6)} USD`);
+	console.log(`  HITZ price: ${hitzPriceXlm.toFixed(7)} XLM per HITZ`);
+
+	return hitzPriceXlm;
 }
 
 /**
@@ -83,12 +83,9 @@ export async function runOracleBot(env: Env): Promise<OracleRunResult> {
 			};
 		}
 
-		const treasuryKeys = Keypair.fromSecret(env.TREASURY_SEED);
 		const contract = new ContractClient(env);
-		const horizonUrl = getHorizonUrl(env.STELLAR_NETWORK);
 
 		// Get HITZ asset info
-		const hitzCode = (await contract.getHitzSymbol()) || 'HITZ';
 		const hitzIssuer = env.ISSUER_ID;
 
 		if (!hitzIssuer) {
@@ -98,8 +95,8 @@ export async function runOracleBot(env: Env): Promise<OracleRunResult> {
 			};
 		}
 
-		// Fetch current market price from DEX
-		const marketPriceXlm = await fetchDexPrice(horizonUrl, hitzCode, hitzIssuer);
+		// Fetch current market price from Stellar Expert API
+		const marketPriceXlm = await fetchMarketPrice(hitzIssuer);
 		const marketPriceStroops = Math.floor(marketPriceXlm * 10_000_000);
 
 		// Get current oracle price from contract
@@ -114,7 +111,7 @@ export async function runOracleBot(env: Env): Promise<OracleRunResult> {
 		const timeSinceUpdate = now - Number(lastUpdate);
 
 		// Update if:
-		// 1. Price changed by more than threshold (5%), OR
+		// 1. Price changed by more than threshold (0.1%), OR
 		// 2. It's been more than 24 hours since last update
 		const shouldUpdate = priceChange > PRICE_UPDATE_THRESHOLD || timeSinceUpdate > 86400;
 
@@ -152,11 +149,13 @@ export async function runOracleBot(env: Env): Promise<OracleRunResult> {
 			priceChange: `${(priceChange * 100).toFixed(2)}%`,
 		};
 	} catch (error: any) {
-		console.error('Oracle bot failed:', error);
-		return {
-			status: 'skipped',
-			reason: error?.message || 'Unknown error',
-		};
+		console.error('❌ ORACLE BOT CRITICAL FAILURE ❌');
+		console.error('Error:', error?.message || error);
+		console.error('Stack:', error?.stack);
+		
+		// Re-throw the error to make it visible and stop execution
+		// This is critical - we don't want to continue with stale prices
+		throw error;
 	}
 }
 

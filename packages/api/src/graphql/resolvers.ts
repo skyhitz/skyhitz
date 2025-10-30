@@ -29,6 +29,7 @@ import { withdrawHitzResolver } from './withdraw-hitz';
 import { pendingMinesResolver, pendingMineResolver, rejectPendingMineResolver } from './pending-mines';
 import { approvePendingMineResolver } from './approve-pending-mine';
 import { mergePendingMineResolver } from './merge-pending-mine';
+import { uploadMintResolver } from './upload-mint';
 // REMOVED: sellSharesResolver - no longer supported in new contract
 
 const Query = {
@@ -68,6 +69,7 @@ const Mutation = {
 	approvePendingMine: approvePendingMineResolver,
 	mergePendingMine: mergePendingMineResolver,
 	rejectPendingMine: rejectPendingMineResolver,
+	uploadMint: uploadMintResolver,
 	updateUser: updateUserResolver,
 	withdrawToExternalWallet: withdrawToExternalAddressResolver,
 };
