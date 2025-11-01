@@ -55,51 +55,90 @@ async function fetchJson<T = any>(url: string): Promise<T> {
 /**
  * Simulate a path payment to estimate how much HITZ we'll receive
  * Uses Horizon's /paths/strict-send endpoint
+ * 
+ * CRITICAL: Throws on failure - no fallbacks!
+ * Returns the best path sorted by destination amount (most HITZ received)
  */
 async function estimatePathPayment(
 	horizonUrl: string,
 	sourceAsset: Asset,
 	sourceAmount: string,
 	destinationAsset: Asset
-): Promise<{ estimatedAmount: string; path: Asset[] }> {
-	try {
-		const params = new URLSearchParams({
-			source_amount: sourceAmount,
-			source_asset_type: sourceAsset.isNative() ? 'native' : sourceAsset.getAssetType(),
-			destination_assets: `${destinationAsset.getCode()}:${destinationAsset.getIssuer()}`,
-		});
+): Promise<{ estimatedAmount: string; path: Asset[]; effectiveRate: number }> {
+	const params = new URLSearchParams({
+		source_amount: sourceAmount,
+		source_asset_type: sourceAsset.isNative() ? 'native' : sourceAsset.getAssetType(),
+		destination_assets: `${destinationAsset.getCode()}:${destinationAsset.getIssuer()}`,
+		limit: '10', // Get top 10 paths to compare and log
+	});
 
-		if (!sourceAsset.isNative()) {
-			params.set('source_asset_code', sourceAsset.getCode());
-			params.set('source_asset_issuer', sourceAsset.getIssuer());
-		}
-
-		const response: any = await fetchJson(`${horizonUrl}/paths/strict-send?${params.toString()}`);
-		
-		if (!response?._embedded?.records?.length) {
-			console.log('No payment paths found');
-			return { estimatedAmount: '0', path: [] };
-		}
-
-		// Get the best path (first one, they're sorted by best rate)
-		const bestPath = response._embedded.records[0];
-		const estimatedAmount = bestPath.destination_amount;
-		
-		// Parse the path assets
-		const pathAssets: Asset[] = bestPath.path.map((p: any) => {
-			if (p.asset_type === 'native') {
-				return Asset.native();
-			}
-			return new Asset(p.asset_code, p.asset_issuer);
-		});
-
-		console.log(`Path payment estimate: ${sourceAmount} XLM → ${estimatedAmount} HITZ via ${pathAssets.length} hop(s)`);
-		
-		return { estimatedAmount, path: pathAssets };
-	} catch (error) {
-		console.error('Failed to estimate path payment:', error);
-		return { estimatedAmount: '0', path: [] };
+	if (!sourceAsset.isNative()) {
+		params.set('source_asset_code', sourceAsset.getCode());
+		params.set('source_asset_issuer', sourceAsset.getIssuer());
 	}
+
+	console.log(`Querying Horizon for payment paths: ${sourceAmount} XLM → HITZ`);
+	const response: any = await fetchJson(`${horizonUrl}/paths/strict-send?${params.toString()}`);
+	
+	if (!response?._embedded?.records?.length) {
+		throw new Error(`No payment paths found from ${sourceAmount} XLM to ${destinationAsset.getCode()}. Check DEX liquidity and trustlines.`);
+	}
+
+	// Horizon returns paths sorted by destination_amount DESC (best first)
+	const paths = response._embedded.records;
+	console.log(`\nFound ${paths.length} possible payment path${paths.length > 1 ? 's' : ''}:`);
+	
+	// Log top 5 paths for transparency
+	paths.slice(0, Math.min(5, paths.length)).forEach((p: any, idx: number) => {
+		const pathStr = p.path.length > 0 
+			? p.path.map((a: any) => a.asset_type === 'native' ? 'XLM' : a.asset_code).join(' → ')
+			: 'direct';
+		const rate = parseFloat(sourceAmount) / parseFloat(p.destination_amount);
+		console.log(`  ${idx + 1}. ${sourceAmount} XLM → ${parseFloat(p.destination_amount).toFixed(2)} HITZ via [${pathStr}] (rate: ${rate.toFixed(7)} XLM/HITZ)`);
+	});
+
+	// Take the best path (first = highest destination amount = best rate)
+	const bestPath = paths[0];
+	const estimatedAmount = bestPath.destination_amount;
+	
+	// Strict validation of the estimated amount
+	const estimatedFloat = parseFloat(estimatedAmount);
+	if (!estimatedAmount || estimatedFloat <= 0 || !Number.isFinite(estimatedFloat)) {
+		throw new Error(`Invalid destination amount in best path: ${estimatedAmount}`);
+	}
+	
+	// Parse the path assets
+	const pathAssets: Asset[] = bestPath.path.map((p: any) => {
+		if (p.asset_type === 'native') {
+			return Asset.native();
+		}
+		return new Asset(p.asset_code, p.asset_issuer);
+	});
+
+	// Calculate effective rate (XLM per HITZ)
+	const effectiveRate = parseFloat(sourceAmount) / estimatedFloat;
+	
+	console.log(`\n✅ Selected best path (${pathAssets.length} hop${pathAssets.length !== 1 ? 's' : ''}):`);
+	console.log(`   Sending: ${sourceAmount} XLM`);
+	console.log(`   Receiving: ${estimatedFloat.toFixed(2)} HITZ`);
+	console.log(`   Effective rate: ${effectiveRate.toFixed(7)} XLM per HITZ`);
+	
+	// Sanity check: warn if rate seems unreasonable
+	// Most crypto pairs shouldn't exceed 1:1, but don't fail - market could be volatile
+	if (effectiveRate > 1.0) {
+		console.warn(`⚠️  WARNING: Effective rate is high (${effectiveRate.toFixed(4)} XLM/HITZ).`);
+		console.warn(`   This means 1 HITZ costs more than 1 XLM. Verify this is expected!`);
+	}
+	
+	// Extra paranoia: check if we're getting less than 1 HITZ per 1 XLM
+	// This would be unusual but not impossible
+	const hitzPerXlm = estimatedFloat / parseFloat(sourceAmount);
+	if (hitzPerXlm < 1.0) {
+		console.warn(`⚠️  WARNING: You're getting less than 1 HITZ per XLM (${hitzPerXlm.toFixed(4)} HITZ/XLM)`);
+		console.warn(`   This means HITZ is more expensive than XLM. Double-check market conditions!`);
+	}
+	
+	return { estimatedAmount, path: pathAssets, effectiveRate };
 }
 
 function ensureEnv(env: Env, key: keyof Env) {
@@ -260,20 +299,24 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
 	const sendAmount = toStellarAmount(spendable); // Exactly how much XLM we'll send
 	
 	// Estimate how much HITZ we'll receive via path payment
-	const pathEstimate = await estimatePathPayment(horizonUrl, Asset.native(), sendAmount, hitzAsset);
-	
-	if (parseFloat(pathEstimate.estimatedAmount) <= 0) {
-		console.log('❌ SKIPPING: No valid payment path found or estimated amount is zero');
-		return { status: 'skipped', reason: 'No valid payment path found' };
+	// CRITICAL: This now throws on failure - no silent fallbacks!
+	let pathEstimate;
+	try {
+		pathEstimate = await estimatePathPayment(horizonUrl, Asset.native(), sendAmount, hitzAsset);
+	} catch (pathError: any) {
+		console.error('❌ CRITICAL: Path finding failed! Cannot determine HITZ purchase amount.');
+		console.error('Path error:', pathError?.message || pathError);
+		throw new Error(`Path finding failure: ${pathError?.message || 'Unknown error'}`);
 	}
 	
 	// Use 95% of estimated amount as minimum to allow for slippage
 	const minDestAmount = (parseFloat(pathEstimate.estimatedAmount) * 0.95).toFixed(7);
 	
-	console.log(`Will send ${sendAmount} XLM via path payment`);
-	console.log(`Estimated to receive: ${pathEstimate.estimatedAmount} HITZ`);
-	console.log(`Minimum accepted (95%): ${minDestAmount} HITZ`);
-	console.log(`Path: XLM → ${pathEstimate.path.map(a => a.isNative() ? 'XLM' : a.getCode()).join(' → ')} → HITZ`);
+	console.log(`\n📊 Path Payment Summary:`);
+	console.log(`   Sending: ${sendAmount} XLM`);
+	console.log(`   Expected: ${parseFloat(pathEstimate.estimatedAmount).toFixed(2)} HITZ`);
+	console.log(`   Minimum (95% slippage protection): ${minDestAmount} HITZ`);
+	console.log(`   Path: XLM${pathEstimate.path.length > 0 ? ' → ' + pathEstimate.path.map(a => a.isNative() ? 'XLM' : a.getCode()).join(' → ') : ''} → HITZ`);
 
 		// Build path payment transaction
 		const operations: any[] = [];
