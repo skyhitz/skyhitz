@@ -8,8 +8,6 @@ import { SolitoImage } from 'app/design/solito-image'
 import VerticalDots from 'app/ui/icons/verticalDots'
 import LikeButton from 'app/ui/buttons/likeButton'
 // import DownloadBtn from 'app/ui/buttons/download'
-import Stellar from 'app/ui/icons/stellar'
-import { stroopsToLumens } from 'app/utils/stroopsToLumens'
 import { usePlayback } from 'app/hooks/usePlayback'
 
 // Reusable component for APR text with consistent styling
@@ -41,7 +39,6 @@ export function BeatListEntry({
   }
 
   // Format TVL in lumens and APR values to match legacy app styling
-  const tvlFormatted = entry.tvl ? stroopsToLumens(entry.tvl) : '0'
   const aprFormatted = entry.apr ? `${Math.round(entry.apr)}%` : '0%'
 
   return (
@@ -81,15 +78,11 @@ export function BeatListEntry({
             </P>
 
             {/* Mobile TVL and APR */}
-            {entry.tvl && entry.apr ? (
+            {entry.apr ? (
               <Pressable
                 className="flex flex-row items-center md:hidden"
                 onPress={() => push(`/music/${entry.id}`)}
               >
-                <View className="mr-3 flex flex-row items-center">
-                  <Stellar size={10} color="var(--primary-color)" />
-                  <P className="ml-1 text-xs leading-6">{tvlFormatted}</P>
-                </View>
                 <APRText apr={aprFormatted} />
               </Pressable>
             ) : null}
@@ -98,7 +91,7 @@ export function BeatListEntry({
           {/* Right side actions */}
           <View className="flex flex-row items-center">
             {/* Desktop TVL and APR */}
-            {entry.tvl && entry.apr ? (
+            {entry.apr ? (
               <Pressable
                 className="hidden flex-row items-center md:flex"
                 onPress={() => push(`/music/${entry.id}`)}
