@@ -1,4 +1,4 @@
-import { Asset, BASE_FEE, Keypair, Networks, Operation, TransactionBuilder, Account } from '@stellar/stellar-sdk';
+import { Asset, BASE_FEE, Keypair, Networks, Operation, TransactionBuilder, Account, Transaction } from '@stellar/stellar-sdk';
 import ContractClient from '../../contract';
 import { runOracleBot } from './oracle-bot';
 import { syncAllAPRsToAlgolia } from './sync-aprs';
@@ -164,6 +164,126 @@ async function resolveHitzSymbol(env: Env) {
 	return 'HITZ';
 }
 
+/**
+ * Get the best swap quote from Soroswap API
+ * Soroswap aggregates liquidity from Soroswap, Aqua, Phoenix, and other DEXes
+ */
+async function getSoroswapQuote(
+	xlmAmount: bigint,
+	hitzAssetCode: string,
+	hitzIssuer: string,
+	apiKey: string
+): Promise<{ route: any; estimatedOut: string; priceImpact: string }> {
+	const amountInStroops = xlmAmount.toString();
+	
+	// Soroswap API endpoint
+	const apiUrl = 'https://api.soroswap.finance/api';
+	
+	// Build the quote request
+	// For XLM (native), use 'native' as the asset identifier
+	// For HITZ, use the format: 'code:issuer'
+	const params = new URLSearchParams({
+		amountIn: amountInStroops,
+		tokenIn: 'native', // XLM native asset
+		tokenOut: `${hitzAssetCode}:${hitzIssuer}`,
+		tradeType: 'EXACT_IN',
+	});
+	
+	console.log(`🔍 Querying Soroswap for best route...`);
+	console.log(`   Input: ${Number(xlmAmount) / STROOPS} XLM`);
+	console.log(`   Output: ${hitzAssetCode}`);
+	
+	const response = await fetch(`${apiUrl}/quote?${params.toString()}`, {
+		headers: {
+			'Authorization': `Bearer ${apiKey}`,
+			'Content-Type': 'application/json',
+		},
+	});
+	
+	if (!response.ok) {
+		const errorText = await response.text();
+		throw new Error(`Soroswap quote failed (${response.status}): ${errorText}`);
+	}
+	
+	const quote: any = await response.json();
+	
+	if (!quote || !quote.route || !quote.amountOut) {
+		throw new Error(`Invalid Soroswap quote response: ${JSON.stringify(quote).substring(0, 500)}`);
+	}
+	
+	const estimatedOut = quote.amountOut;
+	
+	// Validate the estimated output amount
+	const estimatedOutNum = Number(estimatedOut);
+	if (!estimatedOut || estimatedOutNum <= 0 || !Number.isFinite(estimatedOutNum)) {
+		throw new Error(`Invalid amountOut from Soroswap: ${estimatedOut}`);
+	}
+	
+	const priceImpact = quote.priceImpact || '0';
+	
+	console.log(`✅ Soroswap route found:`);
+	console.log(`   Expected output: ${Number(estimatedOut) / STROOPS} ${hitzAssetCode}`);
+	console.log(`   Price impact: ${priceImpact}%`);
+	if (quote.route?.path) {
+		const pathStr = quote.route.path.map((p: any) => p.symbol || p.code || 'unknown').join(' → ');
+		console.log(`   Path: ${pathStr}`);
+	}
+	
+	return {
+		route: quote.route,
+		estimatedOut,
+		priceImpact,
+	};
+}
+
+/**
+ * Build the swap transaction using Soroswap API
+ */
+async function buildSoroswapTransaction(
+	route: any,
+	fromAddress: string,
+	slippageBps: string,
+	apiKey: string
+): Promise<string> {
+	const apiUrl = 'https://api.soroswap.finance/api';
+	
+	console.log(`🔨 Building swap transaction...`);
+	
+	const response = await fetch(`${apiUrl}/build`, {
+		method: 'POST',
+		headers: {
+			'Authorization': `Bearer ${apiKey}`,
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify({
+			route,
+			from: fromAddress,
+			slippageBps,
+		}),
+	});
+	
+	if (!response.ok) {
+		const errorText = await response.text();
+		throw new Error(`Soroswap build failed (${response.status}): ${errorText}`);
+	}
+	
+	const result: any = await response.json();
+	
+	if (!result || !result.xdr || typeof result.xdr !== 'string') {
+		throw new Error(`Invalid Soroswap build response: ${JSON.stringify(result).substring(0, 500)}`);
+	}
+	
+	// Validate XDR is a non-empty string
+	const xdr = result.xdr.trim();
+	if (xdr.length === 0) {
+		throw new Error('Soroswap returned empty XDR string');
+	}
+	
+	console.log(`✅ Transaction XDR built successfully (length: ${xdr.length})`);
+	
+	return xdr;
+}
+
 export interface TreasuryRunResult {
 	status: 'skipped' | 'submitted';
 	reason?: string;
@@ -181,8 +301,8 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
 		// CRITICAL: Oracle bot now throws on failure - no fallbacks!
 		// If oracle fails, entire treasury bot should stop to prevent incorrect pricing
 		try {
-			const oracleResult = await runOracleBot(env);
-			console.log('Oracle bot result:', oracleResult);
+		const oracleResult = await runOracleBot(env);
+		console.log('Oracle bot result:', oracleResult);
 		} catch (oracleError: any) {
 			console.error('❌ CRITICAL: Oracle bot failed! Stopping treasury bot to prevent incorrect pricing.');
 			console.error('Oracle error:', oracleError?.message || oracleError);
@@ -246,9 +366,9 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
 		console.log(`Resolved HITZ asset code: "${hitzAssetCode}"`);
 		console.log(`ISSUER_ID: ${env.ISSUER_ID}`);
 	
-		const hitzAsset = new Asset(hitzAssetCode, env.ISSUER_ID);
+	const hitzAsset = new Asset(hitzAssetCode, env.ISSUER_ID);
 		const aquaAsset = new Asset(AQUA_CODE, AQUA_ISSUER);
-		const buffer = DEFAULT_BUFFER;
+	const buffer = DEFAULT_BUFFER;
 
         const account: AccountData = await fetchJson(`${horizonUrl}/accounts/${treasuryKeys.publicKey()}`);
         const nativeBalance = (account.balances || []).find((b: any) => b.asset_type === 'native');
@@ -267,7 +387,7 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
         );
 		
 		console.log(`Trust lines: HITZ=${hasHitzTrustline}, AQUA=${hasAquaTrustline}`);
-	
+
 	// Calculate how many operations we'll need for the transaction
 	const baseFee = Number.parseInt(typeof BASE_FEE === 'string' ? BASE_FEE : `${BASE_FEE}`, 10) || 100;
 	let numOperations = 1; // Path payment operation
@@ -296,90 +416,168 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
 		return { status: 'skipped', reason: `Insufficient spendable XLM (${spendable.toFixed(2)} XLM available, need at least 1 XLM)` };
 	}
 	
-	const sendAmount = toStellarAmount(spendable); // Exactly how much XLM we'll send
+	// ============================================================================
+	// SOROSWAP DEX AGGREGATOR INTEGRATION
+	// ============================================================================
+	// Uses Soroswap API to aggregate liquidity from Soroswap, Aqua, Phoenix, etc.
+	// to find the best rate for buying HITZ with XLM
+	// ============================================================================
 	
-	// Estimate how much HITZ we'll receive via path payment
-	// CRITICAL: This now throws on failure - no silent fallbacks!
-	let pathEstimate;
-	try {
-		pathEstimate = await estimatePathPayment(horizonUrl, Asset.native(), sendAmount, hitzAsset);
-	} catch (pathError: any) {
-		console.error('❌ CRITICAL: Path finding failed! Cannot determine HITZ purchase amount.');
-		console.error('Path error:', pathError?.message || pathError);
-		throw new Error(`Path finding failure: ${pathError?.message || 'Unknown error'}`);
+	// Check for Soroswap API key
+	if (!env.SOROSWAP_API_KEY) {
+		console.error('❌ SOROSWAP_API_KEY not configured!');
+		throw new Error('SOROSWAP_API_KEY environment variable is required. Get one at https://api.soroswap.finance/login');
 	}
 	
-	// Use 95% of estimated amount as minimum to allow for slippage
-	const minDestAmount = (parseFloat(pathEstimate.estimatedAmount) * 0.95).toFixed(7);
+	const xlmAmountBigInt = BigInt(Math.floor(spendable * STROOPS));
+	const sendAmount = toStellarAmount(spendable);
 	
-	console.log(`\n📊 Path Payment Summary:`);
-	console.log(`   Sending: ${sendAmount} XLM`);
-	console.log(`   Expected: ${parseFloat(pathEstimate.estimatedAmount).toFixed(2)} HITZ`);
-	console.log(`   Minimum (95% slippage protection): ${minDestAmount} HITZ`);
-	console.log(`   Path: XLM${pathEstimate.path.length > 0 ? ' → ' + pathEstimate.path.map(a => a.isNative() ? 'XLM' : a.getCode()).join(' → ') : ''} → HITZ`);
-
-		// Build path payment transaction
-		const operations: any[] = [];
+	// ============================================================================
+	// STEP 1: CREATE TRUSTLINES IF NEEDED (MUST BE BEFORE SOROSWAP BUILD)
+	// ============================================================================
+	// Soroswap builds transactions with current sequence number, so we must
+	// create any missing trustlines FIRST to avoid sequence conflicts
+	// ============================================================================
+	
+	if (!hasHitzTrustline || !hasAquaTrustline) {
+		console.log(`\n⚠️  Missing trustlines, creating them first...`);
+		const trustlineOps: any[] = [];
 		
-		// Add trustlines if needed
 		if (!hasHitzTrustline) {
-			console.log('Adding HITZ trustline operation');
-			operations.push(
-				Operation.changeTrust({
-					asset: hitzAsset,
-				})
-			);
+			console.log(`   Adding HITZ trustline`);
+			trustlineOps.push(Operation.changeTrust({ asset: hitzAsset }));
 		}
 		
 		if (!hasAquaTrustline) {
-			console.log('Adding AQUA trustline operation');
-			operations.push(
-				Operation.changeTrust({
-					asset: aquaAsset,
-				})
-			);
+			console.log(`   Adding AQUA trustline`);
+			trustlineOps.push(Operation.changeTrust({ asset: aquaAsset }));
 		}
 		
-		// Add path payment strict send operation
-		operations.push(
-			Operation.pathPaymentStrictSend({
-				sendAsset: Asset.native(),
-				sendAmount: sendAmount,
-				destination: treasuryKeys.publicKey(), // Send HITZ back to treasury
-				destAsset: hitzAsset,
-				destMin: minDestAmount,
-				path: pathEstimate.path, // Use the path from Horizon's path finding
-			})
-		);
-		
-		console.log(`Submitting path payment transaction with ${operations.length} operations...`);
-		const builder = new TransactionBuilder(new Account(account.id, account.sequence), {
-			fee: (baseFee * operations.length).toString(),
+		const trustlineBuilder = new TransactionBuilder(new Account(account.id, account.sequence), {
+			fee: (baseFee * trustlineOps.length).toString(),
 			networkPassphrase,
 		});
-		operations.forEach((op) => builder.addOperation(op));
-		const transaction = builder.setTimeout(0).build();
-		transaction.sign(treasuryKeys);
+		trustlineOps.forEach((op) => trustlineBuilder.addOperation(op));
+		const trustlineTx = trustlineBuilder.setTimeout(0).build();
+		trustlineTx.sign(treasuryKeys);
 		
-		const xdr = transaction.toXDR();
-		const response = await fetch(`${horizonUrl}/transactions?tx=${encodeURIComponent(xdr)}`, { method: 'POST' });
-		if (!response.ok) {
-			const errBody = await response.text();
-			console.error('❌ Path payment transaction failed:', errBody);
-			throw new Error(`Path payment failed (${response.status}): ${errBody}`);
+		const trustlineXdr = trustlineTx.toXDR();
+		const trustlineResponse = await fetch(`${horizonUrl}/transactions`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+			body: `tx=${encodeURIComponent(trustlineXdr)}`,
+		});
+		
+		if (!trustlineResponse.ok) {
+			const errBody = await trustlineResponse.text();
+			console.error('❌ Trustline transaction failed:', errBody);
+			throw new Error(`Trustline setup failed (${trustlineResponse.status}): ${errBody}`);
 		}
-		const result: any = await response.json();
-		console.log('✅ Path payment successful! Hash:', result?.hash);
 		
-		console.log('=== TREASURY BOT COMPLETED SUCCESSFULLY ===');
-		console.log(`Sent ${sendAmount} XLM via path payment to buy HITZ`);
+		console.log(`✅ Trustlines created successfully`);
 		
-		return {
-			status: 'submitted',
-			txHash: result?.hash,
-			buyAmount: pathEstimate.estimatedAmount,
-			spendAmount: sendAmount,
-		};
+		// IMPORTANT: Account sequence has now incremented
+		// Soroswap will query the latest sequence when building
+	}
+	
+	console.log(`\n💱 Buying HITZ via Soroswap DEX Aggregator...`);
+	console.log(`   Available: ${spendable.toFixed(2)} XLM`);
+	
+	// ============================================================================
+	// STEP 2: GET QUOTE AND BUILD TRANSACTION
+	// ============================================================================
+	// Now that trustlines are set up, Soroswap will build with correct sequence
+	// ============================================================================
+	
+	// Get best quote from Soroswap (aggregates all liquidity sources)
+	let quote;
+	try {
+		quote = await getSoroswapQuote(
+			xlmAmountBigInt,
+			hitzAssetCode,
+			env.ISSUER_ID,
+			env.SOROSWAP_API_KEY
+		);
+	} catch (quoteError: any) {
+		console.error('❌ CRITICAL: Soroswap quote failed!');
+		console.error('Quote error:', quoteError?.message || quoteError);
+		throw new Error(`Soroswap quote failure: ${quoteError?.message || 'Unknown error'}`);
+	}
+	
+	// Calculate expected output with slippage protection
+	const estimatedHitz = Number(quote.estimatedOut) / STROOPS;
+	const slippageBps = '500'; // 5% slippage tolerance (500 basis points)
+	const minHitz = estimatedHitz * 0.95;
+	
+	console.log(`\n📊 Swap Summary:`);
+	console.log(`   Sending: ${sendAmount} XLM`);
+	console.log(`   Expected: ${estimatedHitz.toFixed(2)} HITZ`);
+	console.log(`   Minimum (5% slippage): ${minHitz.toFixed(2)} HITZ`);
+	console.log(`   Price impact: ${quote.priceImpact}%`);
+	
+	// Build the swap transaction via Soroswap API
+	let transactionXdr;
+	try {
+		transactionXdr = await buildSoroswapTransaction(
+			quote.route,
+			treasuryKeys.publicKey(),
+			slippageBps,
+			env.SOROSWAP_API_KEY
+		);
+	} catch (buildError: any) {
+		console.error('❌ CRITICAL: Soroswap transaction build failed!');
+		console.error('Build error:', buildError?.message || buildError);
+		throw new Error(`Soroswap build failure: ${buildError?.message || 'Unknown error'}`);
+	}
+	
+	// ============================================================================
+	// STEP 3: PARSE, SIGN, AND SUBMIT SWAP TRANSACTION
+	// ============================================================================
+	
+	// Parse the transaction XDR from Soroswap
+	let transaction: Transaction;
+	try {
+		transaction = new Transaction(transactionXdr, networkPassphrase);
+	} catch (parseError: any) {
+		console.error('❌ CRITICAL: Failed to parse transaction XDR!');
+		console.error('Parse error:', parseError?.message || parseError);
+		throw new Error(`XDR parsing failure: ${parseError?.message || 'Unknown error'}`);
+	}
+	
+	// Sign the swap transaction with treasury keys
+	console.log(`\n🔏 Signing swap transaction...`);
+	transaction.sign(treasuryKeys);
+	
+	// Submit to Horizon
+	console.log(`📤 Submitting swap transaction...`);
+	const swapXdr = transaction.toXDR();
+	const swapResponse = await fetch(`${horizonUrl}/transactions`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+		body: `tx=${encodeURIComponent(swapXdr)}`,
+	});
+	
+	if (!swapResponse.ok) {
+		const errBody = await swapResponse.text();
+		console.error('❌ Swap transaction failed:', errBody);
+		throw new Error(`Swap failed (${swapResponse.status}): ${errBody}`);
+	}
+	
+	const result: any = await swapResponse.json();
+	console.log(`✅ Swap successful! Hash: ${result?.hash}`);
+	
+	console.log('\n=== TREASURY BOT COMPLETED SUCCESSFULLY ===');
+	console.log(`✅ Oracle updated`);
+	console.log(`✅ Existing HITZ distributed`);
+	console.log(`✅ Bought ${estimatedHitz.toFixed(2)} HITZ with ${sendAmount} XLM`);
+	console.log(`🔗 TX: ${result?.hash}`);
+	
+	return {
+		status: 'submitted',
+		txHash: result?.hash,
+		buyAmount: quote.estimatedOut,
+		spendAmount: sendAmount,
+	};
 	} catch (error: any) {
 		console.error('=== TREASURY BOT FAILED ===');
 		console.error('Error message:', error?.message || error);

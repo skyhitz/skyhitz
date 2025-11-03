@@ -18,6 +18,7 @@ import { INVEST_MIN_XLM } from 'app/constants/constants'
 import { stroopsToToken } from 'app/types/asset'
 import { AssetType } from 'app/types/asset'
 import { SkyhitzLogo } from 'app/ui/logo'
+import { trackInvest } from 'app/utils/analytics'
 
 
 type Share = { shares: number }
@@ -126,6 +127,15 @@ export function InvestSection({ entry }: Props) {
       })
 
       if (data?.investEntry?.success) {
+        // Track investment analytics
+        trackInvest(
+          entry.id,
+          parseFloat(amountToInvest),
+          'XLM',
+          entry.title,
+          entry.artist
+        )
+        
         const credits = await refetchCredits()
         const newBal = Number(credits?.data?.userCredits ?? 0).toFixed(2)
         await refetch() // Refresh entry (tvl/apr)
