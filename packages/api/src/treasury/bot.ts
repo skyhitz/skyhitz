@@ -176,7 +176,7 @@ async function getSoroswapQuote(
 	xlmAmount: bigint,
 	network: string | undefined,
 	apiKey: string
-): Promise<{ route: any; estimatedOut: string; priceImpact: string }> {
+): Promise<{ fullQuote: any; estimatedOut: string; priceImpact: string }> {
 	const amountInStroops = xlmAmount.toString();
 	
 	// Soroswap API base URL (no /api/ prefix - endpoints are at root)
@@ -217,7 +217,8 @@ async function getSoroswapQuote(
 	
 	const quote: any = await response.json();
 	
-	if (!quote || !quote.route || !quote.amountOut) {
+	// API returns rawTrade, not route
+	if (!quote || !quote.rawTrade || !quote.amountOut) {
 		throw new Error(`Invalid Soroswap quote response: ${JSON.stringify(quote).substring(0, 500)}`);
 	}
 	
@@ -229,18 +230,19 @@ async function getSoroswapQuote(
 		throw new Error(`Invalid amountOut from Soroswap: ${estimatedOut}`);
 	}
 	
-	const priceImpact = quote.priceImpact || '0';
+	const priceImpact = quote.priceImpactPct || '0'; // API returns priceImpactPct
 	
 	console.log(`✅ Soroswap route found:`);
 	console.log(`   Expected output: ${Number(estimatedOut) / STROOPS} HITZ`);
 	console.log(`   Price impact: ${priceImpact}%`);
-	if (quote.route?.path) {
-		const pathStr = quote.route.path.map((p: any) => p.symbol || p.code || 'unknown').join(' → ');
-		console.log(`   Path: ${pathStr}`);
+	if (quote.rawTrade?.distribution) {
+		const protocols = quote.rawTrade.distribution.map((d: any) => d.protocol_id).join(', ');
+		console.log(`   Using protocols: ${protocols}`);
 	}
 	
+	// Return the full quote response for the build step
 	return {
-		route: quote.route,
+		fullQuote: quote, // Full quote needed for /build endpoint
 		estimatedOut,
 		priceImpact,
 	};
@@ -248,11 +250,14 @@ async function getSoroswapQuote(
 
 /**
  * Build the swap transaction using Soroswap API
+ * @param quoteResponse - The full quote response object from Soroswap
+ * @param fromAddress - The wallet address initiating the swap
+ * @param network - Network (testnet or mainnet)
+ * @param apiKey - Soroswap API key
  */
 async function buildSoroswapTransaction(
-	route: any,
+	quoteResponse: any,
 	fromAddress: string,
-	slippageBps: string,
 	network: string | undefined,
 	apiKey: string
 ): Promise<string> {
@@ -261,17 +266,20 @@ async function buildSoroswapTransaction(
 	
 	console.log(`🔨 Building swap transaction...`);
 	
-	const response = await fetch(`${apiUrl}/build?network=${networkParam}`, {
+	// Build request body per API docs
+	const requestBody = {
+		quote: quoteResponse, // Send the full quote response
+		from: fromAddress,
+		to: fromAddress, // Same wallet for treasury bot
+	};
+	
+	const response = await fetch(`${apiUrl}/quote/build?network=${networkParam}`, {
 		method: 'POST',
 		headers: {
 			'Authorization': `Bearer ${apiKey}`,
 			'Content-Type': 'application/json',
 		},
-		body: JSON.stringify({
-			route,
-			from: fromAddress,
-			slippageBps, // String format per API docs
-		}),
+		body: JSON.stringify(requestBody),
 	});
 	
 	if (!response.ok) {
@@ -515,9 +523,8 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
 		throw new Error(`Soroswap quote failure: ${quoteError?.message || 'Unknown error'}`);
 	}
 	
-	// Calculate expected output with slippage protection
+	// Calculate expected output (slippage is already in the quote)
 	const estimatedHitz = Number(quote.estimatedOut) / STROOPS;
-	const slippageBps = '100'; // 1% slippage tolerance (100 basis points) - must be string
 	const minHitz = estimatedHitz * 0.99; // 1% slippage protection
 	
 	console.log(`\n📊 Swap Summary:`);
@@ -527,12 +534,12 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
 	console.log(`   Price impact: ${quote.priceImpact}%`);
 	
 	// Build the swap transaction via Soroswap API
+	// The /build endpoint needs the full quote response
 	let transactionXdr;
 	try {
 		transactionXdr = await buildSoroswapTransaction(
-			quote.route,
+			quote.fullQuote, // Pass the full quote response
 			treasuryKeys.publicKey(),
-			slippageBps,
 			env.STELLAR_NETWORK,
 			env.SOROSWAP_API_KEY
 		);
