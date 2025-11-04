@@ -179,8 +179,8 @@ async function getSoroswapQuote(
 ): Promise<{ route: any; estimatedOut: string; priceImpact: string }> {
 	const amountInStroops = xlmAmount.toString();
 	
-	// Soroswap API endpoint
-	const apiUrl = 'https://api.soroswap.finance/api';
+	// Soroswap API base URL (no /api/ prefix - endpoints are at root)
+	const apiUrl = 'https://api.soroswap.finance';
 	
 	// Network parameter (mainnet or testnet)
 	const networkParam = network === 'testnet' ? 'testnet' : 'mainnet';
@@ -189,10 +189,10 @@ async function getSoroswapQuote(
 	const requestBody = {
 		assetIn: XLM_CONTRACT_ID,  // XLM contract address
 		assetOut: HITZ_CONTRACT_ID, // HITZ contract address
-		amount: parseInt(amountInStroops), // Must be integer, not string
+		amount: amountInStroops, // Amount in stroops (string format per API docs)
 		tradeType: 'EXACT_IN',
-		protocols: [['aqua'], ['sdex'],['soroswap'], ['phoenix']], // Aggregate from all DEXes
-		slippageBps: 100, // 1% slippage (will be used in build as well)
+		protocols: ['aqua', 'sdex', 'soroswap', 'phoenix'], // Flat array, not nested
+		slippageBps: '100', // 1% slippage as string (per API docs)
 		maxHops: 3, // Allow up to 3 hops for better rates
 	};
 	
@@ -252,11 +252,11 @@ async function getSoroswapQuote(
 async function buildSoroswapTransaction(
 	route: any,
 	fromAddress: string,
-	slippageBps: number,
+	slippageBps: string,
 	network: string | undefined,
 	apiKey: string
 ): Promise<string> {
-	const apiUrl = 'https://api.soroswap.finance/api';
+	const apiUrl = 'https://api.soroswap.finance';
 	const networkParam = network === 'testnet' ? 'testnet' : 'mainnet';
 	
 	console.log(`🔨 Building swap transaction...`);
@@ -270,7 +270,7 @@ async function buildSoroswapTransaction(
 		body: JSON.stringify({
 			route,
 			from: fromAddress,
-			slippageBps, // Number, not string
+			slippageBps, // String format per API docs
 		}),
 	});
 	
@@ -517,13 +517,13 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
 	
 	// Calculate expected output with slippage protection
 	const estimatedHitz = Number(quote.estimatedOut) / STROOPS;
-	const slippageBps = 500; // 5% slippage tolerance (500 basis points) - must be number
-	const minHitz = estimatedHitz * 0.95;
+	const slippageBps = '100'; // 1% slippage tolerance (100 basis points) - must be string
+	const minHitz = estimatedHitz * 0.99; // 1% slippage protection
 	
 	console.log(`\n📊 Swap Summary:`);
 	console.log(`   Sending: ${sendAmount} XLM`);
 	console.log(`   Expected: ${estimatedHitz.toFixed(2)} HITZ`);
-	console.log(`   Minimum (5% slippage): ${minHitz.toFixed(2)} HITZ`);
+	console.log(`   Minimum (1% slippage): ${minHitz.toFixed(2)} HITZ`);
 	console.log(`   Price impact: ${quote.priceImpact}%`);
 	
 	// Build the swap transaction via Soroswap API
