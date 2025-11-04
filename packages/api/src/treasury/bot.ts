@@ -12,6 +12,10 @@ const STROOPS = 10_000_000;
 const AQUA_CODE = 'AQUA';
 const AQUA_ISSUER = 'GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA';
 
+// Soroban contract addresses for Soroswap DEX aggregator
+const XLM_CONTRACT_ID = 'CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA';
+const HITZ_CONTRACT_ID = 'CBS5ZVKSSUKF4JY77CKUZPN72EDUM3OOGPYZKFC3KQVONXPJTF6UODD7';
+
 function getNetworkPassphrase(network: string | undefined) {
 	return network === 'testnet' ? Networks.TESTNET : Networks.PUBLIC;
 }
@@ -128,7 +132,7 @@ async function estimatePathPayment(
 	if (effectiveRate > 1.0) {
 		console.warn(`⚠️  WARNING: Effective rate is high (${effectiveRate.toFixed(4)} XLM/HITZ).`);
 		console.warn(`   This means 1 HITZ costs more than 1 XLM. Verify this is expected!`);
-	}
+            }
 	
 	// Extra paranoia: check if we're getting less than 1 HITZ per 1 XLM
 	// This would be unusual but not impossible
@@ -170,8 +174,7 @@ async function resolveHitzSymbol(env: Env) {
  */
 async function getSoroswapQuote(
 	xlmAmount: bigint,
-	hitzAssetCode: string,
-	hitzIssuer: string,
+	network: string | undefined,
 	apiKey: string
 ): Promise<{ route: any; estimatedOut: string; priceImpact: string }> {
 	const amountInStroops = xlmAmount.toString();
@@ -179,25 +182,32 @@ async function getSoroswapQuote(
 	// Soroswap API endpoint
 	const apiUrl = 'https://api.soroswap.finance/api';
 	
-	// Build the quote request
-	// For XLM (native), use 'native' as the asset identifier
-	// For HITZ, use the format: 'code:issuer'
-	const params = new URLSearchParams({
-		amountIn: amountInStroops,
-		tokenIn: 'native', // XLM native asset
-		tokenOut: `${hitzAssetCode}:${hitzIssuer}`,
+	// Network parameter (mainnet or testnet)
+	const networkParam = network === 'testnet' ? 'testnet' : 'mainnet';
+	
+	// Build the quote request body (must be POST with JSON)
+	const requestBody = {
+		assetIn: XLM_CONTRACT_ID,  // XLM contract address
+		assetOut: HITZ_CONTRACT_ID, // HITZ contract address
+		amount: parseInt(amountInStroops), // Must be integer, not string
 		tradeType: 'EXACT_IN',
-	});
+		protocols: [['aqua'], ['sdex'],['soroswap'], ['phoenix']], // Aggregate from all DEXes
+		slippageBps: 100, // 1% slippage (will be used in build as well)
+		maxHops: 3, // Allow up to 3 hops for better rates
+	};
 	
 	console.log(`🔍 Querying Soroswap for best route...`);
 	console.log(`   Input: ${Number(xlmAmount) / STROOPS} XLM`);
-	console.log(`   Output: ${hitzAssetCode}`);
+	console.log(`   Output: HITZ (${HITZ_CONTRACT_ID.substring(0, 8)}...)`);
+	console.log(`   Network: ${networkParam}`);
 	
-	const response = await fetch(`${apiUrl}/quote?${params.toString()}`, {
+	const response = await fetch(`${apiUrl}/quote?network=${networkParam}`, {
+		method: 'POST',
 		headers: {
 			'Authorization': `Bearer ${apiKey}`,
 			'Content-Type': 'application/json',
 		},
+		body: JSON.stringify(requestBody),
 	});
 	
 	if (!response.ok) {
@@ -222,7 +232,7 @@ async function getSoroswapQuote(
 	const priceImpact = quote.priceImpact || '0';
 	
 	console.log(`✅ Soroswap route found:`);
-	console.log(`   Expected output: ${Number(estimatedOut) / STROOPS} ${hitzAssetCode}`);
+	console.log(`   Expected output: ${Number(estimatedOut) / STROOPS} HITZ`);
 	console.log(`   Price impact: ${priceImpact}%`);
 	if (quote.route?.path) {
 		const pathStr = quote.route.path.map((p: any) => p.symbol || p.code || 'unknown').join(' → ');
@@ -242,14 +252,16 @@ async function getSoroswapQuote(
 async function buildSoroswapTransaction(
 	route: any,
 	fromAddress: string,
-	slippageBps: string,
+	slippageBps: number,
+	network: string | undefined,
 	apiKey: string
 ): Promise<string> {
 	const apiUrl = 'https://api.soroswap.finance/api';
+	const networkParam = network === 'testnet' ? 'testnet' : 'mainnet';
 	
 	console.log(`🔨 Building swap transaction...`);
 	
-	const response = await fetch(`${apiUrl}/build`, {
+	const response = await fetch(`${apiUrl}/build?network=${networkParam}`, {
 		method: 'POST',
 		headers: {
 			'Authorization': `Bearer ${apiKey}`,
@@ -258,7 +270,7 @@ async function buildSoroswapTransaction(
 		body: JSON.stringify({
 			route,
 			from: fromAddress,
-			slippageBps,
+			slippageBps, // Number, not string
 		}),
 	});
 	
@@ -446,21 +458,21 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
 		if (!hasHitzTrustline) {
 			console.log(`   Adding HITZ trustline`);
 			trustlineOps.push(Operation.changeTrust({ asset: hitzAsset }));
-		}
-		
+			}
+			
 		if (!hasAquaTrustline) {
 			console.log(`   Adding AQUA trustline`);
 			trustlineOps.push(Operation.changeTrust({ asset: aquaAsset }));
-		}
-		
+			}
+			
 		const trustlineBuilder = new TransactionBuilder(new Account(account.id, account.sequence), {
 			fee: (baseFee * trustlineOps.length).toString(),
-			networkPassphrase,
-		});
+				networkPassphrase,
+			});
 		trustlineOps.forEach((op) => trustlineBuilder.addOperation(op));
 		const trustlineTx = trustlineBuilder.setTimeout(0).build();
 		trustlineTx.sign(treasuryKeys);
-		
+			
 		const trustlineXdr = trustlineTx.toXDR();
 		const trustlineResponse = await fetch(`${horizonUrl}/transactions`, {
 			method: 'POST',
@@ -472,7 +484,7 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
 			const errBody = await trustlineResponse.text();
 			console.error('❌ Trustline transaction failed:', errBody);
 			throw new Error(`Trustline setup failed (${trustlineResponse.status}): ${errBody}`);
-		}
+			}
 		
 		console.log(`✅ Trustlines created successfully`);
 		
@@ -482,7 +494,7 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
 	
 	console.log(`\n💱 Buying HITZ via Soroswap DEX Aggregator...`);
 	console.log(`   Available: ${spendable.toFixed(2)} XLM`);
-	
+			
 	// ============================================================================
 	// STEP 2: GET QUOTE AND BUILD TRANSACTION
 	// ============================================================================
@@ -494,8 +506,7 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
 	try {
 		quote = await getSoroswapQuote(
 			xlmAmountBigInt,
-			hitzAssetCode,
-			env.ISSUER_ID,
+			env.STELLAR_NETWORK,
 			env.SOROSWAP_API_KEY
 		);
 	} catch (quoteError: any) {
@@ -506,7 +517,7 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
 	
 	// Calculate expected output with slippage protection
 	const estimatedHitz = Number(quote.estimatedOut) / STROOPS;
-	const slippageBps = '500'; // 5% slippage tolerance (500 basis points)
+	const slippageBps = 500; // 5% slippage tolerance (500 basis points) - must be number
 	const minHitz = estimatedHitz * 0.95;
 	
 	console.log(`\n📊 Swap Summary:`);
@@ -522,6 +533,7 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
 			quote.route,
 			treasuryKeys.publicKey(),
 			slippageBps,
+			env.STELLAR_NETWORK,
 			env.SOROSWAP_API_KEY
 		);
 	} catch (buildError: any) {
@@ -546,8 +558,8 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
 	
 	// Sign the swap transaction with treasury keys
 	console.log(`\n🔏 Signing swap transaction...`);
-	transaction.sign(treasuryKeys);
-	
+			transaction.sign(treasuryKeys);
+			
 	// Submit to Horizon
 	console.log(`📤 Submitting swap transaction...`);
 	const swapXdr = transaction.toXDR();
@@ -561,23 +573,23 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
 		const errBody = await swapResponse.text();
 		console.error('❌ Swap transaction failed:', errBody);
 		throw new Error(`Swap failed (${swapResponse.status}): ${errBody}`);
-	}
+			}
 	
 	const result: any = await swapResponse.json();
 	console.log(`✅ Swap successful! Hash: ${result?.hash}`);
-	
+			
 	console.log('\n=== TREASURY BOT COMPLETED SUCCESSFULLY ===');
 	console.log(`✅ Oracle updated`);
 	console.log(`✅ Existing HITZ distributed`);
 	console.log(`✅ Bought ${estimatedHitz.toFixed(2)} HITZ with ${sendAmount} XLM`);
 	console.log(`🔗 TX: ${result?.hash}`);
-	
-	return {
-		status: 'submitted',
-		txHash: result?.hash,
+			
+			return {
+				status: 'submitted',
+				txHash: result?.hash,
 		buyAmount: quote.estimatedOut,
 		spendAmount: sendAmount,
-	};
+			};
 	} catch (error: any) {
 		console.error('=== TREASURY BOT FAILED ===');
 		console.error('Error message:', error?.message || error);
