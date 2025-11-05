@@ -2,8 +2,14 @@ import ContractClient from '../../contract';
 
 const PRICE_UPDATE_THRESHOLD = 0.001; // 0.1% change triggers update (more sensitive to price changes)
 const UPDATE_INTERVAL = 3600; // 1 hour minimum between updates
-const MAINNET_HORIZON_URL = 'https://horizon.stellar.org';
-const TESTNET_HORIZON_URL = 'https://horizon-testnet.stellar.org';
+const STROOPS = 10_000_000;
+
+// Soroban contract addresses (same as in bot.ts)
+const XLM_CONTRACT_ID = 'CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA';
+const HITZ_CONTRACT_ID = 'CBS5ZVKSSUKF4JY77CKUZPN72EDUM3OOGPYZKFC3KQVONXPJTF6UODD7';
+
+// Use a representative trade size to get market price (not affected by small trade sizes)
+const REPRESENTATIVE_XLM_AMOUNT = 50; // 100 XLM for representative pricing
 
 interface OracleRunResult {
 	status: 'updated' | 'skipped';
@@ -13,65 +19,85 @@ interface OracleRunResult {
 	priceChange?: string;
 }
 
-function getHorizonUrl(network: string | undefined) {
-	return network === 'testnet' ? TESTNET_HORIZON_URL : MAINNET_HORIZON_URL;
-}
-
-async function fetchJson<T = any>(url: string): Promise<T> {
-	const res = await fetch(url);
-	if (!res.ok) {
-		const text = await res.text();
-		throw new Error(`HTTP ${res.status} fetching ${url}: ${text}`);
-	}
-	return (await res.json()) as T;
-}
-
 /**
- * Fetch current HITZ/XLM market price from Stellar Expert API
- * Converts USD prices to XLM-denominated price
+ * Fetch current HITZ/XLM market price from Soroswap API
+ * Uses a representative trade amount to get accurate market pricing
  * 
  * CRITICAL: This function throws on any error - no fallbacks!
  * Fallback prices could result in massive losses if oracle is set incorrectly.
  */
-async function fetchMarketPrice(hitzIssuer: string): Promise<number> {
-	// Fetch HITZ price in USD
-	const hitzUrl = `https://api.stellar.expert/explorer/public/asset/HITZ-${hitzIssuer}`;
-	console.log(`Fetching HITZ price from: ${hitzUrl}`);
-	const hitzData = await fetchJson<{ price: number }>(hitzUrl);
-	const hitzPriceUsd = hitzData.price;
-
-	if (!hitzPriceUsd || hitzPriceUsd <= 0 || !Number.isFinite(hitzPriceUsd)) {
-		throw new Error(`Invalid HITZ USD price from Stellar Expert: ${hitzPriceUsd}`);
+async function fetchMarketPriceFromSoroswap(
+	network: string | undefined,
+	apiKey: string
+): Promise<number> {
+	const apiUrl = 'https://api.soroswap.finance';
+	const networkParam = network === 'testnet' ? 'testnet' : 'mainnet';
+	
+	// Use representative amount (100 XLM) to get market price
+	const amountInStroops = (REPRESENTATIVE_XLM_AMOUNT * STROOPS).toString();
+	
+	console.log(`🔍 Fetching HITZ market price from Soroswap...`);
+	console.log(`   Using representative amount: ${REPRESENTATIVE_XLM_AMOUNT} XLM`);
+	console.log(`   Network: ${networkParam}`);
+	
+	const requestBody = {
+		assetIn: XLM_CONTRACT_ID,
+		assetOut: HITZ_CONTRACT_ID,
+		amount: amountInStroops,
+		tradeType: 'EXACT_IN',
+		protocols: ['aqua', 'sdex', 'soroswap', 'phoenix'],
+		slippageBps: '100', // 1% slippage for quote
+		maxHops: 3,
+	};
+	
+	const response = await fetch(`${apiUrl}/quote?network=${networkParam}`, {
+		method: 'POST',
+		headers: {
+			'Authorization': `Bearer ${apiKey}`,
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify(requestBody),
+	});
+	
+	if (!response.ok) {
+		const errorText = await response.text();
+		throw new Error(`Soroswap quote failed (${response.status}): ${errorText}`);
 	}
-
-	// Fetch XLM price in USD
-	const xlmUrl = 'https://api.stellar.expert/explorer/public/asset/XLM';
-	console.log(`Fetching XLM price from: ${xlmUrl}`);
-	const xlmData = await fetchJson<{ price: number }>(xlmUrl);
-	const xlmPriceUsd = xlmData.price;
-
-	if (!xlmPriceUsd || xlmPriceUsd <= 0 || !Number.isFinite(xlmPriceUsd)) {
-		throw new Error(`Invalid XLM USD price from Stellar Expert: ${xlmPriceUsd}`);
+	
+	const quote: any = await response.json();
+	
+	if (!quote || !quote.amountOut) {
+		throw new Error(`Invalid Soroswap quote response: ${JSON.stringify(quote).substring(0, 500)}`);
 	}
-
-	// Calculate HITZ price in XLM: HITZ_USD / XLM_USD
-	// Example: HITZ = $0.064, XLM = $0.318 → 0.064/0.318 = 0.201 XLM per HITZ
-	const hitzPriceXlm = hitzPriceUsd / xlmPriceUsd;
-
-	if (!Number.isFinite(hitzPriceXlm) || hitzPriceXlm <= 0) {
-		throw new Error(`Invalid calculated HITZ/XLM price: ${hitzPriceXlm} (HITZ: $${hitzPriceUsd}, XLM: $${xlmPriceUsd})`);
+	
+	// Calculate actual market rate: XLM per HITZ
+	// amountIn is in stroops (XLM), amountOut is in stroops (HITZ)
+	const amountInXlm = Number(quote.amountIn) / STROOPS;
+	const amountOutHitz = Number(quote.amountOut) / STROOPS;
+	const hitzPerXlm = amountOutHitz / amountInXlm; // How much HITZ you get per 1 XLM
+	const xlmPerHitz = 1 / hitzPerXlm; // How much XLM you need per 1 HITZ (oracle format)
+	
+	if (!Number.isFinite(xlmPerHitz) || xlmPerHitz <= 0) {
+		throw new Error(`Invalid calculated HITZ/XLM price: ${xlmPerHitz} (in: ${amountInXlm} XLM, out: ${amountOutHitz} HITZ)`);
 	}
-
-	console.log(`Oracle Stellar Expert API:`);
-	console.log(`  HITZ: $${hitzPriceUsd.toFixed(6)} USD`);
-	console.log(`  XLM: $${xlmPriceUsd.toFixed(6)} USD`);
-	console.log(`  HITZ price: ${hitzPriceXlm.toFixed(7)} XLM per HITZ`);
-
-	return hitzPriceXlm;
+	
+	const priceImpact = quote.priceImpactPct || '0';
+	
+	console.log(`✅ Soroswap market price:`);
+	console.log(`   Rate: ${hitzPerXlm.toFixed(4)} HITZ per XLM`);
+	console.log(`   Oracle price: ${xlmPerHitz.toFixed(7)} XLM per HITZ`);
+	console.log(`   Price impact: ${priceImpact}%`);
+	if (quote.rawTrade?.distribution) {
+		const protocols = quote.rawTrade.distribution.map((d: any) => d.protocol_id).join(', ');
+		console.log(`   Using protocols: ${protocols}`);
+	}
+	
+	return xlmPerHitz;
 }
 
 /**
- * Oracle bot: Fetches current market price and updates the contract
+ * Oracle bot: Fetches current market price from Soroswap and updates the contract
+ * Uses a representative trade amount (100 XLM) to get accurate market pricing
  * Treasury address is used as oracle updater (no separate oracle key needed)
  */
 export async function runOracleBot(env: Env): Promise<OracleRunResult> {
@@ -83,25 +109,25 @@ export async function runOracleBot(env: Env): Promise<OracleRunResult> {
 			};
 		}
 
-		const contract = new ContractClient(env);
-
-		// Get HITZ asset info
-		const hitzIssuer = env.ISSUER_ID;
-
-		if (!hitzIssuer) {
+		if (!env.SOROSWAP_API_KEY) {
 			return {
 				status: 'skipped',
-				reason: 'ISSUER_ID not configured',
+				reason: 'SOROSWAP_API_KEY not configured',
 			};
 		}
 
-		// Fetch current market price from Stellar Expert API
-		const marketPriceXlm = await fetchMarketPrice(hitzIssuer);
-		const marketPriceStroops = Math.floor(marketPriceXlm * 10_000_000);
+		const contract = new ContractClient(env);
+
+		// Fetch current market price from Soroswap API (representative 100 XLM trade)
+		const marketPriceXlm = await fetchMarketPriceFromSoroswap(
+			env.STELLAR_NETWORK,
+			env.SOROSWAP_API_KEY
+		);
+		const marketPriceStroops = Math.floor(marketPriceXlm * STROOPS);
 
 		// Get current oracle price from contract
 		const [currentPriceStroops, lastUpdate] = await contract.getOracleData();
-		const currentPriceXlm = Number(currentPriceStroops) / 10_000_000;
+		const currentPriceXlm = Number(currentPriceStroops) / STROOPS;
 
 		// Calculate price change percentage
 		const priceChange = Math.abs(marketPriceXlm - currentPriceXlm) / currentPriceXlm;
