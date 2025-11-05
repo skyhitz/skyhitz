@@ -4,6 +4,7 @@ type Query {
   entryLikes(id: String!): EntryLikes!
   userCredits: Float!
   userHitzBalance: Float!
+  hitzPriceXlm: Float!
   userEntries(userId: String!): [Entry!]!
   userLikes: [Entry!]!
   xlmPrice: String!

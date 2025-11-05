@@ -103,6 +103,12 @@ export const XLM_PRICE = gql`
   }
 `
 
+export const HITZ_PRICE_XLM = gql`
+  query HitzPriceXlm {
+    hitzPriceXlm
+  }
+`
+
 export const USER_COLLECTION = gql`
   query UserCollection($userId: String!) {
     userEntries(userId: $userId) {

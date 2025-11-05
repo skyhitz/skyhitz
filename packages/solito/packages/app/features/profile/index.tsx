@@ -22,7 +22,7 @@ import {
   useClaimEarningsMutation,
 } from 'app/api/graphql/mutations'
 import { useLazyQuery, useQuery } from '@apollo/client'
-import { CLAIMABLE_EARNINGS_PREVIEW, USER_HITZ_BALANCE, XLM_PRICE } from 'app/api/graphql/operations'
+import { CLAIMABLE_EARNINGS_PREVIEW, USER_HITZ_BALANCE, XLM_PRICE, HITZ_PRICE_XLM } from 'app/api/graphql/operations'
 import { P, ActivityIndicator } from 'app/design/typography'
 import { useToast } from 'app/provider/toast'
 import Stellar from 'app/ui/icons/stellar'
@@ -42,6 +42,7 @@ export function ProfileScreen({ user }: { user: User }) {
   const { data: credits, refetch: refetchUserCredits } = useUserCreditsQuery()
   const { data: hitzBalanceData, refetch: refetchHitzBalance } = useQuery(USER_HITZ_BALANCE, { skip: !user })
   const { data: priceData } = useQuery(XLM_PRICE)
+  const { data: hitzPriceData } = useQuery(HITZ_PRICE_XLM)
   const { data: userLikesData } = useUserLikesQuery()
   const { data: userCollectionData } = useUserCollectionQuery(user.id)
   const [claimEarnings] = useClaimEarningsMutation()
@@ -74,7 +75,13 @@ export function ProfileScreen({ user }: { user: User }) {
 
   const stakedHitz = stroopsToToken(totalStakedStroops, AssetType.HITZ)
   const xlmPrice = Number.parseFloat((priceData?.xlmPrice as string) || '0') || 0
-  const approxUsd = (credits?.userCredits || 0) * xlmPrice
+  const hitzPriceXlm = Number.parseFloat((hitzPriceData?.hitzPriceXlm as string) || '0') || 0
+  
+  // Calculate total USD value including XLM, HITZ, and staked HITZ
+  const xlmValue = (credits?.userCredits || 0) * xlmPrice
+  const hitzValue = (hitzBalanceData?.userHitzBalance || 0) * hitzPriceXlm * xlmPrice
+  const stakedValue = stakedHitz * hitzPriceXlm * xlmPrice
+  const approxUsd = xlmValue + hitzValue + stakedValue
 
   // Attempt to claim earnings when the profile screen loads, but only once
   useEffect(() => {
