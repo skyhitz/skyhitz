@@ -9,12 +9,14 @@ import { AlgoliaClient } from 'src/algolia/algolia';
  * Invest Entry Resolver - NEW CONTRACT INTERFACE
  * 
  * Flow:
- * 1. User invests XLM into an entry
- * 2. Contract records action as 'invest' kind
- * 3. XLM is added to entry's TVL (Total Value Locked)
- * 4. User receives HITZ rewards based on difficulty
- * 5. User's HITZ is auto-staked for future rewards
- * 6. Algolia index is updated with new TVL, APR, and stake
+ * 1. Verify entry exists in Algolia + check contract (parallel, for speed)
+ * 2. Create entry in contract if needed (auto-provision)
+ * 3. User invests XLM into an entry
+ * 4. Contract records action as 'invest' kind
+ * 5. XLM is added to entry's TVL (Total Value Locked)
+ * 6. User receives HITZ rewards based on difficulty
+ * 7. User's HITZ is auto-staked for future rewards
+ * 8. Algolia index is updated with new TVL, APR, and stake
  */
 export const investEntryResolver = async (_: any, args: any, context: Context) => {
 	const { id, amount } = args;
@@ -28,7 +30,38 @@ export const investEntryResolver = async (_: any, args: any, context: Context) =
 	console.log('📊 Invest resolver - Entry:', id, 'Amount:', amount, 'stroops');
 
 	try {
-		// 1. Call the NEW unified record_action function
+		// 1. Check Algolia (hard requirement - will throw if not found)
+		// 2. Check contract in parallel (may or may not exist)
+		console.log('🔍 Checking entry existence in Algolia and contract...');
+		const [algoliaEntry, contractEntry] = await Promise.all([
+			algolia.getEntry(id),
+			contract.getEntry(id).catch(() => null) // Contract entry is optional, return null if not found
+		]);
+
+		// Validate Algolia entry exists and ID matches
+		if (!algoliaEntry || algoliaEntry.objectID !== id) {
+			console.error('❌ Entry not found or ID mismatch in Algolia:', id);
+			throw new Error('Entry does not exist. Please ensure the entry is properly indexed before investing.');
+		}
+		console.log('✅ Entry found in Algolia');
+
+		// Check if entry exists in contract
+		const entryExists = contractEntry !== null;
+		console.log(entryExists ? '✅ Entry exists in contract' : '❌ Entry not found in contract, will create it');
+
+		// 3. Create entry in contract if it doesn't exist (admin operation)
+		if (!entryExists) {
+			console.log('📝 Creating entry in contract before investing...');
+			try {
+				await contract.createEntry(id);
+				console.log('✅ Entry created in contract');
+			} catch (createError: any) {
+				console.error('❌ Failed to create entry:', createError);
+				throw new Error(`Failed to create entry in contract: ${createError.message || createError}`);
+			}
+		}
+
+		// 4. Call the NEW unified record_action function
 		// This replaces the old contract.invest() method
 		const res = await contract.recordAction(
 			await encryption.decrypt(user.seed),
@@ -39,15 +72,15 @@ export const investEntryResolver = async (_: any, args: any, context: Context) =
 		
 		console.log('✅ Record action result:', res?.status);
 
-		// 2. Get updated entry data from contract
+		// 5. Get updated entry data from contract
 		// NEW: Entry interface has escrow_xlm and tvl_xlm fields
 		const sorobanEntry = await contract.getEntry(id);
 		
-		// 3. Get entry statistics (NEW method)
+		// 6. Get entry statistics (NEW method)
 		// Returns: { total_staked, reward_pool, apr }
 		const stats = await contract.getEntryStats(id);
 		
-		// 4. Get user's stake in this entry (NEW method)
+		// 7. Get user's stake in this entry (NEW method)
 		// In the new contract, "shares" are now called "stakes"
 		const userStake = await contract.getStake(id, user.publicKey);
 		
@@ -58,7 +91,7 @@ export const investEntryResolver = async (_: any, args: any, context: Context) =
 			userStake
 		});
 
-		// 5. Update Algolia search index with new data
+		// 8. Update Algolia search index with new data
 		try {
 			await algolia.partialUpdateEntry({
 				// Convert stroops to XLM for display (1 XLM = 10^7 stroops)
@@ -79,7 +112,7 @@ export const investEntryResolver = async (_: any, args: any, context: Context) =
 			// Don't fail the whole transaction if Algolia fails
 		}
 
-		// 6. Send email notification for large investments (> 0.3 XLM)
+		// 9. Send email notification for large investments (> 0.3 XLM)
 		try {
 			if (amount > 3_000_000) {
 				await mailer.sendNftInvestEmail(user.email);
@@ -89,7 +122,7 @@ export const investEntryResolver = async (_: any, args: any, context: Context) =
 			// Don't fail the transaction if email fails
 		}
 
-		// 7. Return success response
+		// 10. Return success response
 		return {
 			xdr: '',
 			success: res?.status === 'SUCCESS',
