@@ -29,14 +29,19 @@ export function SignUpForm({ signedXDR }: SignUpFormProps = {}) {
   // Effect to handle navigation and user update after successful signup
   useEffect(() => {
     if (data?.createUserWithEmail?.user) {
-      // Track sign-up event
-      trackSignUp(data.createUserWithEmail.user.id)
+      const user = data.createUserWithEmail.user
       
-      // Update user state with returned user data
-      updateUser(data.createUserWithEmail.user)
+      // Track sign-up event with user ID
+      trackSignUp(user.id)
       
-      // Navigate to search page (formerly dashboard)
-      router.replace('/search')
+      // If user has JWT, they're logged in (wallet connect flow)
+      if (user.jwt) {
+        // Update user state with returned user data
+        updateUser(user)
+        
+        // Navigate to search page (formerly dashboard)
+        router.replace('/search')
+      }
     }
   }, [data, router, updateUser])
   
@@ -52,8 +57,11 @@ export function SignUpForm({ signedXDR }: SignUpFormProps = {}) {
           signedXDR: signedXDR,
         },
       })
+      
       const createdUser = res?.data?.createUserWithEmail?.user
-      if (!createdUser) {
+      
+      // If user was created but has no JWT, they need email verification
+      if (createdUser && !createdUser.jwt) {
         // Auto-start email sign-in: send magic link
         try {
           await requestToken({ variables: { usernameOrEmail: formData.email } })
@@ -63,6 +71,7 @@ export function SignUpForm({ signedXDR }: SignUpFormProps = {}) {
           console.error('Request token failed', e)
         }
       }
+      // If user has JWT, the useEffect will handle login
     } catch (err) {
       console.error('Sign up error:', err)
     }

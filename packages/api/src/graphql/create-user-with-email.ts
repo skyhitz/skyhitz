@@ -109,7 +109,11 @@ export const createUserWithEmailResolver = async (_: any, args: any, ctx: Contex
 				user: { ...user, managed: user.seed !== '' },
 			};
 		} else {
-			return { message: 'User created.' };
+			// Return only user ID for analytics tracking (no sensitive data)
+			return { 
+				message: 'User created.',
+				user: { id: user.id },
+			};
 		}
 	} catch (e) {
 		console.log(e);
