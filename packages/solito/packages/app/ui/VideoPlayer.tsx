@@ -1,13 +1,23 @@
 /**
+ * @deprecated This component is deprecated for web. Use PersistentPlayer instead.
+ * 
+ * The new architecture uses:
+ * - PersistentPlayer (app/ui/player/PersistentPlayer.tsx) - Always mounted at Provider level
+ * - FloatingMiniPlayer (app/ui/player/FloatingMiniPlayer.tsx) - Shows controls on all pages
+ * 
+ * This file is kept for reference and potential native implementation.
+ * 
+ * Original description:
  * Unified Video Player Component for Web and Native
  * Uses the unified player store with adapter pattern
  */
 import { useCallback, useRef, useState, useEffect } from 'react'
 import { View, Platform } from 'react-native'
-import { imageUrlMedium } from 'app/utils/entry'
+import { imageUrlMedium, videoSrc } from 'app/utils/entry'
 import { SolitoImage } from 'app/design/solito-image'
 import { PlaybackState, usePlayerStore } from 'app/state/player'
 import { logPlayerError as logPlayerErrorUtil } from 'app/utils/player-logging'
+import { createPortal } from 'react-dom'
 
 // Web-specific imports
 import dynamic from 'next/dynamic'
@@ -19,18 +29,22 @@ const ReactPlayer = dynamic(() => import('react-player/lazy'), {
 })
 
 // Poster component
-function Poster() {
+function Poster({ isInEntryPage = false }: { isInEntryPage?: boolean }) {
   const { entry } = usePlayerStore()
 
   const posterUri = imageUrlMedium(entry?.imageUrl || '')
 
+  const containerClassName = isInEntryPage
+    ? "absolute inset-0 w-full h-full items-center justify-center"
+    : "absolute aspect-square max-h-[50vh] w-screen items-center justify-center md:max-w-[3.5rem] md:rounded-md md:mx-4"
+
   return (
-    <View className="absolute aspect-square max-h-[50vh] w-screen items-center justify-center md:max-w-[3.5rem] md:rounded-md md:mx-4">
+    <View className={containerClassName}>
       {!!entry?.imageUrl && (
         <SolitoImage
           fill
           src={posterUri}
-          className="aspect-square md:rounded-md"
+          className={isInEntryPage ? "w-full h-full" : "aspect-square md:rounded-md"}
           alt="player"
           contentFit="cover"
           sizes="(max-width: 768px) 100vw"
@@ -53,6 +67,7 @@ function WebVideoPlayer() {
     isReady,
     shouldPlay,
     play,
+    videoPortalTarget,
     setPlayerRef,
     setProgress,
     setPlaybackState,
@@ -61,6 +76,9 @@ function WebVideoPlayer() {
     setDuration,
     setIsReady,
   } = usePlayerStore()
+  
+  // Check if we're rendering in the entry page portal
+  const isInEntryPagePortal = !!videoPortalTarget
 
   // Register player ref with store
   const handleRef = useCallback(
@@ -123,7 +141,7 @@ function WebVideoPlayer() {
     if (shouldPlay) {
       play()
     }
-  }, [setIsReady, shouldPlay])
+  }, [setIsReady, shouldPlay, play])
 
 
   const handleOnStart = useCallback(() => {
@@ -237,15 +255,18 @@ function WebVideoPlayer() {
 
   // (Removed Android-specific raw preference; unified preflight handles all platforms.)
 
+  // Adjust container styles based on whether we're in the entry page portal
+  const containerClassName = isInEntryPagePortal
+    ? `aspect-square w-full h-full items-center justify-center bg-[--bg-secondary-color] md:rounded-md ${isReady ? 'opacity-100' : 'opacity-0'}`
+    : `aspect-square max-h-[50vh] w-screen items-center justify-center md:max-w-[3.5rem] md:rounded-md md:mx-4 ${
+        isReady ? 'opacity-100' : 'opacity-0'
+      }`
+
   return (
     <>
-      <View
-        className={`aspect-square max-h-[50vh] w-screen items-center justify-center md:max-w-[3.5rem] md:rounded-md md:mx-4 ${
-          isReady ? 'opacity-100' : 'opacity-0'
-        }`}
-      >
+      <View className={containerClassName}>
         {/* Render poster only for audio-only sources to avoid covering video */}
-        {isAudioOnly ? <Poster /> : null}
+        {isAudioOnly ? <Poster isInEntryPage={isInEntryPagePortal} /> : null}
         {!!playbackUri && (
           // Detect if the engine supports native HLS (iOS Safari/Chrome on iOS)
           // On those, do NOT force hls.js
@@ -408,12 +429,69 @@ function NativeVideoPlayer() {
   )
 }
 
-// Main VideoPlayer component
-export function VideoPlayer() {
+// Internal player component (not exported)
+function VideoPlayerInternal() {
   // Render platform-specific player
   if (Platform.OS === 'web') {
     return <WebVideoPlayer />
   } else {
     return <NativeVideoPlayer />
   }
+}
+
+// Main VideoPlayer component with portal support
+export function VideoPlayer() {
+  const { videoPortalTarget, entry } = usePlayerStore()
+  const [portalElement, setPortalElement] = useState<HTMLElement | null>(null)
+  const hasVideo = entry?.videoUrl && videoSrc(entry.videoUrl)
+
+  // Find the portal target element
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !videoPortalTarget) {
+      setPortalElement(null)
+      return
+    }
+
+    const element = document.getElementById(videoPortalTarget)
+    setPortalElement(element)
+  }, [videoPortalTarget])
+
+  // Render the player content
+  const playerContent = (
+    <div className="md:aspect-square md:w-full md:h-full">
+      <VideoPlayerInternal />
+    </div>
+  )
+
+  // If portal target exists, render via portal (desktop) AND normal (mobile)
+  if (portalElement && videoPortalTarget) {
+    return (
+      <>
+        {/* Portal for desktop - renders into entry page */}
+        {createPortal(playerContent, portalElement)}
+        
+        {/* Normal render for mobile - hidden on desktop, visible on mobile */}
+        <div className="md:hidden">
+          <VideoPlayerInternal />
+        </div>
+        
+        {/* Poster in FullScreenPlayer location on desktop */}
+        {hasVideo && (
+          <View className="hidden md:flex aspect-square max-h-[50vh] w-screen items-center justify-center md:max-w-[3.5rem] md:rounded-md md:mx-4">
+            <SolitoImage
+              fill
+              src={imageUrlMedium(entry?.imageUrl || '')}
+              className="aspect-square md:rounded-md"
+              alt="player"
+              contentFit="cover"
+              sizes="(max-width: 768px) 100vw"
+            />
+          </View>
+        )}
+      </>
+    )
+  }
+
+  // Otherwise render normally (no portal target)
+  return playerContent
 }

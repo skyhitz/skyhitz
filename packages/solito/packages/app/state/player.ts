@@ -230,7 +230,11 @@ export interface PlayerState {
   shuffle: boolean
   isReady: boolean
 
+  // Video portal target (for rendering video in entry page on desktop)
+  videoPortalTarget: string | null
+
   // Actions
+  setVideoPortalTarget: (target: string | null) => void
   setEntry: (entry: Entry | null) => void
   setPlaybackUri: (uri: string) => void
   setPlayerRef: (player: any) => void
@@ -284,8 +288,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   playerAdapter: null,
   shouldPlay: false,
   isReady: false,
+  videoPortalTarget: null,
 
   // Basic setters
+  setVideoPortalTarget: (target) => set({ videoPortalTarget: target }),
   setEntry: (entry) => set({ entry }),
   setPlaybackUri: (playbackUri) => set({ playbackUri }),
   setPlaylist: (playlist) => set({ playlist }),

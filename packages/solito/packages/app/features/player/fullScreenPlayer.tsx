@@ -2,14 +2,18 @@
 /**
  * Full screen player component
  * Migrated from legacy implementation to use Zustand
+ * 
+ * Now uses portal targets for the PersistentPlayer to render video content
  */
-import { Pressable, SafeAreaView, Text, View } from 'react-native'
+import { Pressable, Text, View, Platform } from 'react-native'
 import ChevronDown from 'app/ui/icons/chevron-down'
 import { PlayerButtonsRow } from './components/playerButtonsRow'
 import { PlayerSlider } from './components/playerSlider'
-import { VideoPlayer } from 'app/ui/VideoPlayer'
 import { MotiView } from 'moti'
 import { usePlayerStore } from 'app/state/player'
+import { PLAYER_PORTAL_TARGETS } from 'app/ui/player/PersistentPlayer'
+import { imageUrlMedium } from 'app/utils/entry'
+import { SolitoImage } from 'app/design/solito-image'
 
 type Props = {
   onTogglePress: () => void
@@ -41,6 +45,37 @@ function EntryInfo() {
   )
 }
 
+// Video container component that serves as a portal target
+function VideoContainer() {
+  const { entry } = usePlayerStore()
+
+  return (
+    <View className="aspect-square max-h-[50vh] w-screen items-center justify-center md:max-w-[3.5rem] md:rounded-md md:mx-4 relative overflow-hidden">
+      {/* Portal target for video - MOBILE ONLY */}
+      {/* PersistentPlayer will move video here on mobile */}
+      {Platform.OS === 'web' ? (
+        <div 
+          id={PLAYER_PORTAL_TARGETS.FULLSCREEN_PLAYER}
+          className="absolute inset-0 w-full h-full md:hidden"
+        />
+      ) : null}
+      
+      {/* Image poster - DESKTOP ONLY */}
+      {/* On desktop, always show the poster image in the fullscreen player bar */}
+      <View className="hidden md:flex w-full h-full">
+        <SolitoImage
+          fill
+          src={imageUrlMedium(entry?.imageUrl || '')}
+          className="aspect-square md:rounded-md"
+          alt="player"
+          contentFit="cover"
+          sizes="56px"
+        />
+      </View>
+    </View>
+  )
+}
+
 export function FullScreenPlayer({ onTogglePress, animatedStyle }: Props) {
   return (
     <MotiView
@@ -53,7 +88,8 @@ export function FullScreenPlayer({ onTogglePress, animatedStyle }: Props) {
         </Pressable>
       </View>
       <View className="w-full items-center justify-between gap-y-8 md:flex-row">
-        <VideoPlayer />
+        {/* Video container with portal target - PersistentPlayer renders here */}
+        <VideoContainer />
 
         <PlayerSlider className="md:hidden w-full" />
         <EntryInfo />
