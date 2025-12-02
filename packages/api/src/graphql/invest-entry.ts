@@ -11,9 +11,9 @@ import { AlgoliaClient } from 'src/algolia/algolia';
  * Flow:
  * 1. Verify entry exists in Algolia + check contract (parallel, for speed)
  * 2. Create entry in contract if needed (auto-provision)
- * 3. User invests XLM into an entry
+ * 3. User invests HITZ into an entry
  * 4. Contract records action as 'invest' kind
- * 5. XLM is added to entry's TVL (Total Value Locked)
+ * 5. HITZ is added to entry's TVL (Total Value Locked)
  * 6. User receives HITZ rewards based on difficulty
  * 7. User's HITZ is auto-staked for future rewards
  * 8. Algolia index is updated with new TVL, APR, and stake
@@ -73,7 +73,7 @@ export const investEntryResolver = async (_: any, args: any, context: Context) =
 		console.log('✅ Record action result:', res?.status);
 
 		// 5. Get updated entry data from contract
-		// NEW: Entry interface has escrow_xlm and tvl_xlm fields
+		// NEW: Entry interface has escrow_hitz and tvl_hitz fields
 		const sorobanEntry = await contract.getEntry(id);
 		
 		// 6. Get entry statistics (NEW method)
@@ -85,8 +85,8 @@ export const investEntryResolver = async (_: any, args: any, context: Context) =
 		const userStake = await contract.getStake(id, user.publicKey);
 		
 		console.log('📈 Entry stats:', {
-			tvl: sorobanEntry.tvl_xlm,
-			escrow: sorobanEntry.escrow_xlm,
+			tvl: sorobanEntry.tvl_hitz,
+			escrow: sorobanEntry.escrow_hitz,
 			apr: stats.apr,
 			userStake
 		});
@@ -94,10 +94,10 @@ export const investEntryResolver = async (_: any, args: any, context: Context) =
 		// 8. Update Algolia search index with new data
 		try {
 			await algolia.partialUpdateEntry({
-				// Convert stroops to XLM for display (1 XLM = 10^7 stroops)
-				tvl: Number(sorobanEntry.tvl_xlm) / 10_000_000,
+				// Convert stroops to HITZ for display (1 HITZ = 10^7 stroops)
+				tvl: Number(sorobanEntry.tvl_hitz) / 10_000_000,
 				apr: Number(stats.apr) / 100, // APR is stored as basis points (e.g., 1250 = 12.50%)
-				escrow: Number(sorobanEntry.escrow_xlm) / 10_000_000,
+				escrow: Number(sorobanEntry.escrow_hitz) / 10_000_000,
 				totalStaked: Number(stats.totalStaked) / 10_000_000, // Total HITZ staked
 				objectID: id,
 			});
@@ -112,9 +112,9 @@ export const investEntryResolver = async (_: any, args: any, context: Context) =
 			// Don't fail the whole transaction if Algolia fails
 		}
 
-		// 9. Send email notification for large investments (> 0.3 XLM)
+		// 9. Send email notification for large investments (> 3 HITZ)
 		try {
-			if (amount > 3_000_000) {
+			if (amount > 30_000_000) {
 				await mailer.sendNftInvestEmail(user.email);
 			}
 		} catch (e) {
@@ -127,7 +127,7 @@ export const investEntryResolver = async (_: any, args: any, context: Context) =
 			xdr: '',
 			success: res?.status === 'SUCCESS',
 			submitted: true,
-			message: `Successfully invested ${amount / 10_000_000} XLM`,
+			message: `Successfully invested ${amount / 10_000_000} HITZ`,
 		};
 		
 	} catch (error) {

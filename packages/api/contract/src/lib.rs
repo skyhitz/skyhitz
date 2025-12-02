@@ -3,7 +3,7 @@
 //! Skyhitz Core V1 - Soroban Smart Contract (Security Hardened)
 //!
 //! Purpose: Record user actions for music entries, reward users with HITZ tokens,
-//! attribute XLM fees to entries, and manage HITZ staking for invest/mine actions.
+//! attribute HITZ fees to entries, and manage HITZ staking for invest/mine actions.
 //!
 //! HITZ Token:
 //! - OpenZeppelin SEP-41 compatible fungible token with fixed cap: 21,000,000 HITZ
@@ -11,27 +11,27 @@
 //! - This contract requests rewards from the token based on action difficulty
 //! - Supply cap enforced: Minting stops at 21M HITZ total supply
 //!
-//! XLM Fees:
-//! - All XLM fees are transferred to Treasury address (market-making bot for liquidity)
-//! - Contract does not swap or interact with AMMs
+//! HITZ Fees:
+//! - All HITZ fees are transferred to Treasury address (for reward distribution)
+//! - Users pay in HITZ, eliminating need for dual-token economy
 //!
 //! Action Kinds & Parameters (fees calculated as base_fee * difficulty):
-//! - stream:   difficulty 1,  fee = base_fee × 1  (default 0.01 XLM), adds to escrow
-//! - like:     difficulty 2,  fee = base_fee × 2  (default 0.02 XLM), adds to escrow
-//! - download: difficulty 3,  fee = base_fee × 3  (default 0.03 XLM), adds to escrow
-//! - mine:     difficulty 10, fee = base_fee × 10 (default 0.1 XLM), adds to TVL, auto-stakes
-//! - invest:   DYNAMIC fee (min 0.3 XLM), proportional difficulty (10 per 1 XLM), adds to TVL, auto-stakes
+//! - stream:   difficulty 1,  fee = base_fee × 1  (default 0.1 HITZ), adds to escrow
+//! - like:     difficulty 2,  fee = base_fee × 2  (default 0.2 HITZ), adds to escrow
+//! - download: difficulty 3,  fee = base_fee × 3  (default 0.3 HITZ), adds to escrow
+//! - mine:     difficulty 10, fee = base_fee × 10 (default 1 HITZ), adds to TVL, auto-stakes
+//! - invest:   DYNAMIC fee (min 3 HITZ), proportional difficulty (10 per 1 HITZ), adds to TVL, auto-stakes
 //!
 //! Base Fee:
-//! - Default: 0.01 XLM (100,000 stroops)
+//! - Default: 0.1 HITZ (1,000,000 stroops)
 //! - Admin can update via set_base_fee() to adjust all action fees proportionally
 //!
 //! Auto-stake (invest/mine only):
-//! - stake_amount = XLM_invested / HITZ_market_price (oracle-based)
+//! - stake_amount = HITZ_invested / HITZ_market_price (oracle-based)
 //! - Users get the amount of HITZ they could have bought on the DEX
-//! - Prevents arbitrage: unstaking and selling returns approximately the same XLM
+//! - Prevents arbitrage: unstaking and selling returns approximately the same HITZ
 //! - Minted directly to contract (locked), updates per-user and total stake for entry
-//! - Example: Invest 100 XLM at 0.01 XLM/HITZ → 10,000 HITZ staked
+//! - Example: Invest 100 HITZ at 0.1 XLM/HITZ → 10,000 HITZ staked
 //!
 //! Security Features:
 //! - Supply cap enforcement on all mints
@@ -71,8 +71,7 @@ pub enum DataKey {
     Admin,
     Treasury,
     HitzToken,
-    XlmToken,
-    BaseFee,                            // Base fee per difficulty unit (default 0.01 XLM)
+    BaseFee,                            // Base fee per difficulty unit (default 0.1 HITZ)
     // Emission schedule (moved into core)
     EmissionStartTs,                    // u64: halving start timestamp
     EmissionIntervalSec,                // u64: seconds per halving epoch (default 126,144,000)
@@ -99,9 +98,9 @@ pub enum DataKey {
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Entry {
-    pub tvl_xlm: i128,      // Total Value Locked (equity-bearing)
-    pub escrow_xlm: i128,   // Non-equity revenue
-    pub created_at: u64,    // Timestamp
+    pub tvl_hitz: i128,      // Total Value Locked (equity-bearing) in HITZ
+    pub escrow_hitz: i128,   // Non-equity revenue in HITZ
+    pub created_at: u64,     // Timestamp
 }
 
 #[contract]
@@ -199,16 +198,14 @@ impl SkyhitzCore {
     ///
     /// # Arguments
     /// * `admin` - Admin address with privileged rights
-    /// * `treasury` - Treasury address receiving all XLM fees (also the oracle updater)
+    /// * `treasury` - Treasury address receiving all HITZ fees (also the oracle updater)
     /// * `hitz_token` - HITZ token contract address (OpenZeppelin token)
-    /// * `xlm_token` - XLM token contract address (SAC)
-    /// * `base_fee` - Base fee per difficulty unit in stroops (default 100,000 = 0.01 XLM)
+    /// * `base_fee` - Base fee per difficulty unit in stroops (default 1,000,000 = 0.1 HITZ)
     pub fn init(
         e: Env,
         admin: Address,
         treasury: Address,
         hitz_token: Address,
-        xlm_token: Address,
         base_fee: i128,
     ) {
         if e.storage().instance().has(&DataKey::Admin) {
@@ -225,11 +222,10 @@ impl SkyhitzCore {
         e.storage().instance().set(&DataKey::Admin, &admin);
         e.storage().instance().set(&DataKey::Treasury, &treasury);
         e.storage().instance().set(&DataKey::HitzToken, &hitz_token);
-        e.storage().instance().set(&DataKey::XlmToken, &xlm_token);
         e.storage().instance().set(&DataKey::BaseFee, &base_fee);
         
-        // Initialize oracle price to same value as base_fee (e.g., 100,000 stroops = 0.01 XLM per HITZ)
-        e.storage().instance().set(&DataKey::OraclePrice, &base_fee);
+        // Initialize oracle price to 1,000,000 stroops (0.1 XLM per HITZ = 1 HITZ costs 0.1 XLM)
+        e.storage().instance().set(&DataKey::OraclePrice, &1_000_000i128);
         e.storage().instance().set(&DataKey::OracleLastUpdate, &e.ledger().timestamp());
         
         // SECURITY FIX C3: Store EntryCount in persistent storage to prevent desync on upgrade
@@ -264,36 +260,7 @@ impl SkyhitzCore {
         e.storage().instance().set(&DataKey::BaseFee, &new_base_fee);
     }
 
-    /// Transfer all contract XLM balance to treasury (admin-only)
-    ///
-    /// Used to recover XLM that may be locked in the contract after upgrade/reset.
-    /// Transfers the entire XLM balance of the contract to the treasury address.
-    ///
-    /// # Returns
-    /// The amount of XLM transferred in stroops
-    pub fn withdraw_xlm_to_treasury(e: Env) -> i128 {
-        let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
-        admin.require_auth();
-
-        let treasury: Address = e.storage().instance().get(&DataKey::Treasury).unwrap();
-        let xlm_token: Address = e.storage().instance().get(&DataKey::XlmToken).unwrap();
-        let contract_address = e.current_contract_address();
-
-        // Get contract's XLM balance
-        let token_client = token::Client::new(&e, &xlm_token);
-        let balance = token_client.balance(&contract_address);
-
-        if balance <= 0 {
-            panic!("No XLM balance to withdraw");
-        }
-
-        // Transfer all XLM to treasury
-        safe_transfer(&e, &xlm_token, &contract_address, &treasury, &balance, "withdraw XLM to treasury");
-
-        log!(&e, "Withdrew {} XLM from contract to treasury", balance);
-
-        balance
-    }
+    /// NOTE: withdraw_xlm_to_treasury() removed - no longer needed in HITZ-only economy
 
     /// Update oracle price (treasury-only)
     ///
@@ -380,8 +347,8 @@ impl SkyhitzCore {
 
         let now = e.ledger().timestamp();
         let entry = Entry {
-            tvl_xlm: 0,
-            escrow_xlm: 0,
+            tvl_hitz: 0,
+            escrow_hitz: 0,
             created_at: now,
         };
 
@@ -410,18 +377,18 @@ impl SkyhitzCore {
             .get(&entry_key)
             .unwrap_or_else(|| panic!("Entry not found"));
 
-        // SECURITY FIX H2: Transfer XLM fee from caller to Treasury with verification
+        // SECURITY FIX H2: Transfer HITZ fee from caller to Treasury with verification
         let treasury: Address = e.storage().instance().get(&DataKey::Treasury).unwrap();
-        let xlm_token: Address = e.storage().instance().get(&DataKey::XlmToken).unwrap();
-        safe_transfer(&e, &xlm_token, &caller, &treasury, &fee, "XLM fee to treasury");
+        let hitz_token: Address = e.storage().instance().get(&DataKey::HitzToken).unwrap();
+        safe_transfer(&e, &hitz_token, &caller, &treasury, &fee, "HITZ fee to treasury");
 
         // SECURITY FIX H5: Attribute fee to entry using checked arithmetic
         if adds_to_tvl {
-            entry.tvl_xlm = entry.tvl_xlm
+            entry.tvl_hitz = entry.tvl_hitz
                 .checked_add(fee)
                 .unwrap_or_else(|| panic!("TVL overflow for entry"));
         } else {
-            entry.escrow_xlm = entry.escrow_xlm
+            entry.escrow_hitz = entry.escrow_hitz
                 .checked_add(fee)
                 .unwrap_or_else(|| panic!("Escrow overflow for entry"));
         }
@@ -560,7 +527,7 @@ impl SkyhitzCore {
     /// Distribute HITZ rewards proportionally based on escrow performance
     ///
     /// Treasury bot calls this after buying HITZ with accumulated XLM fees.
-    /// Contract automatically distributes to entries based on their escrow_xlm.
+    /// Contract automatically distributes to entries based on their escrow_hitz.
     /// 
     /// # Arguments
     /// * `caller` - Treasury address that holds the HITZ
@@ -614,9 +581,9 @@ impl SkyhitzCore {
                     // Extend TTL AFTER confirming entry exists
                     e.storage().persistent().extend_ttl(&entry_key, STORAGE_LIFETIME_THRESHOLD, STORAGE_BUMP_AMOUNT);
                     
-                    if entry.escrow_xlm > 0 {
-                        total_escrow = total_escrow.saturating_add(entry.escrow_xlm);
-                        entries_with_escrow.push_back((entry_id, entry.escrow_xlm));
+                    if entry.escrow_hitz > 0 {
+                        total_escrow = total_escrow.saturating_add(entry.escrow_hitz);
+                        entries_with_escrow.push_back((entry_id, entry.escrow_hitz));
                     }
                 }
             }
@@ -718,8 +685,8 @@ impl SkyhitzCore {
             if let Some(entry_id) = e.storage().persistent().get::<DataKey, String>(&index_key) {
                 let entry_key = DataKey::Entry(entry_id.clone());
                 if let Some(entry) = e.storage().persistent().get::<DataKey, Entry>(&entry_key) {
-                    if entry.escrow_xlm > 0 {
-                        running_total = running_total.saturating_add(entry.escrow_xlm);
+                    if entry.escrow_hitz > 0 {
+                        running_total = running_total.saturating_add(entry.escrow_hitz);
                     }
                 }
             }
@@ -841,9 +808,9 @@ impl SkyhitzCore {
                 if let Some(entry) = e.storage().persistent().get::<DataKey, Entry>(&entry_key) {
                     e.storage().persistent().extend_ttl(&entry_key, STORAGE_LIFETIME_THRESHOLD, STORAGE_BUMP_AMOUNT);
                     
-                    if entry.escrow_xlm > 0 {
+                    if entry.escrow_hitz > 0 {
                         // Calculate this entry's share
-                        let entry_share = (total_hitz.saturating_mul(entry.escrow_xlm))
+                        let entry_share = (total_hitz.saturating_mul(entry.escrow_hitz))
                             .checked_div(total_escrow)
                             .unwrap_or(0);
                         
@@ -1194,7 +1161,7 @@ impl SkyhitzCore {
 
     /// Get comprehensive entry statistics for ranking
     ///
-    /// Returns: (tvl_xlm, escrow_xlm, total_stake_hitz, reward_pool_hitz, apr_basis_points)
+    /// Returns: (tvl_hitz, escrow_hitz, total_stake_hitz, reward_pool_hitz, apr_basis_points)
     pub fn get_entry_stats(e: Env, entry_id: String) -> (i128, i128, i128, i128, i128) {
         let entry_key = DataKey::Entry(entry_id.clone());
         let entry: Entry = match e.storage().persistent().get(&entry_key) {
@@ -1212,7 +1179,7 @@ impl SkyhitzCore {
 
         let apr = Self::calculate_apr(e.clone(), entry_id);
 
-        (entry.tvl_xlm, entry.escrow_xlm, total_stake, reward_pool, apr)
+        (entry.tvl_hitz, entry.escrow_hitz, total_stake, reward_pool, apr)
     }
 
 
@@ -1290,8 +1257,8 @@ impl SkyhitzCore {
         }
 
         // Move escrow and TVL
-        into.escrow_xlm = into.escrow_xlm.saturating_add(from.escrow_xlm);
-        into.tvl_xlm = into.tvl_xlm.saturating_add(from.tvl_xlm);
+        into.escrow_hitz = into.escrow_hitz.saturating_add(from.escrow_hitz);
+        into.tvl_hitz = into.tvl_hitz.saturating_add(from.tvl_hitz);
 
         // Move reward pool
         let from_pool_key = DataKey::RewardPool(from_id.clone());
@@ -1626,31 +1593,31 @@ fn get_action_params(e: &Env, kind: &Symbol, amount_xlm: Option<i128>) -> (i128,
     let mine = symbol_short!("mine");
     let invest = symbol_short!("invest");
 
-    // Get base fee from storage (default 0.01 XLM)
-    let base_fee: i128 = e.storage().instance().get(&DataKey::BaseFee).unwrap_or(100_000);
+    // Get base fee from storage (default 0.1 HITZ)
+    let base_fee: i128 = e.storage().instance().get(&DataKey::BaseFee).unwrap_or(1_000_000);
 
     if kind == &stream {
         let difficulty = 1;
-        (base_fee * difficulty, difficulty, false, false)
+        (base_fee * difficulty, difficulty, false, false) // 0.1 HITZ
     } else if kind == &like {
         let difficulty = 2;
-        (base_fee * difficulty, difficulty, false, false)
+        (base_fee * difficulty, difficulty, false, false) // 0.2 HITZ
     } else if kind == &download {
         let difficulty = 3;
-        (base_fee * difficulty, difficulty, false, false)
+        (base_fee * difficulty, difficulty, false, false) // 0.3 HITZ
     } else if kind == &mine {
         let difficulty = 10;
-        (base_fee * difficulty, difficulty, true, true)
+        (base_fee * difficulty, difficulty, true, true) // 1 HITZ
     } else if kind == &invest {
-        // Dynamic investment: user specifies amount (min 0.3 XLM)
-        let investment_amount = amount_xlm.unwrap_or(3_000_000);
+        // Dynamic investment: user specifies amount (min 3 HITZ)
+        let investment_amount = amount_xlm.unwrap_or(30_000_000);
         
         // Validate minimum investment
-        if investment_amount < 3_000_000 {
-            panic!("Minimum investment is 0.3 XLM (3,000,000 stroops)");
+        if investment_amount < 30_000_000 {
+            panic!("Minimum investment is 3 HITZ (30,000,000 stroops)");
         }
         
-        // Calculate proportional difficulty: 10 units per 1 XLM
+        // Calculate proportional difficulty: 10 units per 1 HITZ
         // This maintains reward parity with the original fixed invest action
         let difficulty = (investment_amount * 10) / 10_000_000;
         
@@ -1674,7 +1641,7 @@ mod test {
     // The SAC will accept mint calls from the core contract with mocked authorization.
 
     // Helper to setup test environment and return contract ready for initialization
-    fn setup_test_with_contract() -> (Env, Address, Address, Address, Address, Address, Address) {
+    fn setup_test_with_contract() -> (Env, Address, Address, Address, Address, Address) {
         let e = Env::default();
         e.mock_all_auths_allowing_non_root_auth();
 
@@ -1683,9 +1650,8 @@ mod test {
         let user = Address::generate(&e);
         let issuer = Address::generate(&e);
 
-        // Use SAC instances for both HITZ (as a generic issued asset) and XLM (native)
+        // Use SAC instance for HITZ token
         let hitz_token = e.register_stellar_asset_contract_v2(issuer.clone());
-        let xlm_token = e.register_stellar_asset_contract_v2(issuer.clone());
 
         e.ledger().with_mut(|li| {
             li.protocol_version = 22;
@@ -1701,15 +1667,15 @@ mod test {
         let hitz_admin = token::StellarAssetClient::new(&e, &hitz_token.address());
         hitz_admin.set_admin(&contract_id);
 
-        (e, admin, treasury, user, hitz_token.address(), xlm_token.address(), contract_id)
+        (e, admin, treasury, user, hitz_token.address(), contract_id)
     }
 
     #[test]
     fn test_init() {
-        let (e, admin, treasury, _user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, _user, hitz_addr, contract_id) = setup_test_with_contract();
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
-        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+        client.init(&admin, &treasury, &hitz_addr, &1_000_000i128);
 
         // Verify instance keys exist
         assert_eq!(client.get_base_fee(), 100_000);
@@ -1721,7 +1687,7 @@ mod test {
 
     #[test]
     fn test_create_entry() {
-        let (e, admin, treasury, _, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, _, hitz_addr, contract_id) = setup_test_with_contract();
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
         client.init(
@@ -1736,20 +1702,20 @@ mod test {
         client.create_entry(&entry_id);
 
         let entry = client.get_entry(&entry_id).unwrap();
-        assert_eq!(entry.tvl_xlm, 0);
-        assert_eq!(entry.escrow_xlm, 0);
+        assert_eq!(entry.tvl_hitz, 0);
+        assert_eq!(entry.escrow_hitz, 0);
     }
 
     #[test]
     fn test_record_action_stream() {
-        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
         // Fund user with XLM
         let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
         xlm_admin.mint(&user, &100_000_000i128);
 
-        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+        client.init(&admin, &treasury, &hitz_addr, &1_000_000i128);
 
         let entry_id = String::from_str(&e, "song123");
         client.create_entry(&entry_id);
@@ -1759,8 +1725,8 @@ mod test {
 
         // Check entry updated
         let entry = client.get_entry(&entry_id).unwrap();
-        assert_eq!(entry.escrow_xlm, 100_000); // 0.01 XLM fee added to escrow
-        assert_eq!(entry.tvl_xlm, 0);
+        assert_eq!(entry.escrow_hitz, 100_000); // 0.01 XLM fee added to escrow
+        assert_eq!(entry.tvl_hitz, 0);
 
         // Check XLM transferred to treasury
         let treasury_xlm = token::Client::new(&e, &xlm_addr).balance(&treasury);
@@ -1773,7 +1739,7 @@ mod test {
 
     #[test]
     fn test_record_action_mine_with_stake() {
-        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
         // Fund user with XLM
@@ -1796,8 +1762,8 @@ mod test {
 
         // Check entry updated (TVL not escrow)
         let entry = client.get_entry(&entry_id).unwrap();
-        assert_eq!(entry.tvl_xlm, 1_000_000); // 0.1 XLM (base_fee * 10)
-        assert_eq!(entry.escrow_xlm, 0);
+        assert_eq!(entry.tvl_hitz, 1_000_000); // 0.1 XLM (base_fee * 10)
+        assert_eq!(entry.escrow_hitz, 0);
 
         // Check user got reward (separate from stake)
         let user_hitz = token::Client::new(&e, &hitz_addr).balance(&user);
@@ -1814,14 +1780,14 @@ mod test {
 
     #[test]
     fn test_halving() {
-        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
         let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
         xlm_admin.mint(&user, &100_000_000i128);
 
-        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+        client.init(&admin, &treasury, &hitz_addr, &1_000_000i128);
 
         let entry_id = String::from_str(&e, "song123");
         client.create_entry(&entry_id);
@@ -1842,7 +1808,7 @@ mod test {
 
     #[test]
     fn test_supply_cap() {
-        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
@@ -1874,7 +1840,7 @@ mod test {
 
     #[test]
     fn test_list_entries() {
-        let (e, admin, treasury, _, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, _, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
@@ -1905,11 +1871,11 @@ mod test {
     #[test]
     #[should_panic(expected = "Unknown action kind")]
     fn test_unknown_action_panics() {
-        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
-        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+        client.init(&admin, &treasury, &hitz_addr, &1_000_000i128);
 
         let entry_id = String::from_str(&e, "song123");
         client.create_entry(&entry_id);
@@ -1919,7 +1885,7 @@ mod test {
 
     #[test]
     fn test_multiple_action_kinds() {
-        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
@@ -1930,7 +1896,7 @@ mod test {
         xlm_admin.mint(&user, &100_000_000i128);
         hitz_admin.mint(&user, &1_000_000_000i128);
 
-        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &1_000_000i128); // base_fee: 0.1 XLM
+        client.init(&admin, &treasury, &hitz_addr, &1_000_000i128); // base_fee: 0.1 XLM
 
         let entry_id = String::from_str(&e, "song123");
         client.create_entry(&entry_id);
@@ -1944,20 +1910,20 @@ mod test {
 
         let entry = client.get_entry(&entry_id).unwrap();
         // 0.1 + 0.2 + 0.3 = 0.6 XLM = 6M stroops
-        assert_eq!(entry.escrow_xlm, 6_000_000);
-        assert_eq!(entry.tvl_xlm, 0);
+        assert_eq!(entry.escrow_hitz, 6_000_000);
+        assert_eq!(entry.tvl_hitz, 0);
 
         // Invest -> TVL (default 0.3 XLM)
         client.record_action(&user, &entry_id, &symbol_short!("invest"), &None);
 
         let entry = client.get_entry(&entry_id).unwrap();
-        assert_eq!(entry.escrow_xlm, 6_000_000);
-        assert_eq!(entry.tvl_xlm, 3_000_000); // 0.3 XLM
+        assert_eq!(entry.escrow_hitz, 6_000_000);
+        assert_eq!(entry.tvl_hitz, 3_000_000); // 0.3 XLM
     }
 
     #[test]
     fn test_dynamic_investment() {
-        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
@@ -1983,7 +1949,7 @@ mod test {
         client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(3_000_000i128));
         
         let entry = client.get_entry(&entry_id).unwrap();
-        assert_eq!(entry.tvl_xlm, 3_000_000); // 0.3 XLM
+        assert_eq!(entry.tvl_hitz, 3_000_000); // 0.3 XLM
         
         let stake1 = client.get_stake(&entry_id, &user);
         assert_eq!(stake1, 300_000_000); // 30 HITZ
@@ -1994,7 +1960,7 @@ mod test {
         client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(6_000_000i128));
         
         let entry = client.get_entry(&entry_id).unwrap();
-        assert_eq!(entry.tvl_xlm, 9_000_000); // 0.3 + 0.6 = 0.9 XLM
+        assert_eq!(entry.tvl_hitz, 9_000_000); // 0.3 + 0.6 = 0.9 XLM
         
         let stake2 = client.get_stake(&entry_id, &user);
         assert_eq!(stake2, 900_000_000); // 90 HITZ
@@ -2005,7 +1971,7 @@ mod test {
         client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(30_000_000i128));
         
         let entry = client.get_entry(&entry_id).unwrap();
-        assert_eq!(entry.tvl_xlm, 39_000_000); // 0.9 + 3.0 = 3.9 XLM
+        assert_eq!(entry.tvl_hitz, 39_000_000); // 0.9 + 3.0 = 3.9 XLM
         
         let stake3 = client.get_stake(&entry_id, &user);
         assert_eq!(stake3, 3_900_000_000); // 390 HITZ
@@ -2018,7 +1984,7 @@ mod test {
     #[test]
     #[should_panic(expected = "Minimum investment is 0.3 XLM")]
     fn test_investment_below_minimum() {
-        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
@@ -2042,7 +2008,7 @@ mod test {
 
     #[test]
     fn test_base_fee_modification() {
-        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
@@ -2068,7 +2034,7 @@ mod test {
         // Record a stream action with default base fee (0.01 XLM * 1 difficulty = 0.01 XLM)
         client.record_action(&user, &entry_id, &symbol_short!("stream"), &None);
         let entry = client.get_entry(&entry_id).unwrap();
-        assert_eq!(entry.escrow_xlm, 100_000); // 0.01 XLM
+        assert_eq!(entry.escrow_hitz, 100_000); // 0.01 XLM
 
         // Test 2: Update base fee to 0.02 XLM
         client.set_base_fee(&200_000i128);
@@ -2077,7 +2043,7 @@ mod test {
         // Record another stream action (0.02 XLM * 1 difficulty = 0.02 XLM)
         client.record_action(&user, &entry_id, &symbol_short!("stream"), &None);
         let entry = client.get_entry(&entry_id).unwrap();
-        assert_eq!(entry.escrow_xlm, 300_000); // 0.01 + 0.02 = 0.03 XLM
+        assert_eq!(entry.escrow_hitz, 300_000); // 0.01 + 0.02 = 0.03 XLM
 
         // Test 3: Update base fee to 0.005 XLM
         client.set_base_fee(&50_000i128);
@@ -2086,22 +2052,22 @@ mod test {
         // Record a like action (0.005 XLM * 2 difficulty = 0.01 XLM)
         client.record_action(&user, &entry_id, &symbol_short!("like"), &None);
         let entry = client.get_entry(&entry_id).unwrap();
-        assert_eq!(entry.escrow_xlm, 400_000); // 0.03 + 0.01 = 0.04 XLM
+        assert_eq!(entry.escrow_hitz, 400_000); // 0.03 + 0.01 = 0.04 XLM
 
         // Verify mine action also respects new base fee (0.005 XLM * 10 difficulty = 0.05 XLM)
         client.record_action(&user, &entry_id, &symbol_short!("mine"), &None);
         let entry = client.get_entry(&entry_id).unwrap();
-        assert_eq!(entry.tvl_xlm, 500_000); // 0.05 XLM in TVL
+        assert_eq!(entry.tvl_hitz, 500_000); // 0.05 XLM in TVL
     }
 
     #[test]
     #[should_panic(expected = "Base fee must be non-negative")]
     fn test_negative_base_fee() {
-        let (e, admin, treasury, _, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, _, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
-        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+        client.init(&admin, &treasury, &hitz_addr, &1_000_000i128);
 
         // Should panic: negative fee
         client.set_base_fee(&-1_000_000i128);
@@ -2109,7 +2075,7 @@ mod test {
 
     #[test]
     fn test_allocate_and_claim_rewards() {
-        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
@@ -2121,7 +2087,7 @@ mod test {
         let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
         xlm_admin.mint(&user, &100_000_000i128);
 
-        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &1_000_000i128);
+        client.init(&admin, &treasury, &hitz_addr, &1_000_000i128);
 
         let entry_id = String::from_str(&e, "song123");
         client.create_entry(&entry_id);
@@ -2160,7 +2126,7 @@ mod test {
 
     #[test]
     fn test_batch_allocate_rewards() {
-        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
@@ -2171,7 +2137,7 @@ mod test {
         let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
         xlm_admin.mint(&user, &100_000_000i128);
 
-        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &1_000_000i128);
+        client.init(&admin, &treasury, &hitz_addr, &1_000_000i128);
 
         // Create 3 entries
         let entry1 = String::from_str(&e, "song1");
@@ -2208,7 +2174,7 @@ mod test {
 
     #[test]
     fn test_merge_and_remove_entry() {
-        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
         // Fund
@@ -2218,7 +2184,7 @@ mod test {
         let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
         xlm_admin.mint(&user, &100_000_000i128);
 
-        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+        client.init(&admin, &treasury, &hitz_addr, &1_000_000i128);
         let from_id = String::from_str(&e, "song_old");
         let into_id = String::from_str(&e, "song_new");
         client.create_entry(&from_id);
@@ -2235,7 +2201,7 @@ mod test {
 
         // Verify target has non-zero tvl/pool and source removed
         let into = client.get_entry(&into_id).unwrap();
-        assert!(into.tvl_xlm > 0 || into.escrow_xlm >= 0);
+        assert!(into.tvl_hitz > 0 || into.escrow_hitz >= 0);
         assert!(client.get_reward_pool(&into_id) >= 100_000_000);
         assert!(client.get_entry(&from_id.clone()).is_none());
         
@@ -2253,7 +2219,7 @@ mod test {
 
     #[test]
     fn test_apr_calculation() {
-        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
@@ -2268,7 +2234,7 @@ mod test {
         // Set ledger time to day 0
         e.ledger().with_mut(|li| li.timestamp = 0);
 
-        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+        client.init(&admin, &treasury, &hitz_addr, &1_000_000i128);
 
         let entry_id = String::from_str(&e, "song123");
         client.create_entry(&entry_id);
@@ -2301,7 +2267,7 @@ mod test {
 
     #[test]
     fn test_get_entry_stats() {
-        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
@@ -2315,7 +2281,7 @@ mod test {
 
         e.ledger().with_mut(|li| li.timestamp = 0);
 
-        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &50_000_000i128);
+        client.init(&admin, &treasury, &hitz_addr, &50_000_000i128);
 
         let entry_id = String::from_str(&e, "song123");
         client.create_entry(&entry_id);
@@ -2349,14 +2315,14 @@ mod test {
     #[test]
     #[should_panic(expected = "No stake in this entry")]
     fn test_claim_without_stake() {
-        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
         let hitz_admin = token::StellarAssetClient::new(&e, &hitz_addr);
         hitz_admin.mint(&contract_id, &100_000_000i128);
 
-        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+        client.init(&admin, &treasury, &hitz_addr, &1_000_000i128);
 
         let entry_id = String::from_str(&e, "song123");
         client.create_entry(&entry_id);
@@ -2370,7 +2336,7 @@ mod test {
     #[test]
     #[should_panic(expected = "No rewards to claim")]
     fn test_double_claim() {
-        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
@@ -2382,7 +2348,7 @@ mod test {
         let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
         xlm_admin.mint(&user, &100_000_000i128);
 
-        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &50_000_000i128);
+        client.init(&admin, &treasury, &hitz_addr, &50_000_000i128);
 
         let entry_id = String::from_str(&e, "song123");
         client.create_entry(&entry_id);
@@ -2399,7 +2365,7 @@ mod test {
 
     #[test]
     fn test_unstake_partial() {
-        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
@@ -2451,7 +2417,7 @@ mod test {
 
     #[test]
     fn test_unstake_full() {
-        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
@@ -2494,7 +2460,7 @@ mod test {
     #[test]
     #[should_panic(expected = "No stake in this entry")]
     fn test_unstake_no_stake() {
-        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
@@ -2522,7 +2488,7 @@ mod test {
     #[test]
     #[should_panic(expected = "Amount exceeds stake")]
     fn test_unstake_exceeds_stake() {
-        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
@@ -2554,7 +2520,7 @@ mod test {
     #[test]
     #[should_panic(expected = "Amount must be positive")]
     fn test_unstake_zero_amount() {
-        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
@@ -2584,7 +2550,7 @@ mod test {
 
     #[test]
     fn test_unstake_multiple_users() {
-        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
         let user2 = Address::generate(&e);
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
@@ -2598,7 +2564,7 @@ mod test {
         xlm_admin.mint(&user, &100_000_000i128);
         xlm_admin.mint(&user2, &100_000_000i128);
 
-        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &50_000_000i128);
+        client.init(&admin, &treasury, &hitz_addr, &50_000_000i128);
 
         let entry_id = String::from_str(&e, "song123");
         client.create_entry(&entry_id);
@@ -2629,7 +2595,7 @@ mod test {
 
     #[test]
     fn test_unstake_then_reinvest() {
-        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
@@ -2640,7 +2606,7 @@ mod test {
         let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
         xlm_admin.mint(&user, &100_000_000i128);
 
-        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &50_000_000i128);
+        client.init(&admin, &treasury, &hitz_addr, &50_000_000i128);
 
         let entry_id = String::from_str(&e, "song123");
         client.create_entry(&entry_id);
@@ -2661,11 +2627,11 @@ mod test {
 
     #[test]
     fn test_oracle_initialization() {
-        let (e, admin, treasury, _, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, _, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
-        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+        client.init(&admin, &treasury, &hitz_addr, &1_000_000i128);
 
         // Oracle price should be initialized to base_fee value
         let (price, last_update) = client.get_oracle_data();
@@ -2675,11 +2641,11 @@ mod test {
 
     #[test]
     fn test_oracle_update() {
-        let (e, admin, treasury, _, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, _, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
-        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+        client.init(&admin, &treasury, &hitz_addr, &1_000_000i128);
 
         // Get initial price
         let (initial_price, initial_update) = client.get_oracle_data();
@@ -2700,11 +2666,11 @@ mod test {
     #[test]
     #[should_panic(expected = "Only Treasury can update oracle price")]
     fn test_oracle_update_non_treasury() {
-        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
-        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+        client.init(&admin, &treasury, &hitz_addr, &1_000_000i128);
 
         // User (not treasury) tries to update oracle price
         client.update_oracle_price(&user, &500_000i128);
@@ -2713,11 +2679,11 @@ mod test {
     #[test]
     #[should_panic(expected = "Price must be positive")]
     fn test_oracle_update_zero_price() {
-        let (e, admin, treasury, _, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, _, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
-        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+        client.init(&admin, &treasury, &hitz_addr, &1_000_000i128);
 
         // Try to set zero price
         client.update_oracle_price(&treasury, &0i128);
@@ -2725,7 +2691,7 @@ mod test {
 
     #[test]
     fn test_dynamic_emission_with_oracle() {
-        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
@@ -2733,7 +2699,7 @@ mod test {
         xlm_admin.mint(&user, &100_000_000i128);
 
         // Initialize with base_fee = 0.01 XLM, oracle_price = 0.01 XLM per HITZ
-        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+        client.init(&admin, &treasury, &hitz_addr, &1_000_000i128);
 
         let entry_id = String::from_str(&e, "song123");
         client.create_entry(&entry_id);
@@ -2765,7 +2731,7 @@ mod test {
 
     #[test]
     fn test_merge_entries() {
-        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
@@ -2809,7 +2775,7 @@ mod test {
         client.merge_entries(&entry2, &entry1, &stakers);
 
         let merged_entry = client.get_entry(&entry1).unwrap();
-        assert!(merged_entry.tvl_xlm >= 10_000_000);
+        assert!(merged_entry.tvl_hitz >= 10_000_000);
         assert!(client.get_reward_pool(&entry1) >= 100_000_000);
         assert!(client.get_entry(&entry2).is_none());
         
@@ -2820,7 +2786,7 @@ mod test {
 
     #[test]
     fn test_remove_entry() {
-        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
@@ -2854,7 +2820,7 @@ mod test {
 
     #[test]
     fn test_withdraw_xlm_to_treasury() {
-        let (e, admin, treasury, _user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, _user, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
@@ -2895,7 +2861,7 @@ mod test {
     #[test]
     #[should_panic(expected = "No XLM balance to withdraw")]
     fn test_withdraw_xlm_to_treasury_no_balance() {
-        let (e, admin, treasury, _user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, _user, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
@@ -2914,7 +2880,7 @@ mod test {
 
     #[test]
     fn test_reset_instance() {
-        let (e, admin, treasury, _user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let (e, admin, treasury, _user, hitz_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
 
