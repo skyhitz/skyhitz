@@ -22,9 +22,9 @@ export function PlayButton({ entry, playlist = [entry] }: PlayButtonProps) {
   return (
     <Pressable onPress={toggle}>
       {isThisPlaying ? (
-        <PauseIcon className="text-gray-600" size={24} stroke="var(--text-color)" />
+        <PauseIcon className="text-[--text-secondary-color]" size={24} stroke="var(--text-color)" />
       ) : (
-        <PlayIcon className="text-gray-600" size={24} stroke="var(--text-color)" />
+        <PlayIcon className="text-[--text-secondary-color]" size={24} stroke="var(--text-color)" />
       )}
     </Pressable>
   );
