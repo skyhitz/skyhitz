@@ -1,5 +1,6 @@
 import { authenticateUser } from './auth/auth-context';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { validateImageFile } from './util/file-validation';
 
 function varintEncode(num: bigint): Uint8Array {
   const bytes = [];
@@ -106,7 +107,7 @@ async function computeCID(content: Uint8Array): Promise<string> {
       chunks.push(content.slice(i, Math.min(i + CHUNK_SIZE, content.length)));
     }
     for (let chunk of chunks) {
-      const hashBuf = await crypto.subtle.digest('SHA-256', chunk);
+      const hashBuf = await crypto.subtle.digest('SHA-256', chunk.buffer as ArrayBuffer);
       const hashArr = new Uint8Array(hashBuf);
       const mh = new Uint8Array(34);
       mh[0] = 0x12;
@@ -119,7 +120,7 @@ async function computeCID(content: Uint8Array): Promise<string> {
   }
 
   const pbData = encodePBDag(links, unixfsData);
-  const pbHashBuf = await crypto.subtle.digest('SHA-256', pbData);
+  const pbHashBuf = await crypto.subtle.digest('SHA-256', pbData.buffer as ArrayBuffer);
   const pbHash = new Uint8Array(pbHashBuf);
   const pbMh = new Uint8Array(34);
   pbMh[0] = 0x12;
@@ -146,11 +147,26 @@ export async function handleUpload(request: Request, env: Env, execContext: Exec
       return new Response('No file provided', { status: 400 });
     }
 
-    if (file.size > 150 * 1024 * 1024) {
-      return new Response('File too large (max 150MB)', { status: 413 });
+    // Max 10MB for avatar/background images
+    if (file.size > 10 * 1024 * 1024) {
+      return new Response(JSON.stringify({ error: 'File too large (max 10MB for images)' }), { 
+        status: 413,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
     const content = new Uint8Array(await file.arrayBuffer());
+
+    // Validate file type using magic bytes - only allow images for this endpoint
+    const validation = validateImageFile(file, content);
+    if (!validation.valid) {
+      console.warn(`Upload rejected for user: Invalid file type - ${validation.error}`);
+      return new Response(JSON.stringify({ error: validation.error }), { 
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     const cidStr = await computeCID(content);
     const key = `${cidStr}/index`;
 
@@ -163,11 +179,12 @@ export async function handleUpload(request: Request, env: Env, execContext: Exec
       },
     });
 
+    // Use the sanitized content type from validation (based on actual file bytes)
     await s3.send(new PutObjectCommand({
       Bucket: env.R2_BUCKET,
       Key: key,
       Body: content,
-      ContentType: file.type || 'application/octet-stream',
+      ContentType: validation.sanitizedContentType || 'application/octet-stream',
     }));
 
     const response = {
