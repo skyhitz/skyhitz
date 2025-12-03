@@ -16,7 +16,7 @@
 import { useEffect, useCallback, useRef } from 'react'
 import { View, Platform } from 'react-native'
 import { PlaybackState, usePlayerStore } from 'app/state/player'
-import { imageUrlMedium, videoSrc } from 'app/utils/entry'
+import { imageUrlMedium } from 'app/utils/entry'
 import { SolitoImage } from 'app/design/solito-image'
 import { logPlayerError as logPlayerErrorUtil } from 'app/utils/player-logging'
 import dynamic from 'next/dynamic'
@@ -60,7 +60,6 @@ function WebPlayer() {
     playbackRate,
     isReady,
     shouldPlay,
-    videoPortalTarget,
     play,
     setPlayerRef,
     setProgress,
