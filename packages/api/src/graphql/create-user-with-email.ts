@@ -109,10 +109,11 @@ export const createUserWithEmailResolver = async (_: any, args: any, ctx: Contex
 				user: { ...user, managed: user.seed !== '' },
 			};
 		} else {
-			// Return only user ID for analytics tracking (no sensitive data)
+			// Return full user data (excluding sensitive seed) for proper GraphQL response
+			// This ensures all required User fields are present to avoid null bubbling
 			return { 
 				message: 'User created.',
-				user: { id: user.id },
+				user: { ...user, managed: user.seed !== '', seed: undefined },
 			};
 		}
 	} catch (e) {
