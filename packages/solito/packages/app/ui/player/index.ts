@@ -7,9 +7,9 @@
  * Architecture:
  * - PersistentPlayer: The actual ReactPlayer/media element, always mounted at Provider level
  * - FloatingMiniPlayer: Shows player controls on pages without the main navigation UI
- * - Portal targets: Used by PersistentPlayer to render video in the appropriate location
+ * - Video only shows on entry page when viewing the currently playing track
  */
 
-export { PersistentPlayer, PLAYER_PORTAL_TARGETS } from './PersistentPlayer'
+export { PersistentPlayer } from './PersistentPlayer'
 export { FloatingMiniPlayer } from './FloatingMiniPlayer'
 

@@ -88,7 +88,7 @@ export function EntryScreen({ entry: serverEntry, id: passedId }: Props) {
             {Platform.OS === 'web' && isCurrentVideoEntry && (
               <div 
                 id={`video-portal-${entry.id}`} 
-                className="hidden md:flex aspect-square w-full absolute inset-0 z-10"
+                className="flex aspect-square w-full absolute inset-0 z-10"
               />
             )}
             
@@ -97,7 +97,7 @@ export function EntryScreen({ entry: serverEntry, id: passedId }: Props) {
               fill={true}
               alt={entry.title}
               style={{ borderRadius: 8 }}
-              className={`h-full w-full object-cover ${isCurrentVideoEntry ? 'md:opacity-0' : 'md:opacity-100'}`}
+              className={`h-full w-full object-cover ${isCurrentVideoEntry ? 'blur-lg' : ''}`}
               contentFit="cover"
             />
           </View>

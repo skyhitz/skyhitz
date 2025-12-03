@@ -7,11 +7,10 @@
  * 
  * Architecture:
  * - The PersistentPlayer renders the actual media element in a container
- * - Uses manual DOM manipulation (appendChild) to move the container between targets
+ * - Uses manual DOM manipulation (appendChild) to move the container to entry page
  * - This avoids React portal remounting which would reset playback state
- * - Targets:
- *   - Entry page video container (desktop, when viewing the playing entry)
- *   - Fullscreen player (mobile)
+ * - Video only shows on the entry page when viewing the currently playing track
+ * - Audio continues playing in a hidden container when navigating elsewhere
  * - The player UI (controls, slider, etc.) is rendered separately in MobileTabBarWrapper
  */
 import { useEffect, useCallback, useRef } from 'react'
@@ -27,13 +26,6 @@ const ReactPlayer = dynamic(() => import('react-player/lazy'), {
   ssr: false,
   loading: () => null,
 })
-
-// Portal target IDs
-export const PLAYER_PORTAL_TARGETS = {
-  MINI_PLAYER: 'persistent-player-mini',
-  FULLSCREEN_PLAYER: 'persistent-player-fullscreen',
-  ENTRY_PAGE: 'persistent-player-entry',
-} as const
 
 // Poster component for audio-only content
 function Poster({ className = '' }: { className?: string }) {
@@ -313,12 +305,11 @@ function WebPlayer() {
  * This component:
  * 1. Always stays mounted at the Provider level
  * 2. Renders the actual ReactPlayer element in a container
- * 3. Uses manual DOM manipulation to move the container between targets
+ * 3. Uses manual DOM manipulation to move the container to entry page
  *    (This avoids React portal remounting which would reset playback)
  * 
- * Portal targets use CSS to handle responsive behavior:
- * - FULLSCREEN_PLAYER target: `md:hidden` (visible on mobile only)
- * - Entry page target: `hidden md:flex` (visible on desktop only)
+ * Video only shows on the entry page when viewing the currently playing track.
+ * Otherwise, audio continues in a hidden container.
  */
 export function PersistentPlayer() {
   const { entry, playbackState, videoPortalTarget, isReady } = usePlayerStore()
@@ -327,7 +318,7 @@ export function PersistentPlayer() {
   
   const shouldRender = !!entry && playbackState !== PlaybackState.IDLE
   
-  // Move the player container to the appropriate target using DOM manipulation
+  // Move the player container to entry page target or hidden fallback
   // This doesn't cause React to remount - the same DOM element just moves
   useEffect(() => {
     if (Platform.OS !== 'web' || !containerRef.current) return
@@ -335,15 +326,12 @@ export function PersistentPlayer() {
     const container = containerRef.current
     
     const moveToTarget = () => {
-      // Priority: Entry page target (desktop) > Fullscreen player (mobile) > Fallback
+      // Only target: Entry page (when viewing the playing entry)
+      // Otherwise: Hidden fallback (audio continues playing)
       let target: HTMLElement | null = null
       
       if (videoPortalTarget) {
         target = document.getElementById(videoPortalTarget)
-      }
-      
-      if (!target) {
-        target = document.getElementById(PLAYER_PORTAL_TARGETS.FULLSCREEN_PLAYER)
       }
       
       if (!target && fallbackRef.current) {
