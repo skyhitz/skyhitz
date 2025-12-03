@@ -1,5 +1,6 @@
 import { authenticateUser } from './auth/auth-context';
 import { analyzeAudio } from './audio/analyzer';
+import { validateImageFile, validateAudioFile } from './util/file-validation';
 
 /**
  * Handle upload and analysis request
@@ -68,14 +69,17 @@ export async function handleUploadAnalyze(
       });
     }
 
-    // Validate audio file type
-    const validAudioTypes = ['audio/mpeg', 'audio/mp4', 'audio/aiff', 'audio/x-aiff', 'audio/wav', 'audio/x-wav'];
-    const validAudioExtensions = ['.mp3', '.mp4', '.aiff', '.wav', '.m4a'];
-    const audioExtension = audioFile.name.toLowerCase().slice(audioFile.name.lastIndexOf('.'));
-    
-    if (!validAudioTypes.includes(audioFile.type) && !validAudioExtensions.includes(audioExtension)) {
+    // Read file contents for validation
+    const audioBuffer = await audioFile.arrayBuffer();
+    const audioBytes = new Uint8Array(audioBuffer);
+    const imageBytes = new Uint8Array(await imageFile.arrayBuffer());
+
+    // Validate audio file type using magic bytes
+    const audioValidation = validateAudioFile(audioFile, audioBytes);
+    if (!audioValidation.valid) {
+      console.warn(`Upload analyze rejected: Invalid audio file - ${audioValidation.error}`);
       return new Response(
-        JSON.stringify({ error: 'Invalid audio file type. Supported: MP3, MP4, AIFF, WAV' }),
+        JSON.stringify({ error: audioValidation.error || 'Invalid audio file type. Supported: MP3, MP4, AIFF, WAV' }),
         {
           status: 400,
           headers: { 'Content-Type': 'application/json' },
@@ -83,16 +87,15 @@ export async function handleUploadAnalyze(
       );
     }
 
-    // Validate image file type
-    if (!imageFile.type.startsWith('image/')) {
-      return new Response(JSON.stringify({ error: 'Invalid image file type' }), {
+    // Validate image file type using magic bytes
+    const imageValidation = validateImageFile(imageFile, imageBytes);
+    if (!imageValidation.valid) {
+      console.warn(`Upload analyze rejected: Invalid image file - ${imageValidation.error}`);
+      return new Response(JSON.stringify({ error: imageValidation.error || 'Invalid image file type' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
     }
-
-    // Convert audio file to ArrayBuffer
-    const audioBuffer = await audioFile.arrayBuffer();
 
     // Analyze the audio
     const analysisResult = await analyzeAudio(audioBuffer);

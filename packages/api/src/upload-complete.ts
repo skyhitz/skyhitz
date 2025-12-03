@@ -1,6 +1,7 @@
 import { authenticateUser } from './auth/auth-context';
 import { analyzeAudio } from './audio/analyzer';
 import StorageClient from './util/storage-client';
+import { validateImageFile, validateAudioFile } from './util/file-validation';
 
 /**
  * Complete upload flow: Upload files, analyze audio, return results
@@ -68,6 +69,30 @@ export async function handleUploadComplete(
       });
     }
 
+    // Read file contents for validation
+    const audioBuffer = new Uint8Array(await audioFile.arrayBuffer());
+    const imageBuffer = new Uint8Array(await imageFile.arrayBuffer());
+
+    // Validate audio file type using magic bytes
+    const audioValidation = validateAudioFile(audioFile, audioBuffer);
+    if (!audioValidation.valid) {
+      console.warn(`Upload rejected for user ${context.user.id}: Invalid audio file - ${audioValidation.error}`);
+      return new Response(JSON.stringify({ error: audioValidation.error }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Validate image file type using magic bytes
+    const imageValidation = validateImageFile(imageFile, imageBuffer);
+    if (!imageValidation.valid) {
+      console.warn(`Upload rejected for user ${context.user.id}: Invalid image file - ${imageValidation.error}`);
+      return new Response(JSON.stringify({ error: imageValidation.error }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     console.log(`📤 Uploading files for user ${context.user.id}...`);
     
     // Initialize storage client
@@ -75,13 +100,11 @@ export async function handleUploadComplete(
 
     // Upload audio file to R2
     console.log('🎵 Uploading audio file...');
-    const audioBuffer = new Uint8Array(await audioFile.arrayBuffer());
     const audioUploadResult = await storage.pinBuffer(audioBuffer as any);
     console.log(`✅ Audio uploaded: ${audioUploadResult.IpfsHash}`);
 
     // Upload image file to R2
     console.log('🖼️  Uploading image file...');
-    const imageBuffer = new Uint8Array(await imageFile.arrayBuffer());
     const imageUploadResult = await storage.pinBuffer(imageBuffer as any);
     console.log(`✅ Image uploaded: ${imageUploadResult.IpfsHash}`);
 
