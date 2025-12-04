@@ -346,17 +346,30 @@ export function PersistentPlayer() {
     // Initial move
     moveToTarget()
     
-    // Watch for DOM changes (targets may appear/disappear)
-    const observer = new MutationObserver(() => {
-      moveToTarget()
-    })
+    // Debounced move to prevent excessive DOM operations
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null
+    const debouncedMoveToTarget = () => {
+      if (debounceTimer) clearTimeout(debounceTimer)
+      debounceTimer = setTimeout(moveToTarget, 50)
+    }
     
+    // Watch for DOM changes (targets may appear/disappear)
+    // Use more specific observation to reduce overhead
+    const observer = new MutationObserver(debouncedMoveToTarget)
+    
+    // Only observe childList changes, not attributes or characterData
+    // This reduces the number of mutation events
     observer.observe(document.body, {
       childList: true,
       subtree: true,
+      attributes: false,
+      characterData: false,
     })
     
-    return () => observer.disconnect()
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer)
+      observer.disconnect()
+    }
   }, [shouldRender, videoPortalTarget])
 
   // Don't render anything on native (handled separately)

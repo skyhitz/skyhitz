@@ -4,10 +4,18 @@ import { BeatListEntry } from 'app/ui/beat-list-entry'
 import { P, ActivityIndicator } from 'app/design/typography'
 import { algoliaClient, indexNames } from 'app/api/algolia'
 import { Entry } from 'app/api/graphql/types'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useMemo, memo } from 'react'
 
 // Constants
 const PAGE_SIZE = 20
+
+// Memoized loading footer component
+const LoadingFooter = memo(() => (
+  <View className="py-4 items-center">
+    <ActivityIndicator size="small" />
+  </View>
+))
+LoadingFooter.displayName = 'LoadingFooter'
 
 export default function RecentlyAddedList() {
   const [entries, setEntries] = useState<Entry[]>([])
@@ -34,11 +42,6 @@ export default function RecentlyAddedList() {
           attributesToRetrieve: ['*'],
         },
       })
-
-      console.log(
-        `Recently added entries page ${pageNumber} count:`,
-        result.hits?.length || 0
-      )
 
       if (result.hits && result.hits.length > 0) {
         // Convert Algolia hits to Entry objects
@@ -88,6 +91,23 @@ export default function RecentlyAddedList() {
     }
   }, [loadingMore, hasMore, page, fetchEntries])
 
+  // Memoized renderItem for better FlatList performance
+  const renderItem = useCallback(
+    ({ item }: { item: Entry }) => (
+      <BeatListEntry entry={item} playlist={entries} />
+    ),
+    [entries]
+  )
+
+  // Memoized key extractor
+  const keyExtractor = useCallback((item: Entry) => item.id!, [])
+
+  // Memoized footer component
+  const listFooter = useMemo(
+    () => (loadingMore ? <LoadingFooter /> : null),
+    [loadingMore]
+  )
+
   // Loading state
   if (loading) {
     return (
@@ -106,30 +126,22 @@ export default function RecentlyAddedList() {
     )
   }
 
-  // Render footer with loading indicator when loading more
-  const renderFooter = () => {
-    if (!loadingMore) return null
-
-    return (
-      <View className="py-4 items-center">
-        <ActivityIndicator size="small" />
-      </View>
-    )
-  }
-
   return (
     <View className="flex-1">
       <FlatList
         data={entries}
-        keyExtractor={(item) => item.id!}
-        renderItem={({ item }) => (
-          <BeatListEntry entry={item} playlist={entries} />
-        )}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 80 }}
         onEndReached={onNextPage}
         onEndReachedThreshold={0.3}
-        ListFooterComponent={renderFooter}
+        ListFooterComponent={listFooter}
+        // Performance optimizations
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        initialNumToRender={10}
       />
     </View>
   )

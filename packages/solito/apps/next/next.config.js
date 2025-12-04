@@ -20,11 +20,33 @@ console.log('Environment variables loaded:', {
 module.exports = {
   // Configure external packages for server components
   serverExternalPackages: ['sharp'],
+  
+  // Enable compression for better performance
+  compress: true,
+  
+  // Enable powered by header removal for smaller response
+  poweredByHeader: false,
+  
+  // Generate ETags for better caching
+  generateEtags: true,
+  
   eslint: {
     ignoreDuringBuilds: true,
   },
   typescript: {
     ignoreBuildErrors: true,
+  },
+  
+  // Enable experimental optimizations
+  experimental: {
+    // Optimize package imports to reduce bundle size
+    optimizePackageImports: [
+      '@apollo/client',
+      'ramda',
+      'moti',
+      'solito',
+      'react-native-reanimated',
+    ],
   },
   transpilePackages: [
     'react-native',
@@ -48,11 +70,49 @@ module.exports = {
     'expo-clipboard',
   ],
   images: {
-    unoptimized: true,
+    // Enable image optimization for production
+    unoptimized: process.env.NODE_ENV === 'development',
+    // Use webp format for better compression
+    formats: ['image/avif', 'image/webp'],
+    // Reasonable sizes for responsive images
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256],
+    // Minimize CLS with lazy loading
+    minimumCacheTTL: 60,
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '*',
+        hostname: 'r2.skyhitz.io',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'skyhitz.io',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.ipfs.nftstorage.link',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'ipfs.io',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'audius.co',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.audius.co',
         port: '',
         pathname: '/**',
       },
@@ -62,9 +122,10 @@ module.exports = {
   // reanimated doesn't support strict mode on web
   reactStrictMode: false,
 
-  // CORS headers for stellar.toml
+  // Headers for caching and CORS
   async headers() {
     return [
+      // CORS headers for stellar.toml
       {
         source: '/.well-known/stellar.toml',
         headers: [
@@ -79,6 +140,36 @@ module.exports = {
           {
             key: 'Access-Control-Allow-Headers',
             value: 'Content-Type',
+          },
+        ],
+      },
+      // Cache static assets aggressively
+      {
+        source: '/img/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      // Cache fonts aggressively
+      {
+        source: '/:path*.woff2',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      // Cache JS/CSS with validation
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
           },
         ],
       },

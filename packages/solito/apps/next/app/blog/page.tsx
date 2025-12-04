@@ -1,9 +1,10 @@
 import { BlogScreen } from 'app/features/blog/screen'
 import JsonLdScript from 'app/seo/jsonLd'
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
 import type { Metadata } from 'next'
 import { Config } from 'app/config'
+
+// Enable ISR caching - blog content doesn't change frequently
+export const revalidate = 600 // 10 minutes
 
 export default async function BlogPage() {
   // SSR is safe now (Algolia uses fetch requester); still fine if it fails

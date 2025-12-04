@@ -2,17 +2,29 @@ import { P } from 'app/design/typography'
 import { SkyhitzLogo } from 'app/ui/logo'
 import { useUserState } from 'app/state/user/hooks'
 import { View } from 'react-native'
-import { TextLink } from 'solito/link'
+import { Link } from 'solito/link'
+import { memo, useEffect } from 'react'
+import { useRouter } from 'solito/navigation'
 
-export const Navbar = ({ className }: { className?: string }) => {
+// Memoize navbar to prevent re-renders when children change
+export const Navbar = memo(({ className }: { className?: string }) => {
   const { user, loading: userLoading } = useUserState()
+  const router = useRouter()
+  
+  // Prefetch auth routes for faster navigation
+  useEffect(() => {
+    if (!user && !userLoading) {
+      router.prefetch('/sign-in')
+      router.prefetch('/sign-up')
+    }
+  }, [user, userLoading, router])
 
   return (
     <View
       className={`w-full flex-row flex-wrap items-center justify-between p-3 ${className}`}
     >
       <View className="flex flex-row">
-        <TextLink href="/">
+        <Link href="/">
           <View className="flex flex-row items-center justify-start">
             <View className="flex min-h-[2.25rem] flex-row items-center">
               <SkyhitzLogo id="navbar" />
@@ -21,27 +33,29 @@ export const Navbar = ({ className }: { className?: string }) => {
               </P>
             </View>
           </View>
-        </TextLink>
+        </Link>
       </View>
       {user || userLoading ? null : (
         <View className="flex-row items-center justify-end sm:flex">
           <View className="mr-4">
-            <TextLink href="/sign-in">
+            <Link href="/sign-in">
               <P className="font-raleway tracking-0.5 text-sm font-bold">
                 Log in
               </P>
-            </TextLink>
+            </Link>
           </View>
 
           <View className="bg-blue rounded-lg px-3 py-2">
-            <TextLink href="/sign-up">
+            <Link href="/sign-up">
               <P className="font-raleway tracking-0.5 p-2 text-sm font-bold text-white">
                 Sign Up
               </P>
-            </TextLink>
+            </Link>
           </View>
         </View>
       )}
     </View>
   )
-}
+})
+
+Navbar.displayName = 'Navbar'

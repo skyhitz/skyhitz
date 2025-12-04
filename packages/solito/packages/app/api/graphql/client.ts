@@ -22,17 +22,42 @@ const authLink = setContext(async (_, { headers }) => {
   }
 })
 
-// Create the Apollo Client instance
+// Create the Apollo Client instance with optimized caching
 export const client = new ApolloClient({
   link: authLink.concat(httpLink),
-  cache: new InMemoryCache(),
+  cache: new InMemoryCache({
+    typePolicies: {
+      Query: {
+        fields: {
+          // Cache entries by ID for better deduplication
+          entry: {
+            keyArgs: ['id'],
+          },
+          // Cache user queries
+          user: {
+            keyArgs: ['id'],
+          },
+        },
+      },
+      Entry: {
+        keyFields: ['id'],
+      },
+      User: {
+        keyFields: ['id'],
+      },
+    },
+  }),
   defaultOptions: {
     watchQuery: {
-      fetchPolicy: 'network-only',
+      // Use cache-and-network for better UX - show cached data immediately, then update
+      fetchPolicy: 'cache-and-network',
       errorPolicy: 'all',
+      // Return partial data from cache while fetching
+      returnPartialData: true,
     },
     query: {
-      fetchPolicy: 'network-only',
+      // Use cache-first for queries - only fetch from network if not in cache
+      fetchPolicy: 'cache-first',
       errorPolicy: 'all',
     },
     mutate: {

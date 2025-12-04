@@ -7,6 +7,9 @@ import { redirect } from 'next/navigation'
 import { Entry } from 'app/api/graphql/types'
 import JsonLdScript from 'app/seo/jsonLd'
 
+// Enable ISR caching for entry pages - revalidate every 5 minutes
+export const revalidate = 300
+
 type Props = {
   params: Promise<{ id: string }>
 }

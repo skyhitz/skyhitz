@@ -15,9 +15,8 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 }
 
-// Disable Next.js cache for this route
-export const revalidate = 0
-export const dynamic = 'force-dynamic'
+// Enable ISR caching - revalidate every 2 minutes for chart freshness
+export const revalidate = 120
 
 async function getChart() {
   try {
