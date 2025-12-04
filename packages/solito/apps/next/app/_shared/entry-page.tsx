@@ -11,6 +11,9 @@ type Props = {
   params: Promise<{ id: string }>
 }
 
+// Enable ISR with 5 minute revalidation for fresh content
+export const revalidate = 300
+
 export async function generateEntryMetadata(props: Props) {
   // read route params - properly await params object in Next.js 15
   const { id } = await props.params
@@ -20,20 +23,36 @@ export async function generateEntryMetadata(props: Props) {
 
   if (!entry) {
     return {
-      title: 'Skyhitz',
+      title: 'Track Not Found | Skyhitz',
+      description: 'This music NFT could not be found on Skyhitz.',
+      robots: { index: false, follow: true },
     }
   }
 
   const url = `${Config.APP_URL}/music/${entry.id}`
+  const title = entry.artist ? `${entry.artist} - ${entry.title}` : entry.title
+  const description =
+    entry.description ||
+    `Listen to "${entry.title}"${entry.artist ? ` by ${entry.artist}` : ''} on Skyhitz - the music NFT marketplace on Stellar.`
+  const imageUrl = imageUrlMedium(entry.imageUrl)
 
   return {
-    title: entry.artist ? `${entry.artist} - ${entry.title}` : entry.title,
-    description: entry.description,
+    title,
+    description,
     alternates: { canonical: url },
+    keywords: [
+      'music NFT',
+      entry.title,
+      entry.artist,
+      'Stellar blockchain',
+      'music collectible',
+      'NFT music',
+      'blockchain music',
+    ].filter(Boolean),
     twitter: {
       card: 'player',
-      title: entry.artist ? `${entry.artist} - ${entry.title}` : entry.title,
-      description: entry.description || 'Listen to this music on Skyhitz',
+      title,
+      description,
       // Next.js expects 'players' property with these specific fields
       players: {
         playerUrl: videoSrc(entry.videoUrl),
@@ -43,23 +62,44 @@ export async function generateEntryMetadata(props: Props) {
       },
       // Adding image for fallback when player isn't supported
       images: {
-        url: imageUrlMedium(entry.imageUrl),
-        alt: `${entry.artist} - ${entry.title}`,
+        url: imageUrl,
+        alt: title,
       },
     },
     openGraph: {
       type: 'music.song',
-      title: entry.artist ? `${entry.artist} - ${entry.title}` : entry.title,
+      title,
       url: url,
+      siteName: 'Skyhitz',
       images: [
         {
-          url: imageUrlMedium(entry.imageUrl),
+          url: imageUrl,
           width: 800,
-          height: 600,
-          alt: entry.title,
+          height: 800,
+          alt: title,
         },
       ],
-      description: entry.description,
+      description,
+      audio: videoSrc(entry.videoUrl)
+        ? [
+            {
+              url: videoSrc(entry.videoUrl),
+              type: 'audio/mpeg',
+            },
+          ]
+        : undefined,
+    },
+    robots: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+      'max-video-preview': -1,
+    },
+    other: {
+      // Music-specific meta tags
+      'music:musician': entry.artist || undefined,
+      'music:release_date': entry.publishedAt || undefined,
     },
   }
 }

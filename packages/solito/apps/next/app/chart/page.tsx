@@ -7,19 +7,50 @@ import { Metadata } from 'next'
 import { isEmpty } from 'ramda'
 
 export const metadata: Metadata = {
-  title: 'Skyhitz - Top Chart',
-  description: 'Discover trending music NFTs',
+  title: 'Top Trending Music NFTs | Skyhitz Chart',
+  description:
+    'Discover the hottest trending music NFTs on Skyhitz. Our interactive chart ranks tracks by user engagement - buying, streaming, and likes drive the rankings. Find your next favorite music collectible.',
+  keywords: [
+    'trending music NFTs',
+    'top music NFTs',
+    'music NFT chart',
+    'popular music NFTs',
+    'best music NFTs',
+    'NFT music rankings',
+    'blockchain music chart',
+  ],
   alternates: {
     canonical: `${Config.APP_URL}/chart`,
+  },
+  openGraph: {
+    title: 'Top Trending Music NFTs | Skyhitz Chart',
+    description:
+      'Discover the hottest trending music NFTs on Skyhitz. Rankings driven by real user engagement.',
+    url: `${Config.APP_URL}/chart`,
+    type: 'website',
+    images: [
+      {
+        url: `${Config.APP_URL}/img/landing-3.webp`,
+        width: 1200,
+        height: 630,
+        alt: 'Skyhitz Trending Music NFT Chart',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Top Trending Music NFTs | Skyhitz Chart',
+    description:
+      'Discover the hottest trending music NFTs on Skyhitz. Rankings driven by real user engagement.',
+    images: [`${Config.APP_URL}/img/landing-3.webp`],
   },
   robots: { index: true, follow: true },
 }
 
-// Disable Next.js cache for this route
-export const revalidate = 0
-export const dynamic = 'force-dynamic'
+// Revalidate chart every 5 minutes for fresh rankings
+export const revalidate = 300
 
-async function getChart() {
+async function getChart(): Promise<Entry[]> {
   try {
     const res = await ratingEntriesIndex.search<Entry>('', {
       page: 0,
