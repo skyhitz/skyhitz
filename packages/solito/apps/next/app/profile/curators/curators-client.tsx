@@ -1,8 +1,13 @@
 'use client'
+
+import { ComponentAuthGuard } from 'app/utils/authGuard'
 import CuratorsScreen from 'app/features/profile/curators'
-import { ComponentAuthGuard } from 'app/features/auth/authGuard'
 
 export default function CuratorsClient() {
-  return <ComponentAuthGuard component={<CuratorsScreen />} />
+  return (
+    <ComponentAuthGuard>
+      <CuratorsScreen />
+    </ComponentAuthGuard>
+  )
 }
 
