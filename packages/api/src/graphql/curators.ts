@@ -4,6 +4,7 @@ import { AlgoliaClient } from '../algolia/algolia';
 import { Context, Curator } from '../util/types';
 import { ADMIN_ID } from '../constants/constants';
 import Mailer from '../postmark/mailer';
+import PasswordlessAuth from '../auth/passwordless';
 
 /**
  * Check if a user is a curator (admin or in curators list)
@@ -129,14 +130,22 @@ export const addCuratorResolver = async (
   await algolia.saveCurator(curator);
   console.log(`✅ Added curator: ${targetUser.email} (by ${user.displayName || user.username})`);
 
-  // Send email notification
+  // Send email notification with magic login link
   try {
+    // Generate a login token for the curator
+    const passwordlessAuth = new PasswordlessAuth(env);
+    const loginToken = passwordlessAuth.generateToken();
+    const ttl = 7 * 24 * 60 * 60 * 1000; // 7 days
+    await passwordlessAuth.storeOrUpdate(loginToken, userId, ttl, '');
+
     await mailer.sendCuratorAddedNotification({
       curatorEmail: targetUser.email,
       curatorName: targetUser.displayName || targetUser.username,
+      curatorUserId: userId,
       addedByName: user.displayName || user.username,
+      loginToken,
     });
-    console.log(`✅ Sent curator notification email to ${targetUser.email}`);
+    console.log(`✅ Sent curator notification email with login link to ${targetUser.email}`);
   } catch (error) {
     console.error('❌ Failed to send curator notification email:', error);
     // Don't fail the operation if email fails

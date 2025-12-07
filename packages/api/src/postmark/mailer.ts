@@ -73,9 +73,13 @@ Please create the user account manually and review the case.`;
 	async sendCuratorAddedNotification(params: {
 		curatorEmail: string;
 		curatorName: string;
+		curatorUserId: string;
 		addedByName: string;
+		loginToken: string;
 	}) {
-		const dashboardUrl = `${this.env.APP_URL}/profile/pending-uploads`;
+		// Magic login link that redirects to pending uploads after sign-in
+		const redirectPath = '/profile/pending-uploads';
+		const loginLink = `${this.env.APP_URL}/sign-in?token=${params.loginToken}&uid=${encodeURIComponent(params.curatorUserId)}&redirect=${encodeURIComponent(redirectPath)}`;
 		
 		const textBody = `Hi ${params.curatorName},
 
@@ -86,7 +90,7 @@ As a curator, you can:
 - Rate the quality of submitted tracks
 - Help maintain the quality standards of Skyhitz
 
-Start reviewing pending uploads: ${dashboardUrl}
+Click here to sign in and start reviewing: ${loginLink}
 
 Thank you for helping us curate great music!
 
@@ -104,7 +108,10 @@ The Skyhitz Team`;
 				<li>Help maintain the quality standards of Skyhitz</li>
 			</ul>
 			
-			<p><a href="${dashboardUrl}" style="display:inline-block;padding:12px 24px;background:#111827;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:bold">Start Reviewing Uploads</a></p>
+			<p><a href="${loginLink}" style="display:inline-block;padding:12px 24px;background:#111827;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:bold">Sign In & Start Reviewing</a></p>
+			
+			<p>Or copy and paste this link into your browser:</p>
+			<p style="word-break:break-all;font-size:12px;color:#666">${loginLink}</p>
 			
 			<p>Thank you for helping us curate great music!</p>
 			<p>The Skyhitz Team</p>
