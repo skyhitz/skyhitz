@@ -7,7 +7,7 @@ import { Button } from 'app/design/button'
 import { useToast } from 'app/provider/toast'
 import { useState } from 'react'
 import { Curator } from 'app/api/graphql/types'
-import X from 'app/ui/icons/x'
+import { X } from 'app/ui/icons/x'
 
 export default function CuratorsScreen() {
   const { data, loading, refetch } = useCuratorsQuery()

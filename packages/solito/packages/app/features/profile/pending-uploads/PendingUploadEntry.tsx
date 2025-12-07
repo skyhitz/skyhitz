@@ -8,7 +8,7 @@ import { useRejectPendingUploadMutation } from 'app/api/graphql/mutations'
 import { useToast } from 'app/provider/toast'
 import { useState } from 'react'
 import Check from 'app/ui/icons/check'
-import X from 'app/ui/icons/x'
+import { X } from 'app/ui/icons/x'
 
 // R2 gateway URL for displaying images
 const R2_GATEWAY = 'https://r2.skyhitz.io'
