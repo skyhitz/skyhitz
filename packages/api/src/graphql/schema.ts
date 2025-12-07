@@ -13,6 +13,11 @@ type Query {
   claimableEarningsPreview: ClaimEarningsResponse!
   pendingMines: [PendingMine!]!
   pendingMine(id: String!): PendingMine!
+  pendingUploads: [PendingUpload!]!
+  pendingUploadsCount: Int!
+  pendingUpload(id: String!): PendingUpload!
+  isCurator: Boolean!
+  curators: [Curator!]!
 }
 
 type Mutation {
@@ -56,7 +61,10 @@ type Mutation {
   approvePendingMine(id: String!): ApprovePendingMineResponse!
   mergePendingMine(id: String!, targetEntryId: String!): MergePendingMineResponse!
   rejectPendingMine(id: String!): Boolean!
-  uploadMint(input: UploadMintInput!): UploadMintResponse!
+  approvePendingUpload(input: ApprovePendingUploadInput!): ApprovePendingUploadResponse!
+  rejectPendingUpload(id: String!, reason: String): Boolean!
+  addCurator(input: AddCuratorInput!): AddCuratorResponse!
+  removeCurator(input: RemoveCuratorInput!): RemoveCuratorResponse!
   # REMOVED: sellShares - no longer supported in new contract
   # Users can only invest/stake/unstake, not sell stakes
 }
@@ -306,20 +314,64 @@ type MergePendingMineResponse {
   mergedToEntryId: String
 }
 
-input UploadMintInput {
+type PendingUpload {
+  id: String!
+  userId: String!
+  userEmail: String!
+  userName: String!
   audioHash: String!
   imageHash: String!
   title: String!
   artist: String!
   description: String
-  qualityScore: Float!
-  mintCost: Float!
+  status: String!
+  createdAt: String!
+  createdAtTimestamp: Int!
+  resolvedAt: String
+  resolvedBy: String
+  rejectionReason: String
+  qualityScore: Int
+  isAiGenerated: Boolean
 }
 
-type UploadMintResponse {
+input ApprovePendingUploadInput {
+  id: String!
+  starRating: Int!
+  isAiGenerated: Boolean!
+}
+
+type ApprovePendingUploadResponse {
   success: Boolean!
   message: String!
-  entryId: String
-  txHash: String
+  entry: Entry
+}
+
+type Curator {
+  userId: String!
+  userEmail: String!
+  userName: String!
+  addedAt: String!
+  addedAtTimestamp: Int!
+  addedBy: String!
+  addedByName: String!
+}
+
+input AddCuratorInput {
+  email: String!
+}
+
+type AddCuratorResponse {
+  success: Boolean!
+  message: String!
+  curator: Curator
+}
+
+input RemoveCuratorInput {
+  userId: String!
+}
+
+type RemoveCuratorResponse {
+  success: Boolean!
+  message: String!
 }
 `;

@@ -8,7 +8,6 @@ import { Schema } from './graphql/schema';
 import { authenticateUser } from './auth/auth-context';
 import { handleWebhook } from './webhooks/stripe';
 import { handleUpload } from './upload';
-import { handleUploadAnalyze } from './upload-analyze';
 import { handleUploadComplete } from './upload-complete';
 import { runTreasuryBot } from './treasury/bot';
 
@@ -30,9 +29,6 @@ export default {
 		}
 		if (request.method === 'POST' && new URL(request.url).pathname === '/upload') {
 			return handleUpload(request, env, context);
-		}
-		if (request.method === 'POST' && new URL(request.url).pathname === '/upload/analyze') {
-			return handleUploadAnalyze(request, env, context);
 		}
 		if (request.method === 'POST' && new URL(request.url).pathname === '/upload/complete') {
 			return handleUploadComplete(request, env, context);

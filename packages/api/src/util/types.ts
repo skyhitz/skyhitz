@@ -158,3 +158,37 @@ export interface PendingMine {
 	resolvedBy?: string; // Admin user ID who resolved it
 	mergedToId?: string; // If merged, the entry ID it was merged to
 }
+
+export interface PendingUpload {
+	objectID: string; // Unique ID for the pending upload
+	userId: string; // User who uploaded
+	userEmail: string; // User's email
+	userName: string; // User's display name
+	// Upload details
+	audioHash: string; // IPFS hash stored in R2
+	imageHash: string; // IPFS hash stored in R2
+	title: string;
+	artist: string;
+	description?: string;
+	// Status
+	status: 'pending' | 'approved' | 'rejected';
+	createdAt: string;
+	createdAtTimestamp: number;
+	resolvedAt?: string;
+	resolvedBy?: string; // Curator user ID who resolved it
+	rejectionReason?: string;
+	// Approval details (set when approved)
+	qualityScore?: number; // 2, 4, 6, 8, or 10 (from 1-5 star rating)
+	isAiGenerated?: boolean; // Curator's assessment
+}
+
+export interface Curator {
+	objectID: string; // Same as userId
+	userId: string;
+	userEmail: string;
+	userName: string;
+	addedAt: string;
+	addedAtTimestamp: number;
+	addedBy: string; // User ID who added this curator
+	addedByName: string; // Name of user who added this curator
+}

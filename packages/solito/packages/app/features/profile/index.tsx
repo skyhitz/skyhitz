@@ -20,6 +20,8 @@ import {
   useUserCreditsQuery,
   useUserLikesQuery,
   useClaimEarningsMutation,
+  usePendingUploadsCountQuery,
+  useIsCuratorQuery,
 } from 'app/api/graphql/mutations'
 import { useLazyQuery, useQuery } from '@apollo/client'
 import { CLAIMABLE_EARNINGS_PREVIEW, USER_HITZ_BALANCE, XLM_PRICE, HITZ_PRICE_XLM } from 'app/api/graphql/operations'
@@ -28,7 +30,7 @@ import { useToast } from 'app/provider/toast'
 import Stellar from 'app/ui/icons/stellar'
 import Lock from 'app/ui/icons/lock'
 import { useAssetStore } from 'app/state/asset'
-import { ADMIN_ID } from 'app/constants/constants'
+import Users from 'app/ui/icons/users'
 import { AssetType, stroopsToToken } from 'app/types/asset'
 import { sharesIndex } from 'app/api/algolia'
 import { SkyhitzLogo } from 'app/ui/logo'
@@ -45,6 +47,9 @@ export function ProfileScreen({ user }: { user: User }) {
   const { data: hitzPriceData } = useQuery(HITZ_PRICE_XLM)
   const { data: userLikesData } = useUserLikesQuery()
   const { data: userCollectionData } = useUserCollectionQuery(user.id)
+  const { data: pendingUploadsCountData } = usePendingUploadsCountQuery()
+  const { data: isCuratorData } = useIsCuratorQuery()
+  const isCurator = isCuratorData?.isCurator === true
   const [claimEarnings] = useClaimEarningsMutation()
   const [loadPreview] = useLazyQuery(CLAIMABLE_EARNINGS_PREVIEW)
   const toast = useToast()
@@ -239,17 +244,15 @@ export function ProfileScreen({ user }: { user: User }) {
               />
             </TextLink>
 
-            {/* Upload feature - Admin only */}
-            {user.id === ADMIN_ID && (
-              <TextLink href="/upload">
-                <ProfileRow
-                  title="Upload"
-                  icon={
-                    <Upload className="h-5 w-5 fill-none stroke-current stroke-2 text-[--text-color]" />
-                  }
-                />
-              </TextLink>
-            )}
+            {/* Upload feature - Available to all users */}
+            <TextLink href="/upload">
+              <ProfileRow
+                title="Upload"
+                icon={
+                  <Upload className="h-5 w-5 fill-none stroke-current stroke-2 text-[--text-color]" />
+                }
+              />
+            </TextLink>
 
             <TextLink href="/top-up">
               <ProfileRow
@@ -259,6 +262,30 @@ export function ProfileScreen({ user }: { user: User }) {
                 }
               />
             </TextLink>
+
+            {/* Curator-only sections */}
+            {isCurator && (
+              <>
+                <TextLink href="/profile/pending-uploads">
+                  <ProfileRow
+                    title="Pending Uploads"
+                    icon={
+                      <Upload className="h-5 w-5 fill-none stroke-current stroke-2 text-[--text-color]" />
+                    }
+                    count={pendingUploadsCountData?.pendingUploadsCount || 0}
+                  />
+                </TextLink>
+
+                <TextLink href="/profile/curators">
+                  <ProfileRow
+                    title="Manage Curators"
+                    icon={
+                      <Users className="h-5 w-5 fill-none stroke-current stroke-2 text-[--text-color]" />
+                    }
+                  />
+                </TextLink>
+              </>
+            )}
           </View>
         </View>
       </View>

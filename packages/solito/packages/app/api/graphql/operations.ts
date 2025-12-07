@@ -342,3 +342,97 @@ export const RECORD_ACTION = gql`
     }
   }
 `
+
+// Pending Uploads (curator only)
+export const PENDING_UPLOADS = gql`
+  query PendingUploads {
+    pendingUploads {
+      id
+      userId
+      userEmail
+      userName
+      audioHash
+      imageHash
+      title
+      artist
+      description
+      status
+      createdAt
+      createdAtTimestamp
+    }
+  }
+`
+
+export const PENDING_UPLOADS_COUNT = gql`
+  query PendingUploadsCount {
+    pendingUploadsCount
+  }
+`
+
+export const APPROVE_PENDING_UPLOAD = gql`
+  mutation ApprovePendingUpload($input: ApprovePendingUploadInput!) {
+    approvePendingUpload(input: $input) {
+      success
+      message
+      entry {
+        id
+        title
+        artist
+        imageUrl
+        videoUrl
+      }
+    }
+  }
+`
+
+export const REJECT_PENDING_UPLOAD = gql`
+  mutation RejectPendingUpload($id: String!, $reason: String) {
+    rejectPendingUpload(id: $id, reason: $reason)
+  }
+`
+
+// Curator management
+export const IS_CURATOR = gql`
+  query IsCurator {
+    isCurator
+  }
+`
+
+export const CURATORS = gql`
+  query Curators {
+    curators {
+      userId
+      userEmail
+      userName
+      addedAt
+      addedAtTimestamp
+      addedBy
+      addedByName
+    }
+  }
+`
+
+export const ADD_CURATOR = gql`
+  mutation AddCurator($email: String!) {
+    addCurator(input: { email: $email }) {
+      success
+      message
+      curator {
+        userId
+        userEmail
+        userName
+        addedAt
+        addedByName
+      }
+    }
+  }
+`
+
+export const REMOVE_CURATOR = gql`
+  mutation RemoveCurator($userId: String!) {
+    removeCurator(input: { userId: $userId }) {
+      success
+      message
+    }
+  }
+`

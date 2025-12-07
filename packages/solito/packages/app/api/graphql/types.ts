@@ -63,3 +63,33 @@ export interface User {
   twitter?: string
   instagram?: string
 }
+
+export interface PendingUpload {
+  id: string
+  userId: string
+  userEmail: string
+  userName: string
+  audioHash: string
+  imageHash: string
+  title: string
+  artist: string
+  description?: string
+  status: 'pending' | 'approved' | 'rejected'
+  createdAt: string
+  createdAtTimestamp: number
+  resolvedAt?: string
+  resolvedBy?: string
+  rejectionReason?: string
+  qualityScore?: number
+  isAiGenerated?: boolean
+}
+
+export interface Curator {
+  userId: string
+  userEmail: string
+  userName: string
+  addedAt: string
+  addedAtTimestamp: number
+  addedBy: string
+  addedByName: string
+}

@@ -1,11 +1,16 @@
 import { authenticateUser } from './auth/auth-context';
-import { analyzeAudio } from './audio/analyzer';
 import StorageClient from './util/storage-client';
 import { validateImageFile, validateAudioFile } from './util/file-validation';
+import { AlgoliaClient } from './algolia/algolia';
+import { PendingUpload } from './util/types';
+import { ADMIN_ID } from './constants/constants';
+import Mailer from './postmark/mailer';
+import crypto from 'crypto';
 
 /**
- * Complete upload flow: Upload files, analyze audio, return results
- * This combines file upload and analysis into one endpoint
+ * Complete upload flow: Upload files and create pending upload for curator review
+ * Files are stored in R2 and a pending upload record is created in Algolia
+ * Curators will review and approve/reject uploads
  */
 export async function handleUploadComplete(
   request: Request,
@@ -108,16 +113,70 @@ export async function handleUploadComplete(
     const imageUploadResult = await storage.pinBuffer(imageBuffer as any);
     console.log(`✅ Image uploaded: ${imageUploadResult.IpfsHash}`);
 
-    // Analyze audio quality
-    console.log('🔍 Analyzing audio quality...');
-    const audioArrayBuffer = await audioFile.arrayBuffer();
-    const analysisResult = await analyzeAudio(audioArrayBuffer);
-    console.log(`✅ Analysis complete: Score ${analysisResult.scores.finalScore}/10, Cost ${analysisResult.mintCost} XLM`);
+    // Create pending upload record for curator review
+    console.log('📝 Creating pending upload for curator review...');
+    const algolia = new AlgoliaClient(env);
+    const pendingUploadId = `pending-upload-${crypto.randomUUID()}`;
+    
+    const pendingUpload: PendingUpload = {
+      objectID: pendingUploadId,
+      userId: context.user.id,
+      userEmail: context.user.email,
+      userName: context.user.displayName || context.user.username,
+      audioHash: audioUploadResult.IpfsHash,
+      imageHash: imageUploadResult.IpfsHash,
+      title: title as string,
+      artist: artist as string,
+      description: description as string,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      createdAtTimestamp: Math.floor(Date.now() / 1000),
+    };
 
-    // Return combined result
+    await algolia.savePendingUpload(pendingUpload);
+    console.log(`✅ Pending upload created: ${pendingUploadId}`);
+
+    // Notify all curators about the new upload
+    try {
+      const mailer = new Mailer(env);
+      const curators = await algolia.getAllCurators();
+      
+      // Get admin user email
+      let adminEmail: string | undefined;
+      try {
+        const adminUser = await algolia.getUser(ADMIN_ID);
+        adminEmail = adminUser?.email;
+      } catch (e) {
+        console.warn('Could not fetch admin user for notification');
+      }
+      
+      // Collect all curator emails (including admin)
+      const curatorEmails = curators.map((c) => c.userEmail);
+      if (adminEmail && !curatorEmails.includes(adminEmail)) {
+        curatorEmails.push(adminEmail);
+      }
+      
+      if (curatorEmails.length > 0) {
+        await mailer.sendNewPendingUploadNotification({
+          curatorEmails,
+          uploaderName: context.user.displayName || context.user.username,
+          trackTitle: title as string,
+          trackArtist: artist as string,
+          pendingUploadId,
+        });
+        console.log(`✅ Notified ${curatorEmails.length} curator(s) about new upload`);
+      }
+    } catch (error) {
+      console.error('❌ Failed to send curator notifications:', error);
+      // Don't fail the upload if notifications fail
+    }
+
+    // Return success response - upload is pending review
     return new Response(
       JSON.stringify({
-        ...analysisResult,
+        success: true,
+        message: 'Your upload has been submitted for review. A curator will review it shortly.',
+        pendingUploadId,
         audioHash: audioUploadResult.IpfsHash,
         imageHash: imageUploadResult.IpfsHash,
         title,
