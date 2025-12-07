@@ -151,14 +151,6 @@ export class AlgoliaClient {
 		return user;
 	}
 
-	async getUserByEmail(email: string) {
-		const res = await this.indices.usersIndex.search('', {
-			filters: `email:${email}`,
-		});
-		const [user] = res.hits;
-		return user as User;
-	}
-
 	async getUserByPublicKey(publicKey: string) {
 		const res = await this.indices.usersIndex.search('', {
 			filters: `publicKey:${publicKey}`,
