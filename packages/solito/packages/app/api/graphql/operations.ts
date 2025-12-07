@@ -429,8 +429,8 @@ export const ADD_CURATOR = gql`
 `
 
 export const REMOVE_CURATOR = gql`
-  mutation RemoveCurator($email: String!) {
-    removeCurator(input: { email: $email }) {
+  mutation RemoveCurator($userId: String!) {
+    removeCurator(input: { userId: $userId }) {
       success
       message
     }

@@ -221,11 +221,13 @@ export function useCuratorsQuery() {
 export function useAddCuratorMutation() {
   return useMutation(ADD_CURATOR, {
     refetchQueries: [{ query: CURATORS }],
+    awaitRefetchQueries: true,
   })
 }
 
 export function useRemoveCuratorMutation() {
   return useMutation(REMOVE_CURATOR, {
     refetchQueries: [{ query: CURATORS }],
+    awaitRefetchQueries: true,
   })
 }

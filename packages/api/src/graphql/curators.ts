@@ -159,7 +159,7 @@ export const addCuratorResolver = async (
 };
 
 export interface RemoveCuratorInput {
-  email: string;
+  userId: string;
 }
 
 /**
@@ -185,18 +185,7 @@ export const removeCuratorResolver = async (
     });
   }
 
-  const { email } = input;
-  const normalizedEmail = email.toLowerCase().trim();
-
-  // Find curator by email
-  const existingCurator = await algolia.getCuratorByEmail(normalizedEmail);
-  if (!existingCurator) {
-    throw new GraphQLError('NOT_FOUND', {
-      extensions: { code: 'NOT_FOUND', message: `No curator found with email: ${normalizedEmail}` },
-    });
-  }
-
-  const userId = existingCurator.userId;
+  const { userId } = input;
 
   // Cannot remove admin
   if (userId === ADMIN_ID) {
@@ -212,18 +201,26 @@ export const removeCuratorResolver = async (
     });
   }
 
+  // Find curator by userId
+  const curator = await algolia.getCurator(userId);
+  if (!curator) {
+    throw new GraphQLError('NOT_FOUND', {
+      extensions: { code: 'NOT_FOUND', message: 'Curator not found' },
+    });
+  }
+
   // Remove curator
   await algolia.deleteCurator(userId);
-  console.log(`✅ Removed curator: ${existingCurator.userEmail} (by ${user.displayName || user.username})`);
+  console.log(`✅ Removed curator: ${curator.userEmail} (by ${user.displayName || user.username})`);
 
   // Send email notification
   try {
     await mailer.sendCuratorRemovedNotification({
-      curatorEmail: existingCurator.userEmail,
-      curatorName: existingCurator.userName,
+      curatorEmail: curator.userEmail,
+      curatorName: curator.userName,
       removedByName: user.displayName || user.username,
     });
-    console.log(`✅ Sent curator removal notification email to ${existingCurator.userEmail}`);
+    console.log(`✅ Sent curator removal notification email to ${curator.userEmail}`);
   } catch (error) {
     console.error('❌ Failed to send curator removal notification email:', error);
     // Don't fail the operation if email fails
@@ -231,7 +228,7 @@ export const removeCuratorResolver = async (
 
   return {
     success: true,
-    message: `${existingCurator.userName} is no longer a curator`,
+    message: `${curator.userName} is no longer a curator`,
   };
 };
 

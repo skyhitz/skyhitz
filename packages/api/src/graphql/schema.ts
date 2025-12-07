@@ -367,7 +367,7 @@ type AddCuratorResponse {
 }
 
 input RemoveCuratorInput {
-  email: String!
+  userId: String!
 }
 
 type RemoveCuratorResponse {

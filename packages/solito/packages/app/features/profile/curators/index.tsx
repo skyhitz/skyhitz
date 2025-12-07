@@ -36,7 +36,7 @@ export default function CuratorsScreen() {
       if (result.data?.addCurator?.success) {
         toast?.show(result.data.addCurator.message, { type: 'success' })
         setEmail('')
-        refetch()
+        await refetch()
       } else {
         toast?.show(result.data?.addCurator?.message || 'Failed to add curator', { type: 'danger' })
       }
@@ -70,13 +70,13 @@ export default function CuratorsScreen() {
     try {
       const result = await removeCurator({
         variables: {
-          email: curator.userEmail,
+          userId: curator.userId,
         },
       })
 
       if (result.data?.removeCurator?.success) {
         toast?.show(result.data.removeCurator.message, { type: 'success' })
-        refetch()
+        await refetch()
       } else {
         toast?.show(result.data?.removeCurator?.message || 'Failed to remove curator', { type: 'danger' })
       }
