@@ -413,16 +413,21 @@ export class AlgoliaClient {
 		return this.indices.pendingUploadsIndex.saveObject(pendingUpload);
 	}
 
-	async getPendingUpload(id: string): Promise<PendingUpload> {
-		return this.indices.pendingUploadsIndex.getObject(id);
+	async getPendingUpload(id: string): Promise<PendingUpload & { id: string }> {
+		const result = await this.indices.pendingUploadsIndex.getObject(id) as PendingUpload;
+		return { ...result, id: result.objectID };
 	}
 
-	async getAllPendingUploads(): Promise<PendingUpload[]> {
+	async getAllPendingUploads(): Promise<(PendingUpload & { id: string })[]> {
 		const pendingUploads = await this.indices.pendingUploadsIndex.search('', {
 			filters: 'status:pending',
 			hitsPerPage: 1000,
 		});
-		return pendingUploads.hits as unknown as PendingUpload[];
+		// Map objectID to id for GraphQL compatibility
+		return (pendingUploads.hits as unknown as PendingUpload[]).map((upload) => ({
+			...upload,
+			id: upload.objectID,
+		}));
 	}
 
 	async getPendingUploadsCount(): Promise<number> {

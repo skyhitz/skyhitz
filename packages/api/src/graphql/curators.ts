@@ -89,7 +89,8 @@ export const addCuratorResolver = async (
     });
   }
 
-  const userId = targetUser.objectID;
+  // Use id field for consistency with rest of codebase (fallback to objectID for Algolia compatibility)
+  const userId = targetUser.id || targetUser.objectID;
 
   // Cannot add yourself
   if (userId === user.id) {
