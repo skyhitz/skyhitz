@@ -70,6 +70,133 @@ Please create the user account manually and review the case.`;
 		});
 	}
 
+	async sendCuratorAddedNotification(params: {
+		curatorEmail: string;
+		curatorName: string;
+		addedByName: string;
+	}) {
+		const dashboardUrl = `${this.env.APP_URL}/profile/pending-uploads`;
+		
+		const textBody = `Hi ${params.curatorName},
+
+You have been added as a curator on Skyhitz by ${params.addedByName}!
+
+As a curator, you can:
+- Review and approve pending music uploads
+- Rate the quality of submitted tracks
+- Help maintain the quality standards of Skyhitz
+
+Start reviewing pending uploads: ${dashboardUrl}
+
+Thank you for helping us curate great music!
+
+The Skyhitz Team`;
+
+		const htmlBody = `
+			<h2>Welcome, Curator! 🎵</h2>
+			<p>Hi ${params.curatorName},</p>
+			<p>You have been added as a <strong>curator</strong> on Skyhitz by ${params.addedByName}!</p>
+			
+			<h3>What you can do as a curator:</h3>
+			<ul>
+				<li>Review and approve pending music uploads</li>
+				<li>Rate the quality of submitted tracks</li>
+				<li>Help maintain the quality standards of Skyhitz</li>
+			</ul>
+			
+			<p><a href="${dashboardUrl}" style="display:inline-block;padding:12px 24px;background:#111827;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:bold">Start Reviewing Uploads</a></p>
+			
+			<p>Thank you for helping us curate great music!</p>
+			<p>The Skyhitz Team</p>
+		`;
+
+		return this.sendEmailInternal({
+			to: params.curatorEmail,
+			subject: 'You are now a Skyhitz Curator! 🎵',
+			textBody,
+			htmlBody,
+		});
+	}
+
+	async sendCuratorRemovedNotification(params: {
+		curatorEmail: string;
+		curatorName: string;
+		removedByName: string;
+	}) {
+		const textBody = `Hi ${params.curatorName},
+
+Your curator status on Skyhitz has been removed by ${params.removedByName}.
+
+You will no longer be able to review pending uploads.
+
+If you believe this was a mistake, please contact support@skyhitz.io.
+
+The Skyhitz Team`;
+
+		const htmlBody = `
+			<p>Hi ${params.curatorName},</p>
+			<p>Your curator status on Skyhitz has been removed by ${params.removedByName}.</p>
+			<p>You will no longer be able to review pending uploads.</p>
+			<p>If you believe this was a mistake, please contact <a href="mailto:support@skyhitz.io">support@skyhitz.io</a>.</p>
+			<p>The Skyhitz Team</p>
+		`;
+
+		return this.sendEmailInternal({
+			to: params.curatorEmail,
+			subject: 'Curator Status Removed - Skyhitz',
+			textBody,
+			htmlBody,
+		});
+	}
+
+	async sendNewPendingUploadNotification(params: {
+		curatorEmails: string[];
+		uploaderName: string;
+		trackTitle: string;
+		trackArtist: string;
+		pendingUploadId: string;
+	}) {
+		if (params.curatorEmails.length === 0) return { skipped: true };
+
+		const dashboardUrl = `${this.env.APP_URL}/profile/pending-uploads`;
+		
+		const textBody = `A new track has been uploaded and is waiting for your review!
+
+Track: "${params.trackTitle}" by ${params.trackArtist}
+Uploaded by: ${params.uploaderName}
+
+Review it now: ${dashboardUrl}
+
+The Skyhitz Team`;
+
+		const htmlBody = `
+			<h2>New Upload Pending Review 🎵</h2>
+			<p>A new track has been uploaded and is waiting for your review!</p>
+			
+			<div style="background:#f3f4f6;padding:16px;border-radius:8px;margin:16px 0">
+				<p style="margin:0"><strong>Track:</strong> "${params.trackTitle}"</p>
+				<p style="margin:4px 0 0 0"><strong>Artist:</strong> ${params.trackArtist}</p>
+				<p style="margin:4px 0 0 0"><strong>Uploaded by:</strong> ${params.uploaderName}</p>
+			</div>
+			
+			<p><a href="${dashboardUrl}" style="display:inline-block;padding:12px 24px;background:#111827;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:bold">Review Now</a></p>
+			
+			<p>The Skyhitz Team</p>
+		`;
+
+		// Send to all curators
+		const promises = params.curatorEmails.map((email) =>
+			this.sendEmailInternal({
+				to: email,
+				subject: `New Upload: "${params.trackTitle}" by ${params.trackArtist}`,
+				textBody,
+				htmlBody,
+			})
+		);
+
+		return Promise.allSettled(promises);
+	}
+
 	async sendPendingMineNotification(params: {
 		userName: string;
 		userEmail: string;
