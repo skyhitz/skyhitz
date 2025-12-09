@@ -19,6 +19,8 @@ import StyledTextInput from 'app/features/accounts/styledTextInput'
 import { Formik, FormikProps } from 'formik'
 import { topUpFormSchema } from 'app/validation'
 import { useCreatePaymentIntentMutation } from 'app/api/graphql/mutations'
+import { HITZ_PRICE_XLM } from 'app/api/graphql/operations'
+import { useQuery } from '@apollo/client'
 import CompletePage from './complete-page'
 import { trackTopUp } from 'app/utils/analytics'
 import { useUserStore } from 'app/state/user'
@@ -85,6 +87,12 @@ const InnerCheckoutForm = ({
   const stripe = useStripe()
   const elements = useElements()
   const user = useUserStore((s) => s.user)
+  
+  // Fetch real HITZ/XLM price from oracle
+  const { data: hitzPriceData } = useQuery(HITZ_PRICE_XLM, {
+    pollInterval: 30000, // Refresh every 30 seconds
+  })
+  const hitzPriceXlm = Number.parseFloat((hitzPriceData?.hitzPriceXlm as string) || '0') || 0
 
   const emailInputRef = useRef<TextInput>(null)
   const amountInputRef = useRef<TextInput>(null)
@@ -173,11 +181,12 @@ const InnerCheckoutForm = ({
 
   const fetchXlmPrice = async () => {
     try {
-      const response = await fetch(
+      // Fetch XLM/USD price from Kraken
+      const xlmResponse = await fetch(
         'https://api.kraken.com/0/public/Ticker?pair=XLMUSD'
       )
-      const data = await response.json()
-      const price = parseFloat(data.result.XXLMZUSD.c[0])
+      const xlmData = await xlmResponse.json()
+      const price = parseFloat(xlmData.result.XXLMZUSD.c[0])
       setXlmPrice(price)
     } catch (error) {
       console.error('Error fetching XLM price:', error)
@@ -186,8 +195,8 @@ const InnerCheckoutForm = ({
 
   useEffect(() => {
     fetchXlmPrice()
-    const intervalId = setInterval(fetchXlmPrice, 5000) // Refresh every 5 seconds
-    return () => clearInterval(intervalId) // Cleanup on unmount
+    const intervalId = setInterval(fetchXlmPrice, 30000) // Refresh every 30 seconds
+    return () => clearInterval(intervalId)
   }, [])
 
   const getFee = (amount: number) => {
@@ -196,6 +205,16 @@ const InnerCheckoutForm = ({
 
   const getTotalXLM = (amount: number) => {
     return (amount - getFee(amount)) / (xlmPrice ? xlmPrice : 0.4)
+  }
+
+  // Estimate HITZ received (XLM amount converted to HITZ via DEX)
+  // Keep 2 XLM for network fees, rest is swapped to HITZ
+  const getEstimatedHITZ = (amount: number): number | null => {
+    if (!hitzPriceXlm || hitzPriceXlm <= 0) return null
+    const xlmAmount = getTotalXLM(amount)
+    const xlmToSwap = Math.max(0, xlmAmount - 2) // Keep 2 XLM reserve
+    // HITZ = XLM / (XLM per HITZ)
+    return xlmToSwap / hitzPriceXlm
   }
 
   return (
@@ -271,7 +290,13 @@ const InnerCheckoutForm = ({
           </P>
 
           <P className="block py-2 text-sm font-medium text-gray-700">
-            Total XLM: {getTotalXLM(values.amount).toFixed(2)}
+            Estimated HITZ: {getEstimatedHITZ(values.amount) !== null 
+              ? `~${getEstimatedHITZ(values.amount)?.toFixed(0)} HITZ` 
+              : 'Loading...'}
+          </P>
+
+          <P className="block py-1 text-xs text-gray-500">
+            (USD → XLM via Kraken, then XLM → HITZ via Soroswap DEX)
           </P>
 
           <P className="block py-2 text-sm font-bold text-gray-700">

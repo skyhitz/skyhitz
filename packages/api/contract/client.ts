@@ -38,8 +38,8 @@ export type DataKey = {tag: "Admin", values: void} | {tag: "Treasury", values: v
 
 export interface Entry {
   created_at: u64;
-  escrow_xlm: i128;
-  tvl_xlm: i128;
+  escrow: i128;
+  tvl: i128;
 }
 
 
@@ -499,7 +499,7 @@ export interface Client {
    * Distribute HITZ rewards proportionally based on escrow performance
    * 
    * Treasury bot calls this after buying HITZ with accumulated XLM fees.
-   * Contract automatically distributes to entries based on their escrow_xlm.
+   * Contract automatically distributes to entries based on their escrow.
    * 
    * # Arguments
    * * `caller` - Treasury address that holds the HITZ
@@ -799,7 +799,7 @@ export interface Client {
    * Construct and simulate a get_entry_stats transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    * Get comprehensive entry statistics for ranking
    * 
-   * Returns: (tvl_xlm, escrow_xlm, total_stake_hitz, reward_pool_hitz, apr_basis_points)
+   * Returns: (tvl, escrow, total_staked, reward_pool, apr_basis_points)
    */
   get_entry_stats: ({entry_id}: {entry_id: string}, options?: {
     /**

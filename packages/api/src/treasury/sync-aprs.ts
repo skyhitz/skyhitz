@@ -40,11 +40,11 @@ export async function syncAllAPRsToAlgolia(env: Env): Promise<{
 			// Get entry stats from contract
 			const stats = await contract.getEntryStats(entryId);
 
-			// Convert from stroops to XLM/HITZ and basis points to percentage
+			// Convert from stroops to HITZ and basis points to percentage
 			const update = {
 				objectID: entryId,
-				tvl: stats.tvlXlm / 10_000_000,
-				escrow: stats.escrowXlm / 10_000_000,
+				tvl: stats.tvl / 10_000_000,
+				escrow: stats.escrow / 10_000_000,
 				apr: stats.apr / 100, // basis points to percentage
 				totalStaked: stats.totalStaked / 10_000_000, // Total HITZ staked (stroops to HITZ)
 			};

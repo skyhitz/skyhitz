@@ -174,16 +174,16 @@ export const approvePendingUploadResolver = async (
   try {
     // Check user balance
     const stellar = new StellarClient(env);
-    const { availableCredits } = await stellar.accountCredits(originalUser.publicKey);
+    const { availableXlmBalance } = await stellar.getXlmBalance(originalUser.publicKey);
     const requiredBalance = mintCost + 0.2; // mint cost + buffer for fees
 
-    if (availableCredits < requiredBalance) {
+    if (availableXlmBalance < requiredBalance) {
       throw new GraphQLError('INSUFFICIENT_FUNDS', {
         extensions: {
           code: 'INSUFFICIENT_FUNDS',
           required: requiredBalance,
-          available: availableCredits,
-          message: `User has insufficient balance. Required: ${requiredBalance} XLM, Available: ${availableCredits} XLM`,
+          available: availableXlmBalance,
+          message: `User has insufficient balance. Required: ${requiredBalance} XLM, Available: ${availableXlmBalance} XLM`,
         },
       });
     }
@@ -268,8 +268,8 @@ export const approvePendingUploadResolver = async (
 
       await algolia.partialUpdateEntry({
         objectID: entryId,
-        tvl: Number(chainEntry.tvl_xlm) / 10_000_000,
-        escrow: Number(chainEntry.escrow_xlm) / 10_000_000,
+        tvl: Number(chainEntry.tvl) / 10_000_000,
+        escrow: Number(chainEntry.escrow) / 10_000_000,
         apr: Number(stats.apr) / 100,
         totalStaked: Number(stats.totalStaked) / 10_000_000,
       });

@@ -17,19 +17,16 @@ import { WithdrawModal } from './WithdrawModal'
 import { User } from 'app/api/graphql/types'
 import {
   useUserCollectionQuery,
-  useUserCreditsQuery,
   useUserLikesQuery,
   useClaimEarningsMutation,
   usePendingUploadsCountQuery,
   useIsCuratorQuery,
 } from 'app/api/graphql/mutations'
 import { useLazyQuery, useQuery } from '@apollo/client'
-import { CLAIMABLE_EARNINGS_PREVIEW, USER_HITZ_BALANCE, XLM_PRICE, HITZ_PRICE_XLM } from 'app/api/graphql/operations'
+import { CLAIMABLE_EARNINGS_PREVIEW, USER_HITZ_BALANCE, HITZ_PRICE_XLM } from 'app/api/graphql/operations'
 import { P, ActivityIndicator } from 'app/design/typography'
 import { useToast } from 'app/provider/toast'
-import Stellar from 'app/ui/icons/stellar'
 import Lock from 'app/ui/icons/lock'
-import { useAssetStore } from 'app/state/asset'
 import Users from 'app/ui/icons/users'
 import { AssetType, stroopsToToken } from 'app/types/asset'
 import { sharesIndex } from 'app/api/algolia'
@@ -41,10 +38,26 @@ export function ProfileScreen({ user }: { user: User }) {
     useState<boolean>(false)
   const [withdrawVisible, setWithdrawVisible] = useState<boolean>(false)
   const [isClaimingEarnings, setIsClaimingEarnings] = useState(false)
-  const { data: credits, refetch: refetchUserCredits } = useUserCreditsQuery()
+  const [xlmPriceUsd, setXlmPriceUsd] = useState<number>(0)
   const { data: hitzBalanceData, refetch: refetchHitzBalance } = useQuery(USER_HITZ_BALANCE, { skip: !user })
-  const { data: priceData } = useQuery(XLM_PRICE)
   const { data: hitzPriceData } = useQuery(HITZ_PRICE_XLM)
+  
+  // Fetch real XLM/USD price from Kraken
+  useEffect(() => {
+    const fetchXlmPrice = async () => {
+      try {
+        const response = await fetch('https://api.kraken.com/0/public/Ticker?pair=XLMUSD')
+        const data = await response.json()
+        const price = parseFloat(data.result.XXLMZUSD.c[0])
+        setXlmPriceUsd(price)
+      } catch (error) {
+        console.error('Error fetching XLM price:', error)
+      }
+    }
+    fetchXlmPrice()
+    const interval = setInterval(fetchXlmPrice, 60000) // Refresh every minute
+    return () => clearInterval(interval)
+  }, [])
   const { data: userLikesData } = useUserLikesQuery()
   const { data: userCollectionData } = useUserCollectionQuery(user.id)
   const { data: pendingUploadsCountData } = usePendingUploadsCountQuery()
@@ -53,7 +66,6 @@ export function ProfileScreen({ user }: { user: User }) {
   const [claimEarnings] = useClaimEarningsMutation()
   const [loadPreview] = useLazyQuery(CLAIMABLE_EARNINGS_PREVIEW)
   const toast = useToast()
-  const { selectedAsset } = useAssetStore()
   const [totalStakedStroops, setTotalStakedStroops] = useState(0)
 
   // Use a ref to track if we've already attempted to claim earnings
@@ -79,14 +91,13 @@ export function ProfileScreen({ user }: { user: User }) {
   }, [user.id])
 
   const stakedHitz = stroopsToToken(totalStakedStroops, AssetType.HITZ)
-  const xlmPrice = Number.parseFloat((priceData?.xlmPrice as string) || '0') || 0
   const hitzPriceXlm = Number.parseFloat((hitzPriceData?.hitzPriceXlm as string) || '0') || 0
   
-  // Calculate total USD value including XLM, HITZ, and staked HITZ
-  const xlmValue = (credits?.userCredits || 0) * xlmPrice
-  const hitzValue = (hitzBalanceData?.userHitzBalance || 0) * hitzPriceXlm * xlmPrice
-  const stakedValue = stakedHitz * hitzPriceXlm * xlmPrice
-  const approxUsd = xlmValue + hitzValue + stakedValue
+  // Calculate total USD value (HITZ + staked HITZ)
+  // HITZ → XLM (from oracle) → USD (from Kraken)
+  const hitzBalance = hitzBalanceData?.userHitzBalance || 0
+  const totalHitz = hitzBalance + stakedHitz
+  const approxUsd = totalHitz * hitzPriceXlm * xlmPriceUsd
 
   // Attempt to claim earnings when the profile screen loads, but only once
   useEffect(() => {
@@ -112,15 +123,15 @@ export function ProfileScreen({ user }: { user: User }) {
 
         if (response?.success) {
           if (response.totalClaimedAmount > 0) {
-            // Refresh user credits to show updated balance
+            // Refresh HITZ balance to show updated balance
             try {
-              await refetchUserCredits()
+              await refetchHitzBalance()
             } catch (refetchError) {
-              console.error('Error refreshing user credits:', refetchError)
+              console.error('Error refreshing HITZ balance:', refetchError)
             }
 
             toast.show(
-              `Successfully claimed ${response.totalClaimedAmount} XLM!`,
+              `Successfully claimed ${response.totalClaimedAmount} HITZ!`,
               { type: 'success' }
             )
           }
@@ -147,10 +158,10 @@ export function ProfileScreen({ user }: { user: User }) {
     }
 
     attemptClaimEarnings()
-  }, [claimEarnings, refetchUserCredits, toast])
+  }, [claimEarnings, refetchHitzBalance, toast])
 
   const handleWithdraw = () => {
-    if (selectedAsset === AssetType.XLM && (credits?.userCredits || 0) < MIN_WITHDRAWAL_AMOUNT) {
+    if ((hitzBalance || 0) < MIN_WITHDRAWAL_AMOUNT) {
       setLowBalanceModalVisible(true)
       return
     }
@@ -174,27 +185,16 @@ export function ProfileScreen({ user }: { user: User }) {
         />
 
         <View className="mt-8 w-full items-center justify-center px-4">
-          {/* Asset Selector */}
-          {/* <View className="mb-4 w-full flex-row items-center">
-            {`${displayBalance.toFixed(2)}`} <AssetSelector />
-          </View> */}
-
-          {/* Balance Display (XLM, HITZ, Staked) */}
+          {/* Balance Display (HITZ and Staked HITZ) */}
           <View className="mb-0.5 flex w-full flex-row items-center justify-between">
             <View className="ml-2 flex items-start gap-2">
               <View className="ml-2 flex flex-row items-center gap-2">
                 <P className="flex flex-row items-center font-bold font-unbounded text-[--text-color] gap-2 text-sm">
-                  <Stellar size={18} />
-                  {`${(credits?.userCredits || 0).toFixed(7)} XLM`}
-                </P>
-              </View>
-              {hitzBalanceData?.userHitzBalance && hitzBalanceData?.userHitzBalance > 0 ? <View className="ml-2 flex flex-row items-center gap-2">
-                <P className="flex flex-row items-center font-bold font-unbounded text-[--text-color] gap-2 text-sm">
                   <SkyhitzLogo size={18} className="text-[--text-color]" id="profile" />
-                  {`${(hitzBalanceData?.userHitzBalance || 0).toFixed(1)} HITZ`}
+                  {`${(hitzBalance || 0).toFixed(1)} HITZ`}
                 </P>
                 {isClaimingEarnings ? <ActivityIndicator size="small" /> : null}
-              </View> : null}
+              </View>
               <View className="ml-2 flex flex-row items-center gap-2">
                 <P className="flex flex-row items-center font-bold font-unbounded text-[--text-color] gap-2 text-sm">
                   <Lock size={18} />
@@ -300,7 +300,6 @@ export function ProfileScreen({ user }: { user: User }) {
         visible={withdrawVisible}
         onClose={() => {
           setWithdrawVisible(false)
-          refetchUserCredits()
           refetchHitzBalance()
         }}
       />

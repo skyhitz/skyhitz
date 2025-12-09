@@ -192,10 +192,6 @@ type ConditionalUser {
   message: String!
 }
 
-type AccountCredits {
-  credits: Float!
-}
-
 type Offer {
   id: String!
   seller: String!

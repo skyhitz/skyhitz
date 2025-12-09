@@ -87,8 +87,8 @@ async function verifyEntry(
     const algoliaEntry = await algolia.getEntry(entryId)
 
     // Convert to comparable values (XLM)
-    const chainTVL = Number(chainEntry.tvl_xlm) / 10_000_000
-    const chainEscrow = Number(chainEntry.escrow_xlm) / 10_000_000
+    const chainTVL = Number(chainEntry.tvl) / 10_000_000
+    const chainEscrow = Number(chainEntry.escrow) / 10_000_000
     const chainAPR = Number(chainStats.apr) / 100
 
     const algoliaTVL = Number(algoliaEntry.tvl || 0)

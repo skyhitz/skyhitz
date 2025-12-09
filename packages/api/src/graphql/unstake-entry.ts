@@ -47,7 +47,7 @@ export const unstakeEntryResolver = async (_: any, args: any, context: Context) 
 		const userStake = await contract.getStake(id, user.publicKey);
 		
 		console.log('📈 Updated stats:', {
-			tvl: sorobanEntry.tvl_xlm,
+			tvl: sorobanEntry.tvl,
 			userStake,
 			totalStaked: stats.totalStaked,
 		});
@@ -56,9 +56,9 @@ export const unstakeEntryResolver = async (_: any, args: any, context: Context) 
 		try {
 			await algolia.partialUpdateEntry({
 				// TVL doesn't change (only stakes change, not XLM)
-				tvl: Number(sorobanEntry.tvl_xlm) / 10_000_000,
+				tvl: Number(sorobanEntry.tvl) / 10_000_000,
 				apr: Number(stats.apr) / 100,
-				escrow: Number(sorobanEntry.escrow_xlm) / 10_000_000,
+				escrow: Number(sorobanEntry.escrow) / 10_000_000,
 				totalStaked: Number(stats.totalStaked) / 10_000_000, // Total HITZ staked
 				objectID: id,
 			});

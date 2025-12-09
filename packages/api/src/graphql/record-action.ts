@@ -61,14 +61,14 @@ export const recordActionResolver = async (_: any, args: any, context: Context) 
         const stats = await contract.getEntryStats(id);
 
         console.log('📈 Entry stats after action:', {
-            escrow: sorobanEntry.escrow_hitz,
+            escrow: sorobanEntry.escrow,
             apr: stats.apr,
         });
 
         // 5. Update Algolia search index with new escrow data
         try {
             await algolia.partialUpdateEntry({
-                escrow: Number(sorobanEntry.escrow_hitz) / 10_000_000,
+                escrow: Number(sorobanEntry.escrow) / 10_000_000,
                 apr: Number(stats.apr) / 100,
                 objectID: id,
             });

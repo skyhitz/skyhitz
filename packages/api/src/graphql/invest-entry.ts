@@ -73,7 +73,7 @@ export const investEntryResolver = async (_: any, args: any, context: Context) =
 		console.log('✅ Record action result:', res?.status);
 
 		// 5. Get updated entry data from contract
-		// NEW: Entry interface has escrow_hitz and tvl_hitz fields
+		// NEW: Entry interface has escrow and tvl fields
 		const sorobanEntry = await contract.getEntry(id);
 		
 		// 6. Get entry statistics (NEW method)
@@ -85,8 +85,8 @@ export const investEntryResolver = async (_: any, args: any, context: Context) =
 		const userStake = await contract.getStake(id, user.publicKey);
 		
 		console.log('📈 Entry stats:', {
-			tvl: sorobanEntry.tvl_hitz,
-			escrow: sorobanEntry.escrow_hitz,
+			tvl: sorobanEntry.tvl,
+			escrow: sorobanEntry.escrow,
 			apr: stats.apr,
 			userStake
 		});
@@ -95,9 +95,9 @@ export const investEntryResolver = async (_: any, args: any, context: Context) =
 		try {
 			await algolia.partialUpdateEntry({
 				// Convert stroops to HITZ for display (1 HITZ = 10^7 stroops)
-				tvl: Number(sorobanEntry.tvl_hitz) / 10_000_000,
+				tvl: Number(sorobanEntry.tvl) / 10_000_000,
 				apr: Number(stats.apr) / 100, // APR is stored as basis points (e.g., 1250 = 12.50%)
-				escrow: Number(sorobanEntry.escrow_hitz) / 10_000_000,
+				escrow: Number(sorobanEntry.escrow) / 10_000_000,
 				totalStaked: Number(stats.totalStaked) / 10_000_000, // Total HITZ staked
 				objectID: id,
 			});

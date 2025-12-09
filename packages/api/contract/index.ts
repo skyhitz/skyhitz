@@ -129,11 +129,8 @@ class ContractClient {
 				
 				return {
 					created_at: getValue('created_at'),
-					escrow_xlm: getValue('escrow_xlm'),
-					tvl_xlm: getValue('tvl_xlm'),
-					// For backwards compatibility
-					escrow: getValue('escrow_xlm'),
-					tvl: getValue('tvl_xlm'),
+					escrow: getValue('escrow'),
+					tvl: getValue('tvl'),
 				};
 			}
 			
@@ -533,15 +530,15 @@ class ContractClient {
 
 	/**
 	 * Get entry stats
-	 * Returns: [tvl_xlm, escrow_xlm, total_staked, reward_pool, apr]
+	 * Returns: [tvl, escrow, total_staked, reward_pool, apr]
 	 */
 	public getEntryStats = async (entryId: string) => {
 		const tx = await this.contract.get_entry_stats({ entry_id: entryId }, this.defaultOptions);
-		// Result is a tuple: [tvl_xlm, escrow_xlm, total_staked, reward_pool, apr]
-		const [tvl_xlm, escrow_xlm, total_staked, reward_pool, apr] = tx.result;
+		// Result is a tuple: [tvl, escrow, total_staked, reward_pool, apr]
+		const [tvl, escrow, total_staked, reward_pool, apr] = tx.result;
 		return {
-			tvlXlm: Number(tvl_xlm),
-			escrowXlm: Number(escrow_xlm),
+			tvl: Number(tvl),
+			escrow: Number(escrow),
 			totalStaked: Number(total_staked),
 			rewardPool: Number(reward_pool),
 			apr: Number(apr),

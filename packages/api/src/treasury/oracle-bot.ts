@@ -1,15 +1,11 @@
 import ContractClient from '../../contract';
+import { STROOPS, XLM_CONTRACT_ID, HITZ_CONTRACT_ID } from '../constants/stellar';
 
 const PRICE_UPDATE_THRESHOLD = 0.001; // 0.1% change triggers update (more sensitive to price changes)
 const UPDATE_INTERVAL = 3600; // 1 hour minimum between updates
-const STROOPS = 10_000_000;
-
-// Soroban contract addresses (same as in bot.ts)
-const XLM_CONTRACT_ID = 'CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA';
-const HITZ_CONTRACT_ID = 'CBS5ZVKSSUKF4JY77CKUZPN72EDUM3OOGPYZKFC3KQVONXPJTF6UODD7';
 
 // Use a representative trade size to get market price (not affected by small trade sizes)
-const REPRESENTATIVE_XLM_AMOUNT = 50; // 100 XLM for representative pricing
+const REPRESENTATIVE_XLM_AMOUNT = 50; // 50 XLM for representative pricing
 
 interface OracleRunResult {
 	status: 'updated' | 'skipped';

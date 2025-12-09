@@ -85,12 +85,6 @@ export const CREATE_USER_WITH_EMAIL = gql`
 
 // User data queries
 
-export const USER_CREDITS = gql`
-  query UserCredits {
-    userCredits
-  }
-`
-
 export const USER_HITZ_BALANCE = gql`
   query UserHitzBalance {
     userHitzBalance
@@ -98,12 +92,6 @@ export const USER_HITZ_BALANCE = gql`
 `
 
 // Market data
-export const XLM_PRICE = gql`
-  query XlmPrice {
-    xlmPrice
-  }
-`
-
 export const HITZ_PRICE_XLM = gql`
   query HitzPriceXlm {
     hitzPriceXlm
@@ -168,12 +156,6 @@ export const UPDATE_USER = gql`
       twitter
       instagram
     }
-  }
-`
-
-export const WITHDRAW_TO_EXTERNAL_WALLET = gql`
-  mutation WithdrawToExternalWallet($address: String!, $amount: Float!) {
-    withdrawToExternalWallet(address: $address, amount: $amount)
   }
 `
 

@@ -5,13 +5,13 @@
 import { Entry } from 'app/api/graphql/types'
 
 import { lumensToStroops } from 'app/utils'
-import { MICRO_SPEND_PLAYBACK_COMPLETE_XLM } from 'app/constants/constants'
+import { MICRO_SPEND_PLAYBACK_COMPLETE_HITZ } from 'app/constants/constants'
 import { last } from 'ramda'
 import { videoSrc } from 'app/utils/entry'
 import { useErrorReport } from 'app/hooks/useErrorReport'
 import { useUserStore } from 'app/state/user'
 import { PlaybackState, usePlayerStore } from 'app/state/player'
-import { RECORD_ACTION, SET_LAST_PLAYED_ENTRY, USER_CREDITS } from 'app/api/graphql/operations'
+import { RECORD_ACTION, SET_LAST_PLAYED_ENTRY, USER_HITZ_BALANCE } from 'app/api/graphql/operations'
 import { useMutation, useQuery } from '@apollo/client'
 import { useTopUpModalStore } from 'app/state/topup'
 import { useEffect } from 'react'
@@ -38,7 +38,7 @@ export function usePlayback() {
   // GraphQL mutations
   const [setLastPlayedEntry] = useMutation(SET_LAST_PLAYED_ENTRY)
   const [recordAction, { loading: recordActionLoading }] = useMutation(RECORD_ACTION)
-  const { data: creditsData } = useQuery(USER_CREDITS, { skip: !user, fetchPolicy: 'network-only' })
+  const { data: hitzBalanceData } = useQuery(USER_HITZ_BALANCE, { skip: !user, fetchPolicy: 'network-only' })
   const openTopUpModal = useTopUpModalStore((s) => s.openTopUpModal)
   const reportError = useErrorReport()
 
@@ -123,9 +123,9 @@ export function usePlayback() {
       return
     }
 
-    const available = Number(creditsData?.userCredits ?? 0)
-    if (!available || available < MICRO_SPEND_PLAYBACK_COMPLETE_XLM) {
-      openTopUpModal({ action: 'playback', requiredXLM: MICRO_SPEND_PLAYBACK_COMPLETE_XLM, availableXLM: available })
+    const available = Number(hitzBalanceData?.userHitzBalance ?? 0)
+    if (!available || available < MICRO_SPEND_PLAYBACK_COMPLETE_HITZ) {
+      openTopUpModal({ action: 'playback', requiredHITZ: MICRO_SPEND_PLAYBACK_COMPLETE_HITZ, availableHITZ: available })
       return
     }
     
@@ -139,7 +139,7 @@ export function usePlayback() {
       });
       
       if (result?.data?.recordAction?.success) {
-        console.log('[usePlayback] Stream recorded successfully, fee:', result.data.recordAction.fee, 'XLM')
+        console.log('[usePlayback] Stream recorded successfully, fee:', result.data.recordAction.fee, 'HITZ')
       }
     } catch (error) {
       console.error('[usePlayback] Failed to record stream:', error)

@@ -19,7 +19,7 @@ export async function migrateContractData(env: Env) {
     
     // Get all entries from Algolia
     console.log('Fetching all entries from Algolia...');
-    const entries = await getAllEntries(algolia);
+    const entries = await algolia.getAllEntries();
     console.log(`Found ${entries.length} entries to migrate`);
     console.log('');
     
@@ -37,8 +37,8 @@ export async function migrateContractData(env: Env) {
             
             // Convert HITZ values (already in HITZ on new contract)
             // Algolia values should be in display format (divided by 10_000_000)
-            const tvlHitz = Number(onChainEntry.tvl_hitz) / 10_000_000;
-            const escrowHitz = Number(onChainEntry.escrow_hitz) / 10_000_000;
+            const tvlHitz = Number(onChainEntry.tvl) / 10_000_000;
+            const escrowHitz = Number(onChainEntry.escrow) / 10_000_000;
             
             // Get stats for APR
             const stats = await contract.getEntryStats(entry.objectID);
@@ -75,28 +75,6 @@ export async function migrateContractData(env: Env) {
     console.log(`  Total Escrow: ${totalEscrowHITZ.toFixed(2)} HITZ`);
     
     return { successCount, errorCount, totalTvlHITZ, totalEscrowHITZ };
-}
-
-/**
- * Helper to get all entries from Algolia
- */
-async function getAllEntries(algolia: AlgoliaClient): Promise<any[]> {
-    const entries: any[] = [];
-    let page = 0;
-    let hasMore = true;
-    
-    while (hasMore) {
-        const result = await algolia.entriesIndex.search('', {
-            page,
-            hitsPerPage: 1000,
-        });
-        
-        entries.push(...result.hits);
-        hasMore = result.nbPages > page + 1;
-        page++;
-    }
-    
-    return entries;
 }
 
 /**

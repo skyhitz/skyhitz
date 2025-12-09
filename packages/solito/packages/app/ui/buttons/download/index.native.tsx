@@ -7,9 +7,9 @@ import { View, ActivityIndicator, Platform } from 'react-native'
 import { useUserStore } from 'app/state/user'
 import { useRouter } from 'solito/navigation'
 import { useMutation, useQuery } from '@apollo/client'
-import { RECORD_ACTION, USER_CREDITS } from 'app/api/graphql/operations'
+import { RECORD_ACTION, USER_HITZ_BALANCE } from 'app/api/graphql/operations'
 import { useTopUpModalStore } from 'app/state/topup'
-import { MICRO_SPEND_DOWNLOAD_XLM } from 'app/constants/constants'
+import { MICRO_SPEND_DOWNLOAD_HITZ } from 'app/constants/constants'
 import { trackDownload } from 'app/utils/analytics'
 import { isExternalPreview } from 'app/utils/external-entry'
 
@@ -25,7 +25,7 @@ const DownloadBtn = ({
   const user = useUserStore((s) => s.user)
   const { push } = useRouter()
   const [recordAction] = useMutation(RECORD_ACTION)
-  const { data: creditsData } = useQuery(USER_CREDITS, { skip: !user, fetchPolicy: 'network-only' })
+  const { data: hitzBalanceData } = useQuery(USER_HITZ_BALANCE, { skip: !user, fetchPolicy: 'network-only' })
   const openTopUpModal = useTopUpModalStore((s) => s.openTopUpModal)
   const [downloading, setDownloading] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -48,9 +48,9 @@ const DownloadBtn = ({
     }
 
     // Check balance
-    const available = Number(creditsData?.userCredits ?? 0)
-    if (!available || available < MICRO_SPEND_DOWNLOAD_XLM) {
-      openTopUpModal({ action: 'download', requiredXLM: MICRO_SPEND_DOWNLOAD_XLM, availableXLM: available })
+    const available = Number(hitzBalanceData?.userHitzBalance ?? 0)
+    if (!available || available < MICRO_SPEND_DOWNLOAD_HITZ) {
+      openTopUpModal({ action: 'download', requiredHITZ: MICRO_SPEND_DOWNLOAD_HITZ, availableHITZ: available })
       return
     }
 
@@ -90,7 +90,7 @@ const DownloadBtn = ({
 
           // Execute the actual download logic
           await downloadWithFileSystem(FileSystemModule, entry.videoUrl)
-          toast.show(`Downloaded! Fee: ${fee.toFixed(4)} XLM`, { type: 'success' })
+          toast.show(`Downloaded! Fee: ${fee.toFixed(4)} HITZ`, { type: 'success' })
         }
       } catch (error) {
         // This will happen in Expo Go
