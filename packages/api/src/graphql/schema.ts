@@ -109,6 +109,7 @@ type User {
   managed: Boolean!
   twitter: String
   instagram: String
+  verifiedArtist: Boolean
 }
 
 type Entry {
@@ -324,6 +325,8 @@ type PendingUpload {
   title: String!
   artist: String!
   description: String
+  isVerifiedArtist: Boolean
+  artistEquityBps: Int
   status: String!
   createdAt: String!
   createdAtTimestamp: Int!

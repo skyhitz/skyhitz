@@ -280,6 +280,19 @@ export const approvePendingUploadResolver = async (
       // Don't fail the whole operation
     }
 
+    // Set artist equity on contract if verified artist uploaded with equity
+    if (pendingUpload.isVerifiedArtist && pendingUpload.artistEquityBps && pendingUpload.artistEquityBps > 0) {
+      console.log(`🎨 Setting artist equity: ${pendingUpload.artistEquityBps} bps (${(pendingUpload.artistEquityBps / 100).toFixed(1)}%) for ${originalUser.publicKey}`);
+      try {
+        await contract.setArtistEquity(entryId, originalUser.publicKey, pendingUpload.artistEquityBps);
+        console.log('✅ Artist equity set on contract');
+      } catch (error) {
+        console.error('❌ Failed to set artist equity on contract:', error);
+        // Don't fail the whole operation - entry is already created
+        // Artist equity can be set manually later if needed
+      }
+    }
+
     // Update pending upload status
     await algolia.updatePendingUploadStatus(id, 'approved', user.id, {
       qualityScore,

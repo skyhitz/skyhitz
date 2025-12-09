@@ -62,6 +62,7 @@ export interface User {
   managed: boolean
   twitter?: string
   instagram?: string
+  verifiedArtist?: boolean
 }
 
 export interface PendingUpload {
@@ -74,6 +75,8 @@ export interface PendingUpload {
   title: string
   artist: string
   description?: string
+  isVerifiedArtist?: boolean
+  artistEquityBps?: number
   status: 'pending' | 'approved' | 'rejected'
   createdAt: string
   createdAtTimestamp: number

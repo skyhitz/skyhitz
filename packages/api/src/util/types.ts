@@ -17,6 +17,7 @@ export type User = {
 	twitter: string;
 	instagram: string;
 	minBalance?: number;
+	verifiedArtist?: boolean; // Whether the user is a verified artist who can claim non-dilutable equity
 	claimEarnings?: {
 		success: boolean;
 		totalClaimedAmount: number;
@@ -170,6 +171,9 @@ export interface PendingUpload {
 	title: string;
 	artist: string;
 	description?: string;
+	// Artist equity (non-dilutable)
+	isVerifiedArtist?: boolean; // Whether uploader was verified at upload time
+	artistEquityBps?: number; // Artist's non-dilutable equity in basis points (0-9990)
 	// Status
 	status: 'pending' | 'approved' | 'rejected';
 	createdAt: string;
