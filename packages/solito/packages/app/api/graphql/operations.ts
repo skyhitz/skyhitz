@@ -32,6 +32,7 @@ export const SIGN_IN_WITH_TOKEN = gql`
       managed
       twitter
       instagram
+      verifiedArtist
       lastPlayedEntry {
         imageUrl
         videoUrl
@@ -356,6 +357,8 @@ export const PENDING_UPLOADS = gql`
       title
       artist
       description
+      isVerifiedArtist
+      artistEquityBps
       status
       createdAt
       createdAtTimestamp

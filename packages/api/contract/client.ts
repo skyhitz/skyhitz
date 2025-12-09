@@ -33,13 +33,23 @@ if (typeof window !== 'undefined') {
 
 
 
-export type DataKey = {tag: "Admin", values: void} | {tag: "Treasury", values: void} | {tag: "HitzToken", values: void} | {tag: "XlmToken", values: void} | {tag: "BaseFee", values: void} | {tag: "EmissionStartTs", values: void} | {tag: "EmissionIntervalSec", values: void} | {tag: "EmissionEpoch0UnitReward", values: void} | {tag: "OraclePrice", values: void} | {tag: "OracleLastUpdate", values: void} | {tag: "Entry", values: readonly [string]} | {tag: "Stake", values: readonly [readonly [string, string]]} | {tag: "StakeTotal", values: readonly [string]} | {tag: "RewardPool", values: readonly [string]} | {tag: "Claimed", values: readonly [readonly [string, string]]} | {tag: "EntryAt", values: readonly [u32]} | {tag: "EntryCount", values: void} | {tag: "TotalMinted", values: void} | {tag: "BatchDistTotalEscrow", values: void} | {tag: "BatchDistHitzAmount", values: void};
+export type DataKey = {tag: "Admin", values: void} | {tag: "Treasury", values: void} | {tag: "HitzToken", values: void} | {tag: "XlmToken", values: void} | {tag: "BaseFee", values: void} | {tag: "EmissionStartTs", values: void} | {tag: "EmissionIntervalSec", values: void} | {tag: "EmissionEpoch0UnitReward", values: void} | {tag: "OraclePrice", values: void} | {tag: "OracleLastUpdate", values: void} | {tag: "Entry", values: readonly [string]} | {tag: "Stake", values: readonly [readonly [string, string]]} | {tag: "StakeTotal", values: readonly [string]} | {tag: "RewardPool", values: readonly [string]} | {tag: "Claimed", values: readonly [readonly [string, string]]} | {tag: "EntryAt", values: readonly [u32]} | {tag: "EntryCount", values: void} | {tag: "TotalMinted", values: void} | {tag: "BatchDistTotalEscrow", values: void} | {tag: "BatchDistHitzAmount", values: void} | {tag: "ArtistEquity", values: readonly [readonly [string, string]]} | {tag: "ArtistEquityTotal", values: readonly [string]};
 
 
 export interface Entry {
   created_at: u64;
   escrow_xlm: i128;
   tvl_xlm: i128;
+}
+
+
+/**
+ * Artist equity claim for non-dilutable creator rewards
+ * Stored per (entry_id, artist) pair to support collaborations
+ */
+export interface ArtistEquityClaim {
+  claimed: i128;
+  equity_bps: u32;
 }
 
 export interface Client {
@@ -661,8 +671,9 @@ export interface Client {
    * Construct and simulate a claim_rewards transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    * Claim HITZ rewards from an entry's reward pool
    * 
-   * Stakers receive rewards proportional to their stake
-   * Formula: claimable = (reward_pool × user_stake) / total_stake - already_claimed
+   * Stakers receive rewards proportional to their stake from the STAKER pool.
+   * If artist equity exists, stakers share (100% - total_artist_equity) of rewards.
+   * Formula: claimable = (staker_pool × user_stake) / total_stake - already_claimed
    */
   claim_rewards: ({entry_id, claimer}: {entry_id: string, claimer: string}, options?: {
     /**
@@ -720,7 +731,7 @@ export interface Client {
 
   /**
    * Construct and simulate a get_claimable_rewards transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   * Get claimable HITZ rewards for a user
+   * Get claimable HITZ rewards for a staker (accounts for artist equity)
    */
   get_claimable_rewards: ({entry_id, user}: {entry_id: string, user: string}, options?: {
     /**
@@ -806,6 +817,117 @@ export interface Client {
      */
     simulate?: boolean;
   }) => Promise<AssembledTransaction<readonly [i128, i128, i128, i128, i128]>>
+
+  /**
+   * Construct and simulate a set_artist_equity transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Set non-dilutable artist equity for an entry (admin-only)
+   * 
+   * Allows verified artists to receive a fixed percentage of all rewards.
+   * Multiple artists can have equity on the same entry (collaborations).
+   * 
+   * # Arguments
+   * * `entry_id` - Entry to assign equity to (must exist)
+   * * `artist` - Artist's wallet address
+   * * `equity_bps` - Equity in basis points (1-9990, where 100 = 1%, 9990 = 99.9%)
+   * 
+   * # Security
+   * - Admin-only to prevent unauthorized equity claims
+   * - Max 99.9% total artist equity per entry (leaves 0.1% for stakers minimum)
+   * - Each artist can only have one equity claim per entry
+   * - Equity is immutable once set
+   */
+  set_artist_equity: ({entry_id, artist, equity_bps}: {entry_id: string, artist: string, equity_bps: u32}, options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<null>>
+
+  /**
+   * Construct and simulate a claim_artist_equity transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Artist claims their non-dilutable equity rewards
+   * 
+   * # Arguments
+   * * `entry_id` - Entry to claim from
+   * * `artist` - Artist's address (must match stored equity, requires auth)
+   * 
+   * # Returns
+   * Amount of HITZ claimed
+   */
+  claim_artist_equity: ({entry_id, artist}: {entry_id: string, artist: string}, options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<i128>>
+
+  /**
+   * Construct and simulate a get_artist_equity transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Get artist equity info for an entry
+   * 
+   * # Returns
+   * (equity_bps, claimed_amount, claimable_amount) or (0, 0, 0) if no equity
+   */
+  get_artist_equity: ({entry_id, artist}: {entry_id: string, artist: string}, options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<readonly [u32, i128, i128]>>
+
+  /**
+   * Construct and simulate a get_total_artist_equity transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Get total artist equity for an entry (sum of all artists)
+   * 
+   * # Returns
+   * Total equity in basis points (0-9990)
+   */
+  get_total_artist_equity: ({entry_id}: {entry_id: string}, options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<u32>>
 
   /**
    * Construct and simulate a version transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
@@ -908,8 +1030,9 @@ export class Client extends ContractClient {
   }
   constructor(public readonly options: ContractClientOptions) {
     super(
-      new ContractSpec([ "AAAAAgAAAAAAAAAAAAAAB0RhdGFLZXkAAAAAFAAAAAAAAAAAAAAABUFkbWluAAAAAAAAAAAAAAAAAAAIVHJlYXN1cnkAAAAAAAAAAAAAAAlIaXR6VG9rZW4AAAAAAAAAAAAAAAAAAAhYbG1Ub2tlbgAAAAAAAAAAAAAAB0Jhc2VGZWUAAAAAAAAAAAAAAAAPRW1pc3Npb25TdGFydFRzAAAAAAAAAAAAAAAAE0VtaXNzaW9uSW50ZXJ2YWxTZWMAAAAAAAAAAAAAAAAYRW1pc3Npb25FcG9jaDBVbml0UmV3YXJkAAAAAAAAAAAAAAALT3JhY2xlUHJpY2UAAAAAAAAAAAAAAAAQT3JhY2xlTGFzdFVwZGF0ZQAAAAEAAAAAAAAABUVudHJ5AAAAAAAAAQAAABAAAAABAAAAAAAAAAVTdGFrZQAAAAAAAAEAAAPtAAAAAgAAABAAAAATAAAAAQAAAAAAAAAKU3Rha2VUb3RhbAAAAAAAAQAAABAAAAABAAAAAAAAAApSZXdhcmRQb29sAAAAAAABAAAAEAAAAAEAAAAAAAAAB0NsYWltZWQAAAAAAQAAA+0AAAACAAAAEAAAABMAAAABAAAAAAAAAAdFbnRyeUF0AAAAAAEAAAAEAAAAAAAAAAAAAAAKRW50cnlDb3VudAAAAAAAAAAAAAAAAAALVG90YWxNaW50ZWQAAAAAAAAAAAAAAAAUQmF0Y2hEaXN0VG90YWxFc2Nyb3cAAAAAAAAAAAAAABNCYXRjaERpc3RIaXR6QW1vdW50AA==",
+      new ContractSpec([ "AAAAAgAAAAAAAAAAAAAAB0RhdGFLZXkAAAAAFgAAAAAAAAAAAAAABUFkbWluAAAAAAAAAAAAAAAAAAAIVHJlYXN1cnkAAAAAAAAAAAAAAAlIaXR6VG9rZW4AAAAAAAAAAAAAAAAAAAhYbG1Ub2tlbgAAAAAAAAAAAAAAB0Jhc2VGZWUAAAAAAAAAAAAAAAAPRW1pc3Npb25TdGFydFRzAAAAAAAAAAAAAAAAE0VtaXNzaW9uSW50ZXJ2YWxTZWMAAAAAAAAAAAAAAAAYRW1pc3Npb25FcG9jaDBVbml0UmV3YXJkAAAAAAAAAAAAAAALT3JhY2xlUHJpY2UAAAAAAAAAAAAAAAAQT3JhY2xlTGFzdFVwZGF0ZQAAAAEAAAAAAAAABUVudHJ5AAAAAAAAAQAAABAAAAABAAAAAAAAAAVTdGFrZQAAAAAAAAEAAAPtAAAAAgAAABAAAAATAAAAAQAAAAAAAAAKU3Rha2VUb3RhbAAAAAAAAQAAABAAAAABAAAAAAAAAApSZXdhcmRQb29sAAAAAAABAAAAEAAAAAEAAAAAAAAAB0NsYWltZWQAAAAAAQAAA+0AAAACAAAAEAAAABMAAAABAAAAAAAAAAdFbnRyeUF0AAAAAAEAAAAEAAAAAAAAAAAAAAAKRW50cnlDb3VudAAAAAAAAAAAAAAAAAALVG90YWxNaW50ZWQAAAAAAAAAAAAAAAAUQmF0Y2hEaXN0VG90YWxFc2Nyb3cAAAAAAAAAAAAAABNCYXRjaERpc3RIaXR6QW1vdW50AAAAAAEAAAAAAAAADEFydGlzdEVxdWl0eQAAAAEAAAPtAAAAAgAAABAAAAATAAAAAQAAAAAAAAARQXJ0aXN0RXF1aXR5VG90YWwAAAAAAAABAAAAEA==",
         "AAAAAQAAAAAAAAAAAAAABUVudHJ5AAAAAAAAAwAAAAAAAAAKY3JlYXRlZF9hdAAAAAAABgAAAAAAAAAKZXNjcm93X3hsbQAAAAAACwAAAAAAAAAHdHZsX3hsbQAAAAAL",
+        "AAAAAQAAAHJBcnRpc3QgZXF1aXR5IGNsYWltIGZvciBub24tZGlsdXRhYmxlIGNyZWF0b3IgcmV3YXJkcwpTdG9yZWQgcGVyIChlbnRyeV9pZCwgYXJ0aXN0KSBwYWlyIHRvIHN1cHBvcnQgY29sbGFib3JhdGlvbnMAAAAAAAAAAAARQXJ0aXN0RXF1aXR5Q2xhaW0AAAAAAAACAAAAAAAAAAdjbGFpbWVkAAAAAAsAAAAAAAAACmVxdWl0eV9icHMAAAAAAAQ=",
         "AAAAAAAAAIVVcGdyYWRlIGNvcmUgY29udHJhY3QgdG8gbmV3IFdBU00gY29kZSAoYWRtaW4tb25seSkKTm90ZTogTmFtZWQgYHVwZ3JhZGVfY29yZWAgdG8gYXZvaWQgZXhwb3J0IG5hbWUgY29sbGlzaW9uIHdpdGggdG9rZW4ncyBgdXBncmFkZWAuAAAAAAAADHVwZ3JhZGVfY29yZQAAAAEAAAAAAAAADW5ld193YXNtX2hhc2gAAAAAAAPuAAAAIAAAAAA=",
         "AAAAAAAAAc1SZXNldCBpbnN0YW5jZSBzdG9yYWdlIChhZG1pbi1vbmx5KQoKQ1JJVElDQUw6IFRoaXMgY2xlYXJzIGluc3RhbmNlIGNvbmZpZ3VyYXRpb24uIENvbnRyYWN0IHdpbGwgYmUgdW51c2FibGUgdW50aWwgcmUtaW5pdGlhbGl6ZWQuClVzZSB3aXRoIGV4dHJlbWUgY2F1dGlvbiBkdXJpbmcgdXBncmFkZXMgb25seSB3aGVuIHlvdSBuZWVkIHRvIGNoYW5nZSBjb3JlIHBhcmFtZXRlcnMuCgpDbGVhcnM6IEFkbWluLCBUcmVhc3VyeSwgSGl0elRva2VuLCBYbG1Ub2tlbiwgQmFzZUZlZSwgT3JhY2xlIHNldHRpbmdzLCBFbWlzc2lvbiBzZXR0aW5ncwpQcmVzZXJ2ZXM6IFBlcnNpc3RlbnQgZGF0YSAoZW50cmllcywgc3Rha2VzLCByZXdhcmRzLCBUb3RhbE1pbnRlZCwgRW50cnlDb3VudCkKCkFmdGVyIGNhbGxpbmcgdGhpcywgeW91IE1VU1QgY2FsbCBpbml0KCkgYWdhaW4gdG8gcmVzdG9yZSBmdW5jdGlvbmFsaXR5LgAAAAAAAA5yZXNldF9pbnN0YW5jZQAAAAAAAAAAAAA=",
         "AAAAAAAAAIZBZG1pbi1vbmx5OiByZW1vdmUgZW50cmllcyBpbiBjaHVua3MgdG8gc3RheSB1bmRlciBmb290cHJpbnQgbGltaXRzLgpSZW1vdmVzIGVudHJpZXMgYXQgaW5kZXhlcyBbc3RhcnQsIHN0YXJ0K2xpbWl0KSB1c2luZyBFbnRyeUF0KGkpLgAAAAAAE3Jlc2V0X2VudHJpZXNfY2h1bmsAAAAAAgAAAAAAAAAFc3RhcnQAAAAAAAAEAAAAAAAAAAVsaW1pdAAAAAAAAAQAAAAA",
@@ -935,12 +1058,16 @@ export class Client extends ContractClient {
         "AAAAAAAAAjFEaXN0cmlidXRlIEhJVFogcmV3YXJkcyBpbiBiYXRjaGVzIChQaGFzZSAzIG9mIDMtcGhhc2UgZGlzdHJpYnV0aW9uKQoKQ2FsbCB0aGlzIEFGVEVSIGluaXRpYWxpemVfZGlzdHJpYnV0aW9uCgojIEFyZ3VtZW50cwoqIGBjYWxsZXJgIC0gVHJlYXN1cnkgYWRkcmVzcwoqIGBzdGFydF9pbmRleGAgLSBTdGFydGluZyBlbnRyeSBpbmRleCBmb3IgdGhpcyBiYXRjaAoqIGBiYXRjaF9zaXplYCAtIE51bWJlciBvZiBlbnRyaWVzIHRvIHByb2Nlc3MgaW4gdGhpcyBiYXRjaCAobWF4IDE1KQoKIyBSZXR1cm5zCiogYHUzMmAgLSBOZXh0IHN0YXJ0X2luZGV4IHRvIHVzZSwgb3IgZW50cnlfY291bnQgaWYgY29tcGxldGUKCiMgVXNhZ2UKMS4gRmlyc3Q6IENhbGwgY2FsY3VsYXRlX3RvdGFsX2VzY3Jvd19iYXRjaCByZXBlYXRlZGx5IHVudGlsIGNvbXBsZXRlCjIuIFRoZW46IENhbGwgaW5pdGlhbGl6ZV9kaXN0cmlidXRpb24gb25jZSB3aXRoIHRvdGFsIEhJVFogYW1vdW50CjMuIEZpbmFsbHk6IENhbGwgZGlzdHJpYnV0ZV9yZXdhcmRzX2JhdGNoIHJlcGVhdGVkbHkgdW50aWwgY29tcGxldGUAAAAAAAAYZGlzdHJpYnV0ZV9yZXdhcmRzX2JhdGNoAAAAAwAAAAAAAAAGY2FsbGVyAAAAAAATAAAAAAAAAAtzdGFydF9pbmRleAAAAAAEAAAAAAAAAApiYXRjaF9zaXplAAAAAAAEAAAAAQAAAAQ=",
         "AAAAAAAAAIVBbGxvY2F0ZSBISVRaIHJld2FyZHMgdG8gYSBzcGVjaWZpYyBlbnRyeSdzIHJld2FyZCBwb29sCgpBZG1pbi1vbmx5IGZ1bmN0aW9uIGZvciBtYW51YWwgcmV3YXJkIGFsbG9jYXRpb24gKGUuZy4sIHByb21vdGlvbnMsIGJvbnVzZXMpAAAAAAAAEGFsbG9jYXRlX3Jld2FyZHMAAAACAAAAAAAAAAhlbnRyeV9pZAAAABAAAAAAAAAAC2hpdHpfYW1vdW50AAAAAAsAAAAA",
         "AAAAAAAAAHdCYXRjaCBhbGxvY2F0ZSByZXdhcmRzIHRvIG11bHRpcGxlIGVudHJpZXMKCkFkbWluLW9ubHkgZnVuY3Rpb24gZm9yIG1hbnVhbCBiYXRjaCBhbGxvY2F0aW9uIChlLmcuLCBjYW1wYWlnbnMsIGFpcmRyb3BzKQAAAAAWYmF0Y2hfYWxsb2NhdGVfcmV3YXJkcwAAAAAAAgAAAAAAAAAJZW50cnlfaWRzAAAAAAAD6gAAABAAAAAAAAAAB2Ftb3VudHMAAAAD6gAAAAsAAAAA",
-        "AAAAAAAAALRDbGFpbSBISVRaIHJld2FyZHMgZnJvbSBhbiBlbnRyeSdzIHJld2FyZCBwb29sCgpTdGFrZXJzIHJlY2VpdmUgcmV3YXJkcyBwcm9wb3J0aW9uYWwgdG8gdGhlaXIgc3Rha2UKRm9ybXVsYTogY2xhaW1hYmxlID0gKHJld2FyZF9wb29sIMOXIHVzZXJfc3Rha2UpIC8gdG90YWxfc3Rha2UgLSBhbHJlYWR5X2NsYWltZWQAAAANY2xhaW1fcmV3YXJkcwAAAAAAAAIAAAAAAAAACGVudHJ5X2lkAAAAEAAAAAAAAAAHY2xhaW1lcgAAAAATAAAAAQAAAAs=",
+        "AAAAAAAAARpDbGFpbSBISVRaIHJld2FyZHMgZnJvbSBhbiBlbnRyeSdzIHJld2FyZCBwb29sCgpTdGFrZXJzIHJlY2VpdmUgcmV3YXJkcyBwcm9wb3J0aW9uYWwgdG8gdGhlaXIgc3Rha2UgZnJvbSB0aGUgU1RBS0VSIHBvb2wuCklmIGFydGlzdCBlcXVpdHkgZXhpc3RzLCBzdGFrZXJzIHNoYXJlICgxMDAlIC0gdG90YWxfYXJ0aXN0X2VxdWl0eSkgb2YgcmV3YXJkcy4KRm9ybXVsYTogY2xhaW1hYmxlID0gKHN0YWtlcl9wb29sIMOXIHVzZXJfc3Rha2UpIC8gdG90YWxfc3Rha2UgLSBhbHJlYWR5X2NsYWltZWQAAAAAAA1jbGFpbV9yZXdhcmRzAAAAAAAAAgAAAAAAAAAIZW50cnlfaWQAAAAQAAAAAAAAAAdjbGFpbWVyAAAAABMAAAABAAAACw==",
         "AAAAAAAAAbNVbnN0YWtlIEhJVFogdG9rZW5zIGZyb20gYW4gZW50cnkKCkFsbG93cyB1c2VycyB0byB3aXRoZHJhdyB0aGVpciBzdGFrZWQgSElUWiBiYWNrIHRvIHRoZWlyIHdhbGxldC4KVXNlciBsb3NlcyB0aGVpciBzdGFrZSBwZXJjZW50YWdlIGFuZCBmdXR1cmUgcmV3YXJkcyBmcm9tIHRoaXMgZW50cnkuCgojIEFyZ3VtZW50cwoqIGBlbnRyeV9pZGAgLSBUaGUgZW50cnkgdG8gdW5zdGFrZSBmcm9tCiogYGNhbGxlcmAgLSBUaGUgdXNlciB1bnN0YWtpbmcgKG11c3QgaGF2ZSBzdGFrZSkKKiBgYW1vdW50YCAtIEFtb3VudCBvZiBISVRaIHRvIHVuc3Rha2UgKGluIHN0cm9vcHMpCgojIFJldHVybnMKQW1vdW50IHVuc3Rha2VkCgojIFBhbmljcwotIElmIHVzZXIgaGFzIG5vIHN0YWtlCi0gSWYgYW1vdW50IGV4Y2VlZHMgdXNlcidzIHN0YWtlCi0gSWYgYW1vdW50IDw9IDAAAAAAB3Vuc3Rha2UAAAAAAwAAAAAAAAAIZW50cnlfaWQAAAAQAAAAAAAAAAZjYWxsZXIAAAAAABMAAAAAAAAABmFtb3VudAAAAAAACwAAAAEAAAAL",
-        "AAAAAAAAACVHZXQgY2xhaW1hYmxlIEhJVFogcmV3YXJkcyBmb3IgYSB1c2VyAAAAAAAAFWdldF9jbGFpbWFibGVfcmV3YXJkcwAAAAAAAAIAAAAAAAAACGVudHJ5X2lkAAAAEAAAAAAAAAAEdXNlcgAAABMAAAABAAAACw==",
+        "AAAAAAAAAERHZXQgY2xhaW1hYmxlIEhJVFogcmV3YXJkcyBmb3IgYSBzdGFrZXIgKGFjY291bnRzIGZvciBhcnRpc3QgZXF1aXR5KQAAABVnZXRfY2xhaW1hYmxlX3Jld2FyZHMAAAAAAAACAAAAAAAAAAhlbnRyeV9pZAAAABAAAAAAAAAABHVzZXIAAAATAAAAAQAAAAs=",
         "AAAAAAAAACFHZXQgcmV3YXJkIHBvb2wgc2l6ZSBmb3IgYW4gZW50cnkAAAAAAAAPZ2V0X3Jld2FyZF9wb29sAAAAAAEAAAAAAAAACGVudHJ5X2lkAAAAEAAAAAEAAAAL",
         "AAAAAAAAAKxDYWxjdWxhdGUgQVBSIGZvciBhbiBlbnRyeSBiYXNlZCBvbiBISVRaIHJld2FyZHMKCkFQUiA9ICgocmV3YXJkX3Bvb2wgLyB0b3RhbF9zdGFrZSkgLyBkYXlzX3NpbmNlX2NyZWF0aW9uKSDDlyAzNjUgw5cgMTAwClJldHVybnMgQVBSIGFzIGJhc2lzIHBvaW50cyAoMSUgPSAxMDAsIDEwJSA9IDEwMDApAAAADWNhbGN1bGF0ZV9hcHIAAAAAAAABAAAAAAAAAAhlbnRyeV9pZAAAABAAAAABAAAACw==",
         "AAAAAAAAAIRHZXQgY29tcHJlaGVuc2l2ZSBlbnRyeSBzdGF0aXN0aWNzIGZvciByYW5raW5nCgpSZXR1cm5zOiAodHZsX3hsbSwgZXNjcm93X3hsbSwgdG90YWxfc3Rha2VfaGl0eiwgcmV3YXJkX3Bvb2xfaGl0eiwgYXByX2Jhc2lzX3BvaW50cykAAAAPZ2V0X2VudHJ5X3N0YXRzAAAAAAEAAAAAAAAACGVudHJ5X2lkAAAAEAAAAAEAAAPtAAAABQAAAAsAAAALAAAACwAAAAsAAAAL",
+        "AAAAAAAAAl1TZXQgbm9uLWRpbHV0YWJsZSBhcnRpc3QgZXF1aXR5IGZvciBhbiBlbnRyeSAoYWRtaW4tb25seSkKCkFsbG93cyB2ZXJpZmllZCBhcnRpc3RzIHRvIHJlY2VpdmUgYSBmaXhlZCBwZXJjZW50YWdlIG9mIGFsbCByZXdhcmRzLgpNdWx0aXBsZSBhcnRpc3RzIGNhbiBoYXZlIGVxdWl0eSBvbiB0aGUgc2FtZSBlbnRyeSAoY29sbGFib3JhdGlvbnMpLgoKIyBBcmd1bWVudHMKKiBgZW50cnlfaWRgIC0gRW50cnkgdG8gYXNzaWduIGVxdWl0eSB0byAobXVzdCBleGlzdCkKKiBgYXJ0aXN0YCAtIEFydGlzdCdzIHdhbGxldCBhZGRyZXNzCiogYGVxdWl0eV9icHNgIC0gRXF1aXR5IGluIGJhc2lzIHBvaW50cyAoMS05OTkwLCB3aGVyZSAxMDAgPSAxJSwgOTk5MCA9IDk5LjklKQoKIyBTZWN1cml0eQotIEFkbWluLW9ubHkgdG8gcHJldmVudCB1bmF1dGhvcml6ZWQgZXF1aXR5IGNsYWltcwotIE1heCA5OS45JSB0b3RhbCBhcnRpc3QgZXF1aXR5IHBlciBlbnRyeSAobGVhdmVzIDAuMSUgZm9yIHN0YWtlcnMgbWluaW11bSkKLSBFYWNoIGFydGlzdCBjYW4gb25seSBoYXZlIG9uZSBlcXVpdHkgY2xhaW0gcGVyIGVudHJ5Ci0gRXF1aXR5IGlzIGltbXV0YWJsZSBvbmNlIHNldAAAAAAAABFzZXRfYXJ0aXN0X2VxdWl0eQAAAAAAAAMAAAAAAAAACGVudHJ5X2lkAAAAEAAAAAAAAAAGYXJ0aXN0AAAAAAATAAAAAAAAAAplcXVpdHlfYnBzAAAAAAAEAAAAAA==",
+        "AAAAAAAAAMpBcnRpc3QgY2xhaW1zIHRoZWlyIG5vbi1kaWx1dGFibGUgZXF1aXR5IHJld2FyZHMKCiMgQXJndW1lbnRzCiogYGVudHJ5X2lkYCAtIEVudHJ5IHRvIGNsYWltIGZyb20KKiBgYXJ0aXN0YCAtIEFydGlzdCdzIGFkZHJlc3MgKG11c3QgbWF0Y2ggc3RvcmVkIGVxdWl0eSwgcmVxdWlyZXMgYXV0aCkKCiMgUmV0dXJucwpBbW91bnQgb2YgSElUWiBjbGFpbWVkAAAAAAATY2xhaW1fYXJ0aXN0X2VxdWl0eQAAAAACAAAAAAAAAAhlbnRyeV9pZAAAABAAAAAAAAAABmFydGlzdAAAAAAAEwAAAAEAAAAL",
+        "AAAAAAAAAHdHZXQgYXJ0aXN0IGVxdWl0eSBpbmZvIGZvciBhbiBlbnRyeQoKIyBSZXR1cm5zCihlcXVpdHlfYnBzLCBjbGFpbWVkX2Ftb3VudCwgY2xhaW1hYmxlX2Ftb3VudCkgb3IgKDAsIDAsIDApIGlmIG5vIGVxdWl0eQAAAAARZ2V0X2FydGlzdF9lcXVpdHkAAAAAAAACAAAAAAAAAAhlbnRyeV9pZAAAABAAAAAAAAAABmFydGlzdAAAAAAAEwAAAAEAAAPtAAAAAwAAAAQAAAALAAAACw==",
+        "AAAAAAAAAGpHZXQgdG90YWwgYXJ0aXN0IGVxdWl0eSBmb3IgYW4gZW50cnkgKHN1bSBvZiBhbGwgYXJ0aXN0cykKCiMgUmV0dXJucwpUb3RhbCBlcXVpdHkgaW4gYmFzaXMgcG9pbnRzICgwLTk5OTApAAAAAAAXZ2V0X3RvdGFsX2FydGlzdF9lcXVpdHkAAAAAAQAAAAAAAAAIZW50cnlfaWQAAAAQAAAAAQAAAAQ=",
         "AAAAAAAAAAAAAAAHdmVyc2lvbgAAAAAAAAAAAQAAAAQ=",
         "AAAAAAAAAe5NZXJnZSBvbmUgZW50cnkgaW50byBhbm90aGVyIChhZG1pbi1vbmx5KS4KQWxsIGVzY3JvdywgVFZMLCByZXdhcmQgcG9vbCwgYW5kIHN0YWtlcyBtb3ZlIGZyb20gYGZyb21faWRgIHRvIGBpbnRvX2lkYC4KVGhlIGBmcm9tX2lkYCBlbnRyeSBpcyByZW1vdmVkIGZyb20gc3RvcmFnZSBhbmQgaW5kZXguCgpGb3Igc3Rha2UgbWlncmF0aW9uOgotIElmIGBzdGFrZXJzYCBsaXN0IGlzIHByb3ZpZGVkOiBtaWdyYXRlcyB0aG9zZSB1c2Vycycgc3Rha2VzIGZyb20gZnJvbV9pZCB0byBpbnRvX2lkCi0gSWYgYHN0YWtlcnNgIGlzIGVtcHR5OiBvbmx5IG1vdmVzIHRvdGFscyAoYWRtaW4gbXVzdCBlbnN1cmUgbm8gb3JwaGFuZWQgc3Rha2VzKQoKTm90ZTogV2UgY2Fubm90IGl0ZXJhdGUgYWxsIHN0YWtlcnMgKG5vIGluZGV4KSwgc28gYWRtaW4gbXVzdCBwcm92aWRlIHRoZSBsaXN0LgpVc2Ugb2ZmLWNoYWluIGluZGV4aW5nIG9yIGV2ZW50cyB0byB0cmFjayBzdGFrZXJzLgAAAAAADW1lcmdlX2VudHJpZXMAAAAAAAADAAAAAAAAAAdmcm9tX2lkAAAAABAAAAAAAAAAB2ludG9faWQAAAAAEAAAAAAAAAAHc3Rha2VycwAAAAPqAAAAEwAAAAA=",
         "AAAAAAAAAaFSZW1vdmUgYW4gZW50cnkgY29tcGxldGVseSAoYWRtaW4tb25seSkuCgpJZiBgc3Rha2Vyc2AgbGlzdCBpcyBwcm92aWRlZDoKLSBSZXR1cm5zIGFsbCBzdGFrZXMgdG8gdGhvc2UgdXNlcnMKLSBWZXJpZmllcyByZXR1cm5lZCBzdGFrZXMgbWF0Y2ggdG90YWwKLSBUaGVuIHJlbW92ZXMgZW50cnkKCklmIGBzdGFrZXJzYCBpcyBlbXB0eToKLSBSZW1vdmVzIGVudHJ5IG9ubHkgaWYgdG90YWwgc3Rha2UgaXMgMAotIE90aGVyd2lzZSBwYW5pY3MgKGFkbWluIG11c3QgcHJvdmlkZSBzdGFrZXIgbGlzdCkKCk5vdGU6IFdlIGNhbm5vdCBpdGVyYXRlIGFsbCBzdGFrZXJzIChubyBpbmRleCksIHNvIGFkbWluIG11c3QgcHJvdmlkZSB0aGUgbGlzdC4KVXNlIG9mZi1jaGFpbiBpbmRleGluZyBvciBldmVudHMgdG8gdHJhY2sgc3Rha2Vycy4AAAAAAAAMcmVtb3ZlX2VudHJ5AAAAAgAAAAAAAAAIZW50cnlfaWQAAAAQAAAAAAAAAAdzdGFrZXJzAAAAA+oAAAATAAAAAA==" ]),
@@ -979,6 +1106,10 @@ export class Client extends ContractClient {
         get_reward_pool: this.txFromJSON<i128>,
         calculate_apr: this.txFromJSON<i128>,
         get_entry_stats: this.txFromJSON<readonly [i128, i128, i128, i128, i128]>,
+        set_artist_equity: this.txFromJSON<null>,
+        claim_artist_equity: this.txFromJSON<i128>,
+        get_artist_equity: this.txFromJSON<readonly [u32, i128, i128]>,
+        get_total_artist_equity: this.txFromJSON<u32>,
         version: this.txFromJSON<u32>,
         merge_entries: this.txFromJSON<null>,
         remove_entry: this.txFromJSON<null>

@@ -112,16 +112,24 @@ export function PendingUploadEntry({
 
         {/* Title, artist, and metadata */}
         <View className="ml-3 flex flex-1 justify-center pr-2">
-          <P numberOfLines={1} className="text-sm font-bold leading-6">
-            {upload.title}
-          </P>
+          <View className="flex-row items-center">
+            <P numberOfLines={1} className="text-sm font-bold leading-6 flex-1">
+              {upload.title}
+            </P>
+            {/* Verified Artist Badge */}
+            {upload.isVerifiedArtist && (
+              <View className="ml-2 px-2 py-0.5 rounded-full bg-blue">
+                <P className="text-white text-xs font-bold">✓ Artist</P>
+              </View>
+            )}
+          </View>
           <P
             numberOfLines={1}
             className="text-xs leading-5 text-[--text-secondary-color]"
           >
             {upload.artist}
           </P>
-          <View className="flex-row items-center mt-0.5">
+          <View className="flex-row items-center mt-0.5 flex-wrap">
             <P className="text-xs text-[--text-secondary-color]">
               by {upload.userName}
             </P>
@@ -129,6 +137,15 @@ export function PendingUploadEntry({
             <P className="text-xs text-[--text-secondary-color]">
               {uploadDate}
             </P>
+            {/* Artist Equity Info */}
+            {upload.isVerifiedArtist && upload.artistEquityBps !== undefined && upload.artistEquityBps > 0 && (
+              <>
+                <P className="mx-2 text-xs text-[--text-secondary-color]">•</P>
+                <P className="text-xs text-blue font-bold">
+                  {(upload.artistEquityBps / 100).toFixed(1)}% equity
+                </P>
+              </>
+            )}
           </View>
         </View>
 

@@ -10,6 +10,8 @@ import { ActivityIndicator } from 'app/design/typography'
 import Check from 'app/ui/icons/check'
 import { Config } from 'app/config'
 import { SecureStorage } from 'app/utils/secure-storage'
+import { useUserStore } from 'app/state/user'
+import { Slider } from 'app/design/slider'
 
 type UploadResult = {
   success: boolean
@@ -33,10 +35,15 @@ export function UploadScreen() {
   const [audioDragActive, setAudioDragActive] = useState(false)
   const [imageDragActive, setImageDragActive] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [artistEquityPercent, setArtistEquityPercent] = useState(10) // Default 10%
 
   const audioInputRef = useRef<HTMLInputElement>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const toast = useToast()
+  
+  // Get current user to check verified artist status
+  const { user } = useUserStore()
+  const isVerifiedArtist = user?.verifiedArtist === true
 
   const isWeb = Platform.OS === 'web'
 
@@ -174,6 +181,13 @@ export function UploadScreen() {
       formData.append('title', title)
       formData.append('artist', artist)
       formData.append('description', description)
+      
+      // Include artist equity if verified artist
+      if (isVerifiedArtist && artistEquityPercent > 0) {
+        // Convert percentage to basis points (e.g., 10% = 1000 bps)
+        const artistEquityBps = Math.round(artistEquityPercent * 100)
+        formData.append('artistEquityBps', artistEquityBps.toString())
+      }
 
       // Use XMLHttpRequest for upload progress
       return new Promise<void>((resolve, reject) => {
@@ -240,6 +254,7 @@ export function UploadScreen() {
     setDescription('')
     setUploadResult(null)
     setUploadProgress(0)
+    setArtistEquityPercent(10) // Reset to default
   }
 
   return (
@@ -385,6 +400,53 @@ export function UploadScreen() {
               style={isWeb ? { minHeight: 100 } : undefined}
             />
           </View>
+
+          {/* Artist Equity Slider - Only visible for verified artists */}
+          {isVerifiedArtist && (
+            <View className="w-full mb-6 p-4 rounded-lg border border-blue bg-blue/10">
+              <View className="flex-row items-center justify-between mb-2">
+                <P className="font-bold text-blue">🎨 Artist Equity</P>
+                <View className="px-3 py-1 rounded-full bg-blue">
+                  <P className="text-white font-bold text-sm">Verified Artist</P>
+                </View>
+              </View>
+              <P className="text-sm text-[--text-secondary-color] mb-4">
+                As a verified artist, you can reserve a percentage of rewards as non-dilutable equity. 
+                This portion cannot be diluted by fan investments.
+              </P>
+              
+              <View className="flex-row items-center justify-between mb-2">
+                <P className="text-sm">Your equity:</P>
+                <P className="font-bold text-lg">{artistEquityPercent.toFixed(1)}%</P>
+              </View>
+              
+              <Slider
+                style={{ width: '100%', height: 40 }}
+                minimumValue={0}
+                maximumValue={99.9}
+                value={artistEquityPercent}
+                onValueChange={(val) => setArtistEquityPercent(Math.round(val * 10) / 10)}
+                minimumTrackTintColor="#3B82F6"
+                maximumTrackTintColor="#4B5563"
+                thumbTintColor="#3B82F6"
+              />
+              
+              <View className="flex-row items-center justify-between mt-2">
+                <P className="text-xs text-[--text-secondary-color]">0%</P>
+                <P className="text-xs text-[--text-secondary-color]">99.9%</P>
+              </View>
+              
+              <View className="mt-4 p-3 rounded-lg bg-[--bg-color]">
+                <View className="flex-row items-center justify-between">
+                  <P className="text-sm">Fan investment pool:</P>
+                  <P className="font-bold">{(100 - artistEquityPercent).toFixed(1)}%</P>
+                </View>
+                <P className="text-xs text-[--text-secondary-color] mt-1">
+                  Fans can invest in this portion and earn proportional rewards
+                </P>
+              </View>
+            </View>
+          )}
 
           {/* Success Message */}
           {uploadResult?.success && (

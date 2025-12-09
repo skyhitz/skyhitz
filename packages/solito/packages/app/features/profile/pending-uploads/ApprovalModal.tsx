@@ -158,7 +158,14 @@ export function ApprovalModal({
               />
             </View>
             <View className="ml-3 flex-1">
-              <P className="font-bold">{upload.title}</P>
+              <View className="flex-row items-center">
+                <P className="font-bold flex-1">{upload.title}</P>
+                {upload.isVerifiedArtist && (
+                  <View className="px-2 py-0.5 rounded-full bg-blue">
+                    <P className="text-white text-xs font-bold">✓ Artist</P>
+                  </View>
+                )}
+              </View>
               <P className="text-sm text-[--text-secondary-color]">
                 {upload.artist}
               </P>
@@ -167,6 +174,33 @@ export function ApprovalModal({
               </P>
             </View>
           </View>
+
+          {/* Artist Equity Info - Show if verified artist with equity */}
+          {upload.isVerifiedArtist && upload.artistEquityBps !== undefined && upload.artistEquityBps > 0 && (
+            <View className="mb-6 p-3 rounded-lg bg-blue/10 border border-blue">
+              <P className="text-center text-sm font-bold text-blue mb-1">
+                Verified Artist Equity
+              </P>
+              <View className="flex-row items-center justify-center">
+                <View className="items-center mr-6">
+                  <P className="text-xl font-bold text-blue">
+                    {(upload.artistEquityBps / 100).toFixed(1)}%
+                  </P>
+                  <P className="text-xs text-[--text-secondary-color]">
+                    Artist (non-dilutable)
+                  </P>
+                </View>
+                <View className="items-center">
+                  <P className="text-xl font-bold text-[--text-color]">
+                    {(100 - upload.artistEquityBps / 100).toFixed(1)}%
+                  </P>
+                  <P className="text-xs text-[--text-secondary-color]">
+                    Fan pool
+                  </P>
+                </View>
+              </View>
+            </View>
+          )}
 
           {/* Star rating */}
           <View className="mb-6">

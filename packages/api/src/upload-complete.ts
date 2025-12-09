@@ -29,6 +29,17 @@ export async function handleUploadComplete(
     const title = formData.get('title');
     const artist = formData.get('artist');
     const description = formData.get('description') || '';
+    const artistEquityBpsStr = formData.get('artistEquityBps');
+    
+    // Parse artist equity - only if user is verified artist and value is provided
+    let artistEquityBps: number | undefined;
+    if (artistEquityBpsStr && typeof artistEquityBpsStr === 'string') {
+      const parsed = parseInt(artistEquityBpsStr, 10);
+      // Validate: must be 0-9990 (0% - 99.9%)
+      if (!isNaN(parsed) && parsed >= 0 && parsed <= 9990) {
+        artistEquityBps = parsed;
+      }
+    }
 
     // Validate required fields
     if (!audioFile || !(audioFile instanceof File)) {
@@ -118,6 +129,9 @@ export async function handleUploadComplete(
     const algolia = new AlgoliaClient(env);
     const pendingUploadId = `pending-upload-${crypto.randomUUID()}`;
     
+    // Check if uploader is a verified artist
+    const isVerifiedArtist = context.user.verifiedArtist === true;
+    
     const pendingUpload: PendingUpload = {
       objectID: pendingUploadId,
       userId: context.user.id,
@@ -128,6 +142,9 @@ export async function handleUploadComplete(
       title: title as string,
       artist: artist as string,
       description: description as string,
+      // Artist equity - only store if user is verified and provided equity
+      isVerifiedArtist,
+      artistEquityBps: isVerifiedArtist && artistEquityBps ? artistEquityBps : undefined,
       status: 'pending',
       createdAt: new Date().toISOString(),
       createdAtTimestamp: Math.floor(Date.now() / 1000),
