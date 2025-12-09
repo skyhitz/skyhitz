@@ -686,6 +686,92 @@ class ContractClient {
 		const result = await tx.signAndSend();
 		return result;
 	};
+
+	/**
+	 * Set artist equity for an entry (admin-only)
+	 * Allows verified artists to receive non-dilutable equity on their music
+	 * @param entryId - Entry ID
+	 * @param artistAddress - Artist's public key
+	 * @param equityBps - Equity in basis points (e.g., 1000 = 10%, max 9990 = 99.9%)
+	 */
+	public setArtistEquity = async (entryId: string, artistAddress: string, equityBps: number) => {
+		const tx = await this.contract.set_artist_equity(
+			{ entry_id: entryId, artist: artistAddress, equity_bps: equityBps },
+			this.defaultOptions
+		);
+		const result = await tx.signAndSend();
+		return result;
+	};
+
+	/**
+	 * Get artist equity info for an entry (view function)
+	 * @param entryId - Entry ID
+	 * @param artistAddress - Artist's public key
+	 * @returns (equity_bps, claimed_amount, claimable_amount) or null if no equity
+	 */
+	public getArtistEquity = async (entryId: string, artistAddress: string): Promise<{ equityBps: number; claimed: number; claimable: number } | null> => {
+		try {
+			const tx = await this.contract.get_artist_equity(
+				{ entry_id: entryId, artist: artistAddress },
+				this.defaultOptions
+			);
+			if (!tx.result) return null;
+			const [equityBps, claimed, claimable] = tx.result;
+			return {
+				equityBps: Number(equityBps),
+				claimed: Number(claimed),
+				claimable: Number(claimable),
+			};
+		} catch {
+			return null;
+		}
+	};
+
+	/**
+	 * Get total artist equity for an entry (view function)
+	 * @param entryId - Entry ID
+	 * @returns Total artist equity in basis points
+	 */
+	public getTotalArtistEquity = async (entryId: string): Promise<number> => {
+		const tx = await this.contract.get_total_artist_equity(
+			{ entry_id: entryId },
+			this.defaultOptions
+		);
+		return Number(tx.result);
+	};
+
+	/**
+	 * Claim artist equity rewards (artist-only)
+	 * Allows an artist to claim their non-dilutable share of rewards
+	 * @param secret - Artist's secret key
+	 * @param entryId - Entry ID
+	 * @returns Amount claimed
+	 */
+	public claimArtistEquity = async (secret: string, entryId: string) => {
+		const artistKeys = Keypair.fromSecret(secret);
+		const tx = await this.contract.claim_artist_equity(
+			{
+				entry_id: entryId,
+				artist: artistKeys.publicKey(),
+			},
+			this.defaultOptions
+		);
+
+		// Auth entry signing pattern
+		const jsonFromRoot = tx.toJSON();
+		const artistClient = this.getClientForKeypair(artistKeys);
+		const txArtist = artistClient.fromJSON['claim_artist_equity'](jsonFromRoot);
+		const ledger = (await this.fetchCurrentLedger()) + 100;
+		await txArtist.signAuthEntries({ expiration: ledger });
+		const jsonFromArtist = txArtist.toJSON();
+		const txRoot = this.contract.fromJSON['claim_artist_equity'](jsonFromArtist);
+		const result = await txRoot.signAndSend();
+		
+		return {
+			...result,
+			claimedAmount: Number(result.result) || 0,
+		};
+	};
 }
 
 export default ContractClient;

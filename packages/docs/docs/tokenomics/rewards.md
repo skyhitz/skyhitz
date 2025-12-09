@@ -315,13 +315,68 @@ Second Claim:
 - There's no penalty for waiting
 - Your rewards are safely tracked on-chain
 
-## Creator Features (Planned)
+## Artist Equity (Non-Dilutable)
 
-### Creator Claim
-- After manual verification, original creators can claim ownership of their entries
-- Initial allocation: 25% of total stake at claim time
-- Promotional boost: If they promote post-claim (criteria TBD), allocation increases to 50%
-- Status: Contract support ready; UI integration pending
+Verified artists can claim a non-dilutable percentage of rewards when uploading their music to Skyhitz.
+
+### How It Works
+
+1. **Verified Artist Status**: Artists must be verified before they can set equity
+2. **Upload with Equity**: When uploading, verified artists can set their equity percentage (0-99.9%)
+3. **Non-Dilutable**: Artist equity is never diluted by fan investments
+4. **Separate Pool**: Artist rewards are calculated before staker rewards
+
+### Equity Split Example
+
+```
+Artist uploads with 20% equity
+Fan investment pool: 80%
+
+Entry earns 1000 HITZ in rewards:
+- Artist gets: 200 HITZ (20%)
+- Staker pool: 800 HITZ (80%)
+
+If staker has 50% of total stake:
+- Staker gets: 400 HITZ (50% of 800)
+```
+
+### Claiming Artist Rewards
+
+```
+Artist Equity: 20% (2000 bps)
+Reward Pool: 1000 HITZ
+Artist's Total Share: 200 HITZ
+Already Claimed: 50 HITZ
+Claimable Now: 150 HITZ
+```
+
+Artists can claim their rewards anytime by calling `claim_artist_equity(entry_id)`.
+
+### Collaborations
+
+Multiple verified artists can claim equity on the same entry:
+
+```
+Entry: "Summer Vibes" (collaboration)
+Artist A: 30% equity
+Artist B: 20% equity
+Total Artist Equity: 50%
+Fan Pool: 50%
+
+1000 HITZ rewards:
+- Artist A: 300 HITZ
+- Artist B: 200 HITZ
+- Stakers: 500 HITZ (split by stake %)
+```
+
+### Key Points
+
+- **Max Total Equity**: 99.9% (must leave at least 0.1% for fans)
+- **Immutable**: Once set, artist equity cannot be changed
+- **Independent Claims**: Each artist claims separately
+- **No Dilution**: Fan investments don't affect artist percentage
+
+## Other Creator Features
 
 ### Creator Takedown
 - After verification and diligent process, entries can be removed if necessary

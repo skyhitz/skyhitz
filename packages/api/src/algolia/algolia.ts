@@ -1,7 +1,7 @@
 import algoliasearch, { SearchIndex } from 'algoliasearch';
 import { createFetchRequester } from '@algolia/requester-fetch';
 
-import { Entry, KrakenWithdrawal, PendingMine, Share, Timestamp, User } from '../util/types';
+import { Curator, Entry, KrakenWithdrawal, PendingMine, PendingUpload, Share, Timestamp, User } from '../util/types';
 
 export class AlgoliaClient {
 	public indices: {
@@ -18,6 +18,8 @@ export class AlgoliaClient {
 		distributionTimestampsIndex: SearchIndex;
 		withdrawalsIndex: SearchIndex;
 		pendingMinesIndex: SearchIndex;
+		pendingUploadsIndex: SearchIndex;
+		curatorsIndex: SearchIndex;
 	};
 
 	constructor(env: Env) {
@@ -40,6 +42,8 @@ export class AlgoliaClient {
 			distributionTimestampsIndex: client.initIndex(`${appDomain}:distribution_timestamps`),
 			withdrawalsIndex: client.initIndex(`${appDomain}:withdrawals`),
 			pendingMinesIndex: client.initIndex(`${appDomain}:pending_mines`),
+			pendingUploadsIndex: client.initIndex(`${appDomain}:pending_uploads`),
+			curatorsIndex: client.initIndex(`${appDomain}:curators`),
 		};
 	}
 
@@ -67,6 +71,14 @@ export class AlgoliaClient {
 
 	async getUser(id: string): Promise<User> {
 		return this.indices.usersIndex.getObject(id);
+	}
+
+	async getUserByEmail(email: string): Promise<User | null> {
+		const result = await this.indices.usersIndex.search(email, {
+			filters: `email:"${email}"`,
+			hitsPerPage: 1,
+		});
+		return result.hits.length > 0 ? (result.hits[0] as unknown as User) : null;
 	}
 
 	async getEntry(id: string): Promise<Entry> {
@@ -137,14 +149,6 @@ export class AlgoliaClient {
 		});
 		const [user] = res.hits;
 		return user;
-	}
-
-	async getUserByEmail(email: string) {
-		const res = await this.indices.usersIndex.search('', {
-			filters: `email:${email}`,
-		});
-		const [user] = res.hits;
-		return user as User;
 	}
 
 	async getUserByPublicKey(publicKey: string) {
@@ -402,5 +406,104 @@ export class AlgoliaClient {
 
 	async deletePendingMine(id: string) {
 		return this.indices.pendingMinesIndex.deleteObject(id);
+	}
+
+	// Pending Uploads methods
+	async savePendingUpload(pendingUpload: PendingUpload) {
+		return this.indices.pendingUploadsIndex.saveObject(pendingUpload);
+	}
+
+	async getPendingUpload(id: string): Promise<PendingUpload & { id: string }> {
+		const result = await this.indices.pendingUploadsIndex.getObject(id) as PendingUpload;
+		return { ...result, id: result.objectID };
+	}
+
+	async getAllPendingUploads(): Promise<(PendingUpload & { id: string })[]> {
+		const pendingUploads = await this.indices.pendingUploadsIndex.search('', {
+			filters: 'status:pending',
+			hitsPerPage: 1000,
+		});
+		// Map objectID to id for GraphQL compatibility
+		return (pendingUploads.hits as unknown as PendingUpload[]).map((upload) => ({
+			...upload,
+			id: upload.objectID,
+		}));
+	}
+
+	async getPendingUploadsCount(): Promise<number> {
+		const result = await this.indices.pendingUploadsIndex.search('', {
+			filters: 'status:pending',
+			hitsPerPage: 0,
+		});
+		return result.nbHits;
+	}
+
+	async updatePendingUploadStatus(
+		id: string,
+		status: 'approved' | 'rejected',
+		resolvedBy: string,
+		options?: {
+			rejectionReason?: string;
+			qualityScore?: number;
+			isAiGenerated?: boolean;
+		}
+	) {
+		const update: any = {
+			objectID: id,
+			status,
+			resolvedAt: new Date().toISOString(),
+			resolvedBy,
+		};
+		if (options?.rejectionReason) {
+			update.rejectionReason = options.rejectionReason;
+		}
+		if (options?.qualityScore !== undefined) {
+			update.qualityScore = options.qualityScore;
+		}
+		if (options?.isAiGenerated !== undefined) {
+			update.isAiGenerated = options.isAiGenerated;
+		}
+		return this.indices.pendingUploadsIndex.partialUpdateObject(update);
+	}
+
+	async deletePendingUpload(id: string) {
+		return this.indices.pendingUploadsIndex.deleteObject(id);
+	}
+
+	// Curator methods
+	async saveCurator(curator: Curator) {
+		return this.indices.curatorsIndex.saveObject(curator);
+	}
+
+	async getCurator(userId: string): Promise<Curator | null> {
+		try {
+			return await this.indices.curatorsIndex.getObject(userId);
+		} catch (error) {
+			return null;
+		}
+	}
+
+	async getCuratorByEmail(email: string): Promise<Curator | null> {
+		const result = await this.indices.curatorsIndex.search(email, {
+			filters: `userEmail:"${email}"`,
+			hitsPerPage: 1,
+		});
+		return result.hits.length > 0 ? (result.hits[0] as unknown as Curator) : null;
+	}
+
+	async getAllCurators(): Promise<Curator[]> {
+		const result = await this.indices.curatorsIndex.search('', {
+			hitsPerPage: 1000,
+		});
+		return result.hits as unknown as Curator[];
+	}
+
+	async isCurator(userId: string): Promise<boolean> {
+		const curator = await this.getCurator(userId);
+		return curator !== null;
+	}
+
+	async deleteCurator(userId: string) {
+		return this.indices.curatorsIndex.deleteObject(userId);
 	}
 }

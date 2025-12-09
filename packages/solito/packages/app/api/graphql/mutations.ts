@@ -16,7 +16,15 @@ import {
   ENTRIES_SEARCH,
   USERS_SEARCH,
   RECENTLY_ADDED_ENTRIES,
-  CLAIM_EARNINGS
+  CLAIM_EARNINGS,
+  PENDING_UPLOADS,
+  PENDING_UPLOADS_COUNT,
+  APPROVE_PENDING_UPLOAD,
+  REJECT_PENDING_UPLOAD,
+  IS_CURATOR,
+  CURATORS,
+  ADD_CURATOR,
+  REMOVE_CURATOR,
 } from './operations'
 
 // Define GraphQL mutation types
@@ -165,5 +173,61 @@ export function useRecentlyAddedEntriesQuery() {
   return useQuery(RECENTLY_ADDED_ENTRIES, {
     fetchPolicy: 'network-only',
     notifyOnNetworkStatusChange: true,
+  })
+}
+
+// Pending Uploads queries and mutations (curator only)
+export function usePendingUploadsQuery() {
+  return useQuery(PENDING_UPLOADS, {
+    fetchPolicy: 'network-only',
+    notifyOnNetworkStatusChange: true,
+  })
+}
+
+export function usePendingUploadsCountQuery() {
+  return useQuery(PENDING_UPLOADS_COUNT, {
+    fetchPolicy: 'network-only',
+    notifyOnNetworkStatusChange: true,
+  })
+}
+
+export function useApprovePendingUploadMutation() {
+  return useMutation(APPROVE_PENDING_UPLOAD, {
+    refetchQueries: [{ query: PENDING_UPLOADS }, { query: PENDING_UPLOADS_COUNT }],
+  })
+}
+
+export function useRejectPendingUploadMutation() {
+  return useMutation(REJECT_PENDING_UPLOAD, {
+    refetchQueries: [{ query: PENDING_UPLOADS }, { query: PENDING_UPLOADS_COUNT }],
+  })
+}
+
+// Curator management hooks
+export function useIsCuratorQuery() {
+  return useQuery(IS_CURATOR, {
+    fetchPolicy: 'network-only',
+    notifyOnNetworkStatusChange: true,
+  })
+}
+
+export function useCuratorsQuery() {
+  return useQuery(CURATORS, {
+    fetchPolicy: 'network-only',
+    notifyOnNetworkStatusChange: true,
+  })
+}
+
+export function useAddCuratorMutation() {
+  return useMutation(ADD_CURATOR, {
+    refetchQueries: [{ query: CURATORS }],
+    awaitRefetchQueries: true,
+  })
+}
+
+export function useRemoveCuratorMutation() {
+  return useMutation(REMOVE_CURATOR, {
+    refetchQueries: [{ query: CURATORS }],
+    awaitRefetchQueries: true,
   })
 }

@@ -246,6 +246,65 @@ HITZ     HITZ     HITZ
   - Next claim: 25 HITZ
 ```
 
+### Flow 5: Artist Claims Non-Dilutable Equity
+
+Verified artists with equity set on an entry can claim their share.
+
+```
+┌─────────┐
+│ Artist  │ Has 20% equity (2000 bps) on entry
+└────┬────┘
+     │
+     │ 1. Request claim
+     ▼
+┌──────────────────────┐
+│ Skyhitz Core         │
+│ claim_artist_equity()│
+└─────┬────────────────┘
+      │
+      │ 2. Calculate artist share:
+      │    Pool: 100 HITZ
+      │    Artist equity: 2000 bps (20%)
+      │    Artist share: 100 × 0.20 = 20 HITZ
+      │    Already claimed: 0
+      │    To claim: 20 HITZ
+      │
+      │ 3. Update artist's claimed record
+      │
+      │ 4. Transfer HITZ from contract
+      ▼
+  ┌─────────┐
+  │ Artist  │ Receives 20 HITZ
+  └─────────┘
+
+  KEY: Stakers share the REMAINING 80%:
+  - Staker pool: 100 × 0.80 = 80 HITZ
+  - If staker has 25% of total stake:
+  - Staker gets: 80 × 0.25 = 20 HITZ
+```
+
+### Flow 6: Collaboration (Multiple Artists)
+
+```
+┌────────────────────────┐
+│ Entry with 2 artists:  │
+│ - Artist A: 30% equity │
+│ - Artist B: 20% equity │
+│ Total artist: 50%      │
+│ Staker pool: 50%       │
+└───────────┬────────────┘
+            │
+            │ Reward distribution (1000 HITZ):
+            │
+            ├──► Artist A claims: 300 HITZ (30%)
+            │
+            ├──► Artist B claims: 200 HITZ (20%)
+            │
+            └──► Staker pool: 500 HITZ (50%)
+                 - Staker 1 (60% stake): 300 HITZ
+                 - Staker 2 (40% stake): 200 HITZ
+```
+
 ## 📈 APR Calculation
 
 ### Formula
@@ -382,6 +441,12 @@ All tests are updated and cover:
 12. ✅ Base fee modification
 13. ✅ Batch operations
 14. ✅ Edge cases (double claim, no stake, etc.)
+15. ✅ Artist equity - set, claim, get
+16. ✅ Artist equity - collaboration (multiple artists)
+17. ✅ Artist equity - max equity 99.9%
+18. ✅ Artist equity - staker rewards with artist equity
+19. ✅ Artist equity - incremental claims
+20. ✅ Artist equity - error cases (duplicate, overflow, etc.)
 
 **Note**: Tests require Rust 1.84.0 to run.
 

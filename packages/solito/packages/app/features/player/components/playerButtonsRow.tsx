@@ -6,13 +6,11 @@
 import { View, Pressable } from 'react-native'
 import SkipBack from 'app/ui/icons/skip-back'
 import SkipForward from 'app/ui/icons/skip-forward'
-import PlayIcon from 'app/ui/icons/play'
-import PauseIcon from 'app/ui/icons/pause'
 import Shuffle from 'app/ui/icons/shuffle'
 import Repeat from 'app/ui/icons/repeat'
 import { usePlayback } from 'app/hooks/usePlayback'
-import { ActivityIndicator } from 'app/design/typography'
-import { usePlayerStore, PlaybackState } from 'app/state/player'
+import { usePlayerStore } from 'app/state/player'
+import { PlayPauseButton } from 'app/ui/buttons/PlayPauseButton'
 
 type Props = {
   size?: 'small' | 'large'
@@ -23,7 +21,7 @@ export function PlayerButtonsRow({ size = 'small', className = '' }: Props) {
   const { skipBackward, skipForward, playPause, toggleLoop, toggleShuffle } =
     usePlayback()
 
-  const { playbackState, loop, shuffle, shouldPlay } = usePlayerStore()
+  const { loop, shuffle } = usePlayerStore()
 
   const iconSize = size === 'large' ? 36 : 22
   const shuffleSize = size === 'large' ? 20 : 18
@@ -45,18 +43,12 @@ export function PlayerButtonsRow({ size = 'small', className = '' }: Props) {
         />
       </Pressable>
 
-      {playbackState === PlaybackState.LOADING ? (
-        <ActivityIndicator className="md:mx-2" size={iconSize}/>
-      ) : (
-        <Pressable onPress={playPause} className="md:mx-2">
-          {playbackState === PlaybackState.PLAYING ||
-          (playbackState === PlaybackState.SEEKING && shouldPlay) ? (
-            <PauseIcon size={iconSize} className="text-[--text-color]" />
-          ) : (
-            <PlayIcon size={iconSize} className="text-[--text-color]" />
-          )}
-        </Pressable>
-      )}
+      <PlayPauseButton
+        onPress={playPause}
+        size={iconSize}
+        className="md:mx-2"
+        showLoadingState={true}
+      />
 
       <Pressable onPress={skipForward}>
         <SkipForward

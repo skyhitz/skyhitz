@@ -326,6 +326,70 @@ Users with stakes can claim accumulated HITZ rewards from entry pools.
 - User's claimed record updated
 - User can claim again when pool grows
 
+## Artist Equity Claim Flow
+
+Verified artists with non-dilutable equity can claim their share of rewards.
+
+```
+┌─────────────┐
+│   Artist    │ Verified artist with 20% equity on entry
+└──────┬──────┘
+       │
+       │ 1. Frontend calls preview API
+       ▼
+┌─────────────────┐
+│ Backend GraphQL │
+│ getArtistEquity │ 2. Read-only: get equity info
+└──────┬──────────┘     (equity_bps, claimed, claimable)
+       │
+       │ 3. If claimable > 0, enable "Claim" button
+       │ 4. Artist clicks "Claim"
+       ▼
+┌─────────────────┐
+│ Backend GraphQL │
+│ claimArtistEquity│
+└──────┬──────────┘
+       │
+       │ 5. Call Core contract claim_artist_equity
+       ▼
+┌──────────────────────────┐
+│  Skyhitz Core Contract   │
+│  claim_artist_equity()   │
+└─┬────────────────────────┘
+  │
+  │ 6. Verify artist has equity on this entry
+  │ 7. Calculate artist's share:
+  │    total_share = reward_pool × (equity_bps / 10000)
+  │    claimable = total_share - already_claimed
+  │
+  │ 8. Update artist's claimed record
+  │
+  │ 9. Transfer HITZ from contract to artist
+  ▼
+┌─────────────────┐
+│ HITZ Token      │
+│ transfer()      │ 10. Transfer claimable HITZ to artist
+└────────┬────────┘
+         │
+         │ 11. Return claimed amount
+         ▼
+     ┌────────┐
+     │ Artist │ Receives claimed HITZ
+     └────────┘
+```
+
+**Result**:
+- Artist receives their non-dilutable share of rewards
+- Artist's claimed record updated
+- Staker rewards are unaffected (calculated separately)
+- Artist can claim again when pool grows
+
+**Key Difference from Staker Claims**:
+- Artist equity is calculated BEFORE staker pool
+- Artist share = `reward_pool × artist_equity_bps / 10000`
+- Staker pool = `reward_pool × (10000 - total_artist_equity_bps) / 10000`
+- Artist claim doesn't depend on stake, only on equity percentage
+
 ## Treasury Bot Flow
 
 The Treasury bot automates conversion of XLM fees to HITZ rewards and distribution.

@@ -10,20 +10,13 @@ import { ActivityIndicator } from 'app/design/typography'
 import Check from 'app/ui/icons/check'
 import { Config } from 'app/config'
 import { SecureStorage } from 'app/utils/secure-storage'
+import { useUserStore } from 'app/state/user'
+import { Slider } from 'app/design/slider'
 
-type QualityScore = {
-  musicDetection: number
-  mixQuality: number
-  mastering: number
-  humanFactor: number
-  finalScore: number
-}
-
-type AnalysisResult = {
-  scores: QualityScore
-  mintCost: number
-  rejected: boolean
-  reason?: string
+type UploadResult = {
+  success: boolean
+  message: string
+  pendingUploadId?: string
   audioHash?: string
   imageHash?: string
   title?: string
@@ -37,17 +30,20 @@ export function UploadScreen() {
   const [title, setTitle] = useState('')
   const [artist, setArtist] = useState('')
   const [description, setDescription] = useState('')
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [isMinting, setIsMinting] = useState(false)
-  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadResult, setUploadResult] = useState<UploadResult | null>(null)
   const [audioDragActive, setAudioDragActive] = useState(false)
   const [imageDragActive, setImageDragActive] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
-  const [analysisProgress, setAnalysisProgress] = useState(0)
+  const [artistEquityPercent, setArtistEquityPercent] = useState(10) // Default 10%
 
   const audioInputRef = useRef<HTMLInputElement>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const toast = useToast()
+  
+  // Get current user to check verified artist status
+  const { user } = useUserStore()
+  const isVerifiedArtist = user?.verifiedArtist === true
 
   const isWeb = Platform.OS === 'web'
 
@@ -82,7 +78,7 @@ export function UploadScreen() {
       
       if (validTypes.includes(file.type) || validExtensions.includes(fileExtension)) {
         setAudioFile(file)
-        setAnalysisResult(null)
+        setUploadResult(null)
       } else {
         toast?.show('Please upload an audio file (MP3, MP4, AIFF, or WAV)', { type: 'danger' })
       }
@@ -137,7 +133,7 @@ export function UploadScreen() {
       const file = files[0]
       if (file) {
         setAudioFile(file)
-        setAnalysisResult(null)
+        setUploadResult(null)
       }
     }
   }, [])
@@ -161,22 +157,21 @@ export function UploadScreen() {
     }
   }, [toast])
 
-  const handleAnalyze = async () => {
+  const handleUpload = async () => {
     if (!audioFile || !imageFile || !title || !artist) {
       toast?.show('Please fill all required fields', { type: 'danger' })
       return
     }
 
-    setIsAnalyzing(true)
+    setIsUploading(true)
     setUploadProgress(0)
-    setAnalysisProgress(0)
     
     try {
       // Get auth token
       const token = await SecureStorage.get('auth-token')
       if (!token) {
         toast?.show('Please sign in to continue', { type: 'danger' })
-        setIsAnalyzing(false)
+        setIsUploading(false)
         return
       }
 
@@ -186,6 +181,13 @@ export function UploadScreen() {
       formData.append('title', title)
       formData.append('artist', artist)
       formData.append('description', description)
+      
+      // Include artist equity if verified artist
+      if (isVerifiedArtist && artistEquityPercent > 0) {
+        // Convert percentage to basis points (e.g., 10% = 1000 bps)
+        const artistEquityBps = Math.round(artistEquityPercent * 100)
+        formData.append('artistEquityBps', artistEquityBps.toString())
+      }
 
       // Use XMLHttpRequest for upload progress
       return new Promise<void>((resolve, reject) => {
@@ -204,136 +206,55 @@ export function UploadScreen() {
           if (xhr.status >= 200 && xhr.status < 300) {
             try {
               const result = JSON.parse(xhr.responseText)
-              setAnalysisResult(result)
-              setAnalysisProgress(100)
+              setUploadResult(result)
 
-              if (result.rejected) {
-                toast?.show(result.reason || 'Track rejected', { type: 'danger' })
+              if (result.success) {
+                toast?.show('Upload submitted for review! 🎉', { type: 'success' })
               } else {
-                toast?.show('Analysis complete!', { type: 'success' })
+                toast?.show(result.error || 'Upload failed', { type: 'danger' })
               }
               resolve()
             } catch (error) {
               reject(new Error('Failed to parse response'))
             }
           } else {
+            try {
+              const errorResult = JSON.parse(xhr.responseText)
+              toast?.show(errorResult.error || 'Upload failed', { type: 'danger' })
+            } catch {
+              toast?.show('Upload failed', { type: 'danger' })
+            }
             reject(new Error('Upload failed'))
           }
-          setIsAnalyzing(false)
+          setIsUploading(false)
         })
         
         xhr.addEventListener('error', () => {
           reject(new Error('Network error'))
-          setIsAnalyzing(false)
+          setIsUploading(false)
         })
         
         const apiUrl = Config.GRAPHQL_URL.replace('/graphql', '/upload/complete')
         xhr.open('POST', apiUrl)
         xhr.setRequestHeader('Authorization', `Bearer ${token}`)
         xhr.send(formData)
-        
-        // Simulate analysis progress after upload
-        setInterval(() => {
-          setAnalysisProgress((prev) => Math.min(prev + 10, 90))
-        }, 200)
       })
     } catch (error) {
-      console.error('Analysis error:', error)
-      toast?.show('Failed to analyze track. Please try again.', { type: 'danger' })
-      setIsAnalyzing(false)
+      console.error('Upload error:', error)
+      toast?.show('Failed to upload track. Please try again.', { type: 'danger' })
+      setIsUploading(false)
     }
   }
 
-  const handleMint = async () => {
-    if (!analysisResult || analysisResult.rejected) return
-    if (!analysisResult.audioHash || !analysisResult.imageHash) {
-      toast?.show('Missing upload data. Please re-analyze.', { type: 'danger' })
-      return
-    }
-
-    setIsMinting(true)
-    try {
-      // Call GraphQL mutation
-      const apiUrl = Config.GRAPHQL_URL
-      const token = await SecureStorage.get('auth-token')
-      
-      if (!token) {
-        toast?.show('Please sign in to continue', { type: 'danger' })
-        return
-      }
-
-      const mutation = `
-        mutation UploadMint($input: UploadMintInput!) {
-          uploadMint(input: $input) {
-            success
-            message
-            entryId
-            txHash
-          }
-        }
-      `
-
-      const variables = {
-        input: {
-          audioHash: analysisResult.audioHash,
-          imageHash: analysisResult.imageHash,
-          title,
-          artist,
-          description,
-          qualityScore: analysisResult.scores.finalScore,
-          mintCost: analysisResult.mintCost,
-        },
-      }
-
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          query: mutation,
-          variables,
-        }),
-      })
-
-      const result = await response.json()
-
-      if (result.errors) {
-        const errorMessage = result.errors[0]?.message || 'Minting failed'
-        
-        // Handle specific error codes
-        if (errorMessage.includes('INSUFFICIENT_FUNDS')) {
-          toast?.show('Insufficient balance. Please top up your account.', { type: 'danger' })
-        } else {
-          toast?.show(errorMessage, { type: 'danger' })
-        }
-        return
-      }
-
-      if (result.data?.uploadMint?.success) {
-        toast?.show('Track minted successfully! 🎉', { type: 'success' })
-        
-        // Reset form after successful mint
-        setTimeout(() => {
-          setAudioFile(null)
-          setImageFile(null)
-          setTitle('')
-          setArtist('')
-          setDescription('')
-          setAnalysisResult(null)
-          setUploadProgress(0)
-          setAnalysisProgress(0)
-        }, 2000)
-      } else {
-        toast?.show(result.data?.uploadMint?.message || 'Minting failed', { type: 'danger' })
-      }
-    } catch (error) {
-      console.error('Minting error:', error)
-      toast?.show('Failed to mint track. Please try again.', { type: 'danger' })
-    } finally {
-      setIsMinting(false)
-    }
+  const resetForm = () => {
+    setAudioFile(null)
+    setImageFile(null)
+    setTitle('')
+    setArtist('')
+    setDescription('')
+    setUploadResult(null)
+    setUploadProgress(0)
+    setArtistEquityPercent(10) // Reset to default
   }
 
   return (
@@ -480,85 +401,91 @@ export function UploadScreen() {
             />
           </View>
 
-          {/* Analysis Results */}
-          {analysisResult && !analysisResult.rejected && (
-            <View className="w-full mb-6 p-4 border border-[--border-color] rounded-lg bg-[--bg-secondary-color]">
-              <H1 className="text-base mb-4">Quality Analysis</H1>
+          {/* Artist Equity Slider - Only visible for verified artists */}
+          {isVerifiedArtist && (
+            <View className="w-full mb-6 p-4 rounded-lg border border-blue bg-blue/10">
+              <View className="flex-row items-center justify-between mb-2">
+                <P className="font-bold text-blue">🎨 Artist Equity</P>
+                <View className="px-3 py-1 rounded-full bg-blue">
+                  <P className="text-white font-bold text-sm">Verified Artist</P>
+                </View>
+              </View>
+              <P className="text-sm text-[--text-secondary-color] mb-4">
+                As a verified artist, you can reserve a percentage of rewards as non-dilutable equity. 
+                This portion cannot be diluted by fan investments.
+              </P>
               
-              <View className="mb-2">
-                <P className="text-sm">
-                  Music Detection: <span className="font-bold">{analysisResult.scores.musicDetection.toFixed(1)}/10</span>
-                </P>
+              <View className="flex-row items-center justify-between mb-2">
+                <P className="text-sm">Your equity:</P>
+                <P className="font-bold text-lg">{artistEquityPercent.toFixed(1)}%</P>
               </View>
               
-              <View className="mb-2">
-                <P className="text-sm">
-                  Mix Quality: <span className="font-bold">{analysisResult.scores.mixQuality.toFixed(1)}/10</span>
-                </P>
+              <Slider
+                style={{ width: '100%', height: 40 }}
+                minimumValue={0}
+                maximumValue={99.9}
+                value={artistEquityPercent}
+                onValueChange={(val) => setArtistEquityPercent(Math.round(val * 10) / 10)}
+                minimumTrackTintColor="#3B82F6"
+                maximumTrackTintColor="#4B5563"
+                thumbTintColor="#3B82F6"
+              />
+              
+              <View className="flex-row items-center justify-between mt-2">
+                <P className="text-xs text-[--text-secondary-color]">0%</P>
+                <P className="text-xs text-[--text-secondary-color]">99.9%</P>
               </View>
               
-              <View className="mb-2">
-                <P className="text-sm">
-                  Mastering: <span className="font-bold">{analysisResult.scores.mastering.toFixed(1)}/10</span>
-                </P>
-              </View>
-              
-              <View className="mb-2">
-                <P className="text-sm">
-                  Human Factor: <span className="font-bold">{analysisResult.scores.humanFactor.toFixed(1)}/10</span>
-                </P>
-              </View>
-              
-              <View className="mt-4 pt-4 border-t border-[--border-color]">
-                <P className="text-base font-bold">
-                  Final Score: {analysisResult.scores.finalScore.toFixed(1)}/10
-                </P>
-                <P className="text-lg font-bold text-blue mt-2">
-                  Mint Cost: {analysisResult.mintCost.toFixed(2)} XLM
+              <View className="mt-4 p-3 rounded-lg bg-[--bg-color]">
+                <View className="flex-row items-center justify-between">
+                  <P className="text-sm">Fan investment pool:</P>
+                  <P className="font-bold">{(100 - artistEquityPercent).toFixed(1)}%</P>
+                </View>
+                <P className="text-xs text-[--text-secondary-color] mt-1">
+                  Fans can invest in this portion and earn proportional rewards
                 </P>
               </View>
             </View>
           )}
 
-          {analysisResult && analysisResult.rejected && (
-            <View className="w-full mb-6 p-4 border border-red-500 rounded-lg bg-red-500/10">
-              <P className="text-red-500 font-bold">Track Rejected</P>
-              <P className="text-sm mt-2">{analysisResult.reason}</P>
+          {/* Success Message */}
+          {uploadResult?.success && (
+            <View className="w-full mb-6 p-4 border border-green-500 rounded-lg bg-green-500/10">
+              <View className="flex-row items-center mb-2">
+                <Check className="h-6 w-6 text-green-500 mr-2" />
+                <P className="text-green-500 font-bold">Upload Submitted!</P>
+              </View>
+              <P className="text-sm text-[--text-secondary-color]">
+                {uploadResult.message}
+              </P>
+              <P className="text-xs text-[--text-secondary-color] mt-2">
+                A curator will review your track and notify you once it's approved.
+              </P>
             </View>
           )}
 
           {/* Action Buttons */}
           <View className="w-full flex-row gap-4">
-            {!analysisResult && (
+            {!uploadResult?.success && (
               <Button
-                text={isAnalyzing ? 'Analyzing...' : 'Analyze Track'}
-                onPress={handleAnalyze}
-                disabled={isAnalyzing || !audioFile || !imageFile || !title || !artist}
+                text={isUploading ? 'Uploading...' : 'Submit for Review'}
+                onPress={handleUpload}
+                disabled={isUploading || !audioFile || !imageFile || !title || !artist}
                 className="flex-1"
               />
             )}
 
-            {analysisResult && !analysisResult.rejected && (
-              <>
-                <Button
-                  text="Re-analyze"
-                  onPress={handleAnalyze}
-                  variant="secondary"
-                  disabled={isAnalyzing}
-                  className="flex-1"
-                />
-                <Button
-                  text={isMinting ? 'Minting...' : `Mint for ${analysisResult.mintCost.toFixed(2)} XLM`}
-                  onPress={handleMint}
-                  disabled={isMinting}
-                  className="flex-1"
-                />
-              </>
+            {uploadResult?.success && (
+              <Button
+                text="Upload Another Track"
+                onPress={resetForm}
+                className="flex-1"
+              />
             )}
           </View>
 
-          {/* Progress Indicators */}
-          {isAnalyzing && (
+          {/* Progress Indicator */}
+          {isUploading && (
             <View className="w-full mt-6 p-4 border border-[--border-color] rounded-lg bg-[--bg-secondary-color]">
               <View className="mb-4">
                 <View className="flex-row justify-between mb-2">
@@ -573,41 +500,12 @@ export function UploadScreen() {
                 </View>
               </View>
               
-              {uploadProgress === 100 && (
-                <View>
-                  <View className="flex-row justify-between mb-2">
-                    <P className="text-sm font-bold">Analyzing Quality</P>
-                    <P className="text-sm">{analysisProgress}%</P>
-                  </View>
-                  <View className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
-                    <View
-                      className="h-full bg-green-500 transition-all"
-                      style={{ width: `${analysisProgress}%` }}
-                    />
-                  </View>
-                </View>
-              )}
-              
-              <View className="mt-4 flex-row items-center justify-center">
-                <ActivityIndicator />
-                <P className="ml-2 text-sm text-[--text-secondary-color]">
-                  {uploadProgress < 100 ? 'Uploading files...' : 'Analyzing audio quality...'}
-                </P>
-              </View>
-            </View>
-          )}
-
-          {isMinting && (
-            <View className="w-full mt-6 p-4 border border-[--border-color] rounded-lg bg-[--bg-secondary-color]">
               <View className="flex-row items-center justify-center">
                 <ActivityIndicator />
                 <P className="ml-2 text-sm text-[--text-secondary-color]">
-                  Minting your track on the blockchain...
+                  Uploading your track...
                 </P>
               </View>
-              <P className="text-xs text-center text-[--text-secondary-color] mt-2">
-                This may take a few seconds. Please don't close this page.
-              </P>
             </View>
           )}
         </View>

@@ -93,6 +93,10 @@ pub enum DataKey {
     // Batch distribution state (temporary, cleared after completion)
     BatchDistTotalEscrow,               // i128: Cached total escrow for current batch distribution
     BatchDistHitzAmount,                // i128: Total HITZ amount being distributed
+    
+    // Artist equity (non-dilutable creator rewards)
+    ArtistEquity((String, Address)),    // (entry_id, artist) -> ArtistEquityClaim
+    ArtistEquityTotal(String),          // entry_id -> total equity bps across all artists (max 9990)
 }
 
 #[contracttype]
@@ -101,6 +105,15 @@ pub struct Entry {
     pub tvl_hitz: i128,      // Total Value Locked (equity-bearing) in HITZ
     pub escrow_hitz: i128,   // Non-equity revenue in HITZ
     pub created_at: u64,     // Timestamp
+}
+
+/// Artist equity claim for non-dilutable creator rewards
+/// Stored per (entry_id, artist) pair to support collaborations
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ArtistEquityClaim {
+    pub equity_bps: u32,    // Artist's equity share in basis points (100 = 1%)
+    pub claimed: i128,      // HITZ already claimed by this artist
 }
 
 #[contract]
@@ -931,8 +944,9 @@ impl SkyhitzCore {
 
     /// Claim HITZ rewards from an entry's reward pool
     ///
-    /// Stakers receive rewards proportional to their stake
-    /// Formula: claimable = (reward_pool × user_stake) / total_stake - already_claimed
+    /// Stakers receive rewards proportional to their stake from the STAKER pool.
+    /// If artist equity exists, stakers share (100% - total_artist_equity) of rewards.
+    /// Formula: claimable = (staker_pool × user_stake) / total_stake - already_claimed
     pub fn claim_rewards(e: Env, entry_id: String, claimer: Address) -> i128 {
         claimer.require_auth();
 
@@ -960,8 +974,19 @@ impl SkyhitzCore {
             panic!("No rewards available");
         }
 
-        // Calculate total claimable: (pool × user_stake) / total_stake
-        let total_claimable = (reward_pool
+        // Calculate staker pool (exclude artist equity if any)
+        let total_equity_key = DataKey::ArtistEquityTotal(entry_id.clone());
+        let total_artist_bps: u32 = e.storage().persistent().get(&total_equity_key).unwrap_or(0);
+        
+        let staker_pool = if total_artist_bps > 0 {
+            // Stakers share (10000 - artist_bps) / 10000 of the pool
+            (reward_pool * (10_000 - total_artist_bps as i128)) / 10_000
+        } else {
+            reward_pool
+        };
+
+        // Calculate total claimable: (staker_pool × user_stake) / total_stake
+        let total_claimable = (staker_pool
             .saturating_mul(user_stake))
             .checked_div(total_stake)
             .unwrap_or(0);
@@ -1068,7 +1093,7 @@ impl SkyhitzCore {
         amount
     }
 
-    /// Get claimable HITZ rewards for a user
+    /// Get claimable HITZ rewards for a staker (accounts for artist equity)
     pub fn get_claimable_rewards(e: Env, entry_id: String, user: Address) -> i128 {
         let stake_key = DataKey::Stake((entry_id.clone(), user.clone()));
         let user_stake: i128 = e.storage().persistent().get(&stake_key).unwrap_or(0);
@@ -1089,8 +1114,18 @@ impl SkyhitzCore {
             .get(&DataKey::RewardPool(entry_id.clone()))
             .unwrap_or(0);
 
-        // Calculate total claimable
-        let total_claimable = (reward_pool
+        // Calculate staker pool (exclude artist equity)
+        let total_equity_key = DataKey::ArtistEquityTotal(entry_id.clone());
+        let total_artist_bps: u32 = e.storage().persistent().get(&total_equity_key).unwrap_or(0);
+        
+        let staker_pool = if total_artist_bps > 0 {
+            (reward_pool * (10_000 - total_artist_bps as i128)) / 10_000
+        } else {
+            reward_pool
+        };
+
+        // Calculate total claimable from staker pool
+        let total_claimable = (staker_pool
             .saturating_mul(user_stake))
             .checked_div(total_stake)
             .unwrap_or(0);
@@ -1182,9 +1217,162 @@ impl SkyhitzCore {
         (entry.tvl_hitz, entry.escrow_hitz, total_stake, reward_pool, apr)
     }
 
+    // ========================================================================
+    // Artist Equity (Non-Dilutable Creator Rewards)
+    // ========================================================================
+
+    /// Set non-dilutable artist equity for an entry (admin-only)
+    /// 
+    /// Allows verified artists to receive a fixed percentage of all rewards.
+    /// Multiple artists can have equity on the same entry (collaborations).
+    /// 
+    /// # Arguments
+    /// * `entry_id` - Entry to assign equity to (must exist)
+    /// * `artist` - Artist's wallet address
+    /// * `equity_bps` - Equity in basis points (1-9990, where 100 = 1%, 9990 = 99.9%)
+    /// 
+    /// # Security
+    /// - Admin-only to prevent unauthorized equity claims
+    /// - Max 99.9% total artist equity per entry (leaves 0.1% for stakers minimum)
+    /// - Each artist can only have one equity claim per entry
+    /// - Equity is immutable once set
+    pub fn set_artist_equity(e: Env, entry_id: String, artist: Address, equity_bps: u32) {
+        let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
+        admin.require_auth();
+
+        // Validate entry exists
+        let entry_key = DataKey::Entry(entry_id.clone());
+        if !e.storage().persistent().has(&entry_key) {
+            panic!("Entry not found");
+        }
+
+        // Validate equity bounds (1-9990 bps = 0.01% - 99.9%)
+        if equity_bps == 0 {
+            panic!("Equity must be greater than 0");
+        }
+        if equity_bps > 9990 {
+            panic!("Single artist equity cannot exceed 99.9% (9990 bps)");
+        }
+
+        // Check this artist doesn't already have equity on this entry
+        let equity_key = DataKey::ArtistEquity((entry_id.clone(), artist.clone()));
+        if e.storage().persistent().has(&equity_key) {
+            panic!("Artist already has equity on this entry");
+        }
+
+        // Check total equity won't exceed 99.9%
+        let total_key = DataKey::ArtistEquityTotal(entry_id.clone());
+        let current_total: u32 = e.storage().persistent().get(&total_key).unwrap_or(0);
+        let new_total = current_total.checked_add(equity_bps)
+            .unwrap_or_else(|| panic!("Equity calculation overflow"));
+        
+        if new_total > 9990 {
+            panic!("Total artist equity would exceed 99.9% ({} + {} = {} bps)", 
+                   current_total, equity_bps, new_total);
+        }
+
+        // Store artist's equity claim
+        let claim = ArtistEquityClaim {
+            equity_bps,
+            claimed: 0,
+        };
+        e.storage().persistent().set(&equity_key, &claim);
+        e.storage().persistent().extend_ttl(&equity_key, STORAGE_LIFETIME_THRESHOLD, STORAGE_BUMP_AMOUNT);
+
+        // Update total equity for entry
+        e.storage().persistent().set(&total_key, &new_total);
+        e.storage().persistent().extend_ttl(&total_key, STORAGE_LIFETIME_THRESHOLD, STORAGE_BUMP_AMOUNT);
+
+        log!(&e, "Artist equity set: {} gets {} bps on entry {} (total: {} bps)", 
+             artist, equity_bps, entry_id, new_total);
+    }
+
+    /// Artist claims their non-dilutable equity rewards
+    /// 
+    /// # Arguments
+    /// * `entry_id` - Entry to claim from
+    /// * `artist` - Artist's address (must match stored equity, requires auth)
+    /// 
+    /// # Returns
+    /// Amount of HITZ claimed
+    pub fn claim_artist_equity(e: Env, entry_id: String, artist: Address) -> i128 {
+        artist.require_auth();
+
+        let equity_key = DataKey::ArtistEquity((entry_id.clone(), artist.clone()));
+        let mut claim: ArtistEquityClaim = e.storage().persistent()
+            .get(&equity_key)
+            .unwrap_or_else(|| panic!("No equity for this artist on this entry"));
+
+        let reward_pool: i128 = e.storage().persistent()
+            .get(&DataKey::RewardPool(entry_id.clone()))
+            .unwrap_or(0);
+
+        if reward_pool == 0 {
+            panic!("No rewards in pool");
+        }
+
+        // Calculate this artist's total share: pool * equity_bps / 10000
+        let artist_total = (reward_pool
+            .checked_mul(claim.equity_bps as i128)
+            .unwrap_or_else(|| panic!("Reward calculation overflow")))
+            .checked_div(10_000)
+            .unwrap_or(0);
+
+        let to_claim = artist_total.saturating_sub(claim.claimed);
+
+        if to_claim <= 0 {
+            panic!("No artist rewards to claim");
+        }
+
+        // Update claimed amount
+        claim.claimed = claim.claimed.saturating_add(to_claim);
+        e.storage().persistent().set(&equity_key, &claim);
+        e.storage().persistent().extend_ttl(&equity_key, STORAGE_LIFETIME_THRESHOLD, STORAGE_BUMP_AMOUNT);
+
+        // Transfer HITZ to artist
+        let hitz_token: Address = e.storage().instance().get(&DataKey::HitzToken).unwrap();
+        let contract_addr = e.current_contract_address();
+        safe_transfer(&e, &hitz_token, &contract_addr, &artist, &to_claim, "artist equity claim");
+
+        log!(&e, "Artist equity claimed: {} claimed {} HITZ ({} bps) from entry {}", 
+             artist, to_claim, claim.equity_bps, entry_id);
+
+        to_claim
+    }
+
+    /// Get artist equity info for an entry
+    /// 
+    /// # Returns
+    /// (equity_bps, claimed_amount, claimable_amount) or (0, 0, 0) if no equity
+    pub fn get_artist_equity(e: Env, entry_id: String, artist: Address) -> (u32, i128, i128) {
+        let equity_key = DataKey::ArtistEquity((entry_id.clone(), artist));
+        
+        let claim: ArtistEquityClaim = match e.storage().persistent().get(&equity_key) {
+            Some(c) => c,
+            None => return (0, 0, 0),
+        };
+
+        let reward_pool: i128 = e.storage().persistent()
+            .get(&DataKey::RewardPool(entry_id))
+            .unwrap_or(0);
+
+        let artist_total = (reward_pool * claim.equity_bps as i128) / 10_000;
+        let claimable = artist_total.saturating_sub(claim.claimed);
+
+        (claim.equity_bps, claim.claimed, claimable)
+    }
+
+    /// Get total artist equity for an entry (sum of all artists)
+    /// 
+    /// # Returns
+    /// Total equity in basis points (0-9990)
+    pub fn get_total_artist_equity(e: Env, entry_id: String) -> u32 {
+        let total_key = DataKey::ArtistEquityTotal(entry_id);
+        e.storage().persistent().get(&total_key).unwrap_or(0)
+    }
 
     pub fn version() -> u32 {
-        1
+        2  // Bumped for artist equity feature
     }
 
     /// Merge one entry into another (admin-only).
@@ -2915,6 +3103,320 @@ mod test {
 
         // Verify new values are set
         assert_eq!(client.get_base_fee(), new_base_fee);
+    }
+
+    // ========================================================================
+    // Artist Equity Tests
+    // ========================================================================
+
+    #[test]
+    fn test_set_artist_equity() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+
+        let entry_id = String::from_str(&e, "song123");
+        client.create_entry(&entry_id);
+
+        // Set 10% artist equity (1000 bps)
+        client.set_artist_equity(&entry_id, &user, &1000u32);
+
+        // Verify equity was set
+        let (equity_bps, claimed, claimable) = client.get_artist_equity(&entry_id, &user);
+        assert_eq!(equity_bps, 1000);
+        assert_eq!(claimed, 0);
+        assert_eq!(claimable, 0); // No rewards yet
+
+        // Verify total equity
+        let total = client.get_total_artist_equity(&entry_id);
+        assert_eq!(total, 1000);
+    }
+
+    #[test]
+    fn test_artist_equity_claim() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        let hitz_admin = token::StellarAssetClient::new(&e, &hitz_addr);
+        hitz_admin.mint(&contract_id, &10_000_000_000i128);
+        hitz_admin.mint(&admin, &10_000_000_000i128);
+
+        let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
+        xlm_admin.mint(&user, &100_000_000i128);
+
+        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+
+        let entry_id = String::from_str(&e, "song123");
+        client.create_entry(&entry_id);
+
+        // User invests to create stake
+        client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(10_000_000i128));
+
+        // Set 10% artist equity for user
+        client.set_artist_equity(&entry_id, &user, &1000u32);
+
+        // Admin allocates 1000 HITZ rewards
+        client.allocate_rewards(&entry_id, &1_000_000_000i128);
+
+        // Check claimable artist equity (10% of 1000 HITZ = 100 HITZ = 100M stroops)
+        let (_, _, claimable) = client.get_artist_equity(&entry_id, &user);
+        assert_eq!(claimable, 100_000_000);
+
+        // User claims artist equity
+        let hitz_balance_before = token::Client::new(&e, &hitz_addr).balance(&user);
+        let claimed = client.claim_artist_equity(&entry_id, &user);
+        assert_eq!(claimed, 100_000_000);
+
+        // Verify HITZ transferred
+        let hitz_balance_after = token::Client::new(&e, &hitz_addr).balance(&user);
+        assert_eq!(hitz_balance_after, hitz_balance_before + 100_000_000);
+
+        // Verify claimed amount updated
+        let (_, claimed_amount, new_claimable) = client.get_artist_equity(&entry_id, &user);
+        assert_eq!(claimed_amount, 100_000_000);
+        assert_eq!(new_claimable, 0);
+    }
+
+    #[test]
+    fn test_staker_rewards_with_artist_equity() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let artist = Address::generate(&e);
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        let hitz_admin = token::StellarAssetClient::new(&e, &hitz_addr);
+        hitz_admin.mint(&contract_id, &10_000_000_000i128);
+        hitz_admin.mint(&admin, &10_000_000_000i128);
+
+        let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
+        xlm_admin.mint(&user, &100_000_000i128);
+
+        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+
+        let entry_id = String::from_str(&e, "song123");
+        client.create_entry(&entry_id);
+
+        // User invests
+        client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(10_000_000i128));
+
+        // Set 10% artist equity (NOT for the staker)
+        client.set_artist_equity(&entry_id, &artist, &1000u32);
+
+        // Allocate 1000 HITZ rewards
+        client.allocate_rewards(&entry_id, &1_000_000_000i128);
+
+        // Staker should only get 90% of rewards (artist gets 10%)
+        let staker_claimable = client.get_claimable_rewards(&entry_id, &user);
+        // 1000 HITZ * 90% = 900 HITZ = 900M stroops
+        assert_eq!(staker_claimable, 900_000_000);
+
+        // Staker claims
+        let claimed = client.claim_rewards(&entry_id, &user);
+        assert_eq!(claimed, 900_000_000);
+    }
+
+    #[test]
+    fn test_collaboration_multiple_artists() {
+        let (e, admin, treasury, _user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let artist1 = Address::generate(&e);
+        let artist2 = Address::generate(&e);
+        let staker = Address::generate(&e);
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        let hitz_admin = token::StellarAssetClient::new(&e, &hitz_addr);
+        hitz_admin.mint(&contract_id, &10_000_000_000i128);
+        hitz_admin.mint(&admin, &10_000_000_000i128);
+
+        let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
+        xlm_admin.mint(&staker, &100_000_000i128);
+
+        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+
+        let entry_id = String::from_str(&e, "collab_song");
+        client.create_entry(&entry_id);
+
+        // Staker invests
+        client.record_action(&staker, &entry_id, &symbol_short!("invest"), &Some(10_000_000i128));
+
+        // Set 5% equity for each artist (10% total)
+        client.set_artist_equity(&entry_id, &artist1, &500u32);
+        client.set_artist_equity(&entry_id, &artist2, &500u32);
+
+        // Verify total equity
+        assert_eq!(client.get_total_artist_equity(&entry_id), 1000);
+
+        // Allocate 1000 HITZ
+        client.allocate_rewards(&entry_id, &1_000_000_000i128);
+
+        // Each artist should get 5% = 50 HITZ = 50M stroops
+        let (_, _, claimable1) = client.get_artist_equity(&entry_id, &artist1);
+        let (_, _, claimable2) = client.get_artist_equity(&entry_id, &artist2);
+        assert_eq!(claimable1, 50_000_000);
+        assert_eq!(claimable2, 50_000_000);
+
+        // Staker gets 90%
+        let staker_claimable = client.get_claimable_rewards(&entry_id, &staker);
+        assert_eq!(staker_claimable, 900_000_000);
+
+        // Both artists claim
+        let claimed1 = client.claim_artist_equity(&entry_id, &artist1);
+        let claimed2 = client.claim_artist_equity(&entry_id, &artist2);
+        assert_eq!(claimed1, 50_000_000);
+        assert_eq!(claimed2, 50_000_000);
+    }
+
+    #[test]
+    fn test_max_artist_equity_999() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+
+        let entry_id = String::from_str(&e, "song123");
+        client.create_entry(&entry_id);
+
+        // Set 99.9% artist equity (9990 bps) - maximum allowed
+        client.set_artist_equity(&entry_id, &user, &9990u32);
+
+        let (equity_bps, _, _) = client.get_artist_equity(&entry_id, &user);
+        assert_eq!(equity_bps, 9990);
+        assert_eq!(client.get_total_artist_equity(&entry_id), 9990);
+    }
+
+    #[test]
+    #[should_panic(expected = "Total artist equity would exceed 99.9%")]
+    fn test_artist_equity_exceeds_max() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let artist2 = Address::generate(&e);
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+
+        let entry_id = String::from_str(&e, "song123");
+        client.create_entry(&entry_id);
+
+        // Set 50% for first artist
+        client.set_artist_equity(&entry_id, &user, &5000u32);
+
+        // Try to set 51% for second artist - should fail (total would be 101%)
+        client.set_artist_equity(&entry_id, &artist2, &5100u32);
+    }
+
+    #[test]
+    #[should_panic(expected = "Artist already has equity on this entry")]
+    fn test_duplicate_artist_equity() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+
+        let entry_id = String::from_str(&e, "song123");
+        client.create_entry(&entry_id);
+
+        // Set equity once
+        client.set_artist_equity(&entry_id, &user, &1000u32);
+
+        // Try to set again - should fail
+        client.set_artist_equity(&entry_id, &user, &500u32);
+    }
+
+    #[test]
+    #[should_panic(expected = "Entry not found")]
+    fn test_artist_equity_nonexistent_entry() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+
+        let entry_id = String::from_str(&e, "nonexistent");
+        client.set_artist_equity(&entry_id, &user, &1000u32);
+    }
+
+    #[test]
+    #[should_panic(expected = "Equity must be greater than 0")]
+    fn test_artist_equity_zero() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+
+        let entry_id = String::from_str(&e, "song123");
+        client.create_entry(&entry_id);
+
+        client.set_artist_equity(&entry_id, &user, &0u32);
+    }
+
+    #[test]
+    #[should_panic(expected = "Single artist equity cannot exceed 99.9%")]
+    fn test_single_artist_equity_over_max() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+
+        let entry_id = String::from_str(&e, "song123");
+        client.create_entry(&entry_id);
+
+        // Try 100% - should fail
+        client.set_artist_equity(&entry_id, &user, &10000u32);
+    }
+
+    #[test]
+    #[should_panic(expected = "No equity for this artist on this entry")]
+    fn test_claim_nonexistent_equity() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+
+        let entry_id = String::from_str(&e, "song123");
+        client.create_entry(&entry_id);
+
+        // Try to claim without having equity
+        client.claim_artist_equity(&entry_id, &user);
+    }
+
+    #[test]
+    fn test_incremental_artist_claims() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let staker = Address::generate(&e);
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        let hitz_admin = token::StellarAssetClient::new(&e, &hitz_addr);
+        hitz_admin.mint(&contract_id, &10_000_000_000i128);
+        hitz_admin.mint(&admin, &10_000_000_000i128);
+
+        let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
+        xlm_admin.mint(&staker, &100_000_000i128);
+
+        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+
+        let entry_id = String::from_str(&e, "song123");
+        client.create_entry(&entry_id);
+
+        // Staker invests to enable rewards
+        client.record_action(&staker, &entry_id, &symbol_short!("invest"), &Some(10_000_000i128));
+
+        // Set 10% artist equity
+        client.set_artist_equity(&entry_id, &user, &1000u32);
+
+        // First allocation: 500 HITZ
+        client.allocate_rewards(&entry_id, &500_000_000i128);
+
+        // Artist claims 10% of 500 = 50 HITZ
+        let claimed1 = client.claim_artist_equity(&entry_id, &user);
+        assert_eq!(claimed1, 50_000_000);
+
+        // Second allocation: 500 more HITZ (total 1000)
+        client.allocate_rewards(&entry_id, &500_000_000i128);
+
+        // Artist claims 10% of NEW 500 = 50 HITZ more
+        let claimed2 = client.claim_artist_equity(&entry_id, &user);
+        assert_eq!(claimed2, 50_000_000);
+
+        // Verify total claimed
+        let (_, total_claimed, _) = client.get_artist_equity(&entry_id, &user);
+        assert_eq!(total_claimed, 100_000_000);
     }
 }
 

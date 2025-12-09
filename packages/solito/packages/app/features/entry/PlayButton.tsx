@@ -1,10 +1,8 @@
 'use client'
 import { Entry } from 'app/api/graphql/types'
-import { Pressable } from 'react-native'
-import PlayIcon from 'app/ui/icons/play'
-import PauseIcon from 'app/ui/icons/pause'
 import { usePlayback } from 'app/hooks/usePlayback';
-import { PlaybackState } from 'app/state/player';
+import { PlaybackState, usePlayerStore } from 'app/state/player';
+import { PlayPauseButton } from 'app/ui/buttons/PlayPauseButton';
 
 interface PlayButtonProps {
   entry: Entry
@@ -12,20 +10,34 @@ interface PlayButtonProps {
 }
 
 export function PlayButton({ entry, playlist = [entry] }: PlayButtonProps) {
-  const { playEntry, playbackState, entry: currentEntry } = usePlayback();
-  const isThisPlaying = currentEntry?.id === entry.id && playbackState === PlaybackState.PLAYING;
+  const { playEntry, playPause, entry: currentEntry } = usePlayback();
+  const { playbackState, shouldPlay } = usePlayerStore();
+  
+  const isCurrentEntry = currentEntry?.id === entry.id;
+  
+  // Only show playing state if this specific entry is playing
+  const isPlaying = isCurrentEntry && (
+    playbackState === PlaybackState.PLAYING ||
+    (playbackState === PlaybackState.SEEKING && shouldPlay)
+  );
 
   const toggle = () => {
-    playEntry(entry, playlist);
+    if (isCurrentEntry) {
+      // If this entry is already loaded, toggle play/pause
+      playPause();
+    } else {
+      // If it's a different entry, play it
+      playEntry(entry, playlist);
+    }
   };
 
   return (
-    <Pressable onPress={toggle}>
-      {isThisPlaying ? (
-        <PauseIcon className="text-gray-600" size={24} stroke="var(--text-color)" />
-      ) : (
-        <PlayIcon className="text-gray-600" size={24} stroke="var(--text-color)" />
-      )}
-    </Pressable>
+    <PlayPauseButton
+      onPress={toggle}
+      size={24}
+      iconClassName="text-[--text-color]"
+      isPlaying={isPlaying}
+      showLoadingState={true}
+    />
   );
 }

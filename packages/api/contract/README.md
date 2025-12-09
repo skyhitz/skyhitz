@@ -90,7 +90,22 @@ claim_rewards(entry_id, claimer) -> i128
 
 // Calculate APR for entry
 calculate_apr(entry_id) -> i128
+
+// Artist Equity (Non-Dilutable)
+set_artist_equity(entry_id, artist, equity_bps)  // Admin-only, sets artist's equity
+claim_artist_equity(entry_id, artist) -> i128    // Artist claims their share
+get_artist_equity(entry_id, artist) -> (equity_bps, claimed, claimable)
+get_total_artist_equity(entry_id) -> u32         // Total artist equity in bps
 ```
+
+### Artist Equity
+
+Verified artists can receive non-dilutable equity on their entries:
+
+- **Max equity per artist**: 99.9% (9990 basis points)
+- **Max total equity**: 99.9% across all artists
+- **Supports collaborations**: Multiple artists can have equity on the same entry
+- **Non-dilutable**: Fan investments don't affect artist percentage
 
 ## Architecture
 

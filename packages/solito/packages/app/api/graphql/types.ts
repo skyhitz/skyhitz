@@ -62,4 +62,37 @@ export interface User {
   managed: boolean
   twitter?: string
   instagram?: string
+  verifiedArtist?: boolean
+}
+
+export interface PendingUpload {
+  id: string
+  userId: string
+  userEmail: string
+  userName: string
+  audioHash: string
+  imageHash: string
+  title: string
+  artist: string
+  description?: string
+  isVerifiedArtist?: boolean
+  artistEquityBps?: number
+  status: 'pending' | 'approved' | 'rejected'
+  createdAt: string
+  createdAtTimestamp: number
+  resolvedAt?: string
+  resolvedBy?: string
+  rejectionReason?: string
+  qualityScore?: number
+  isAiGenerated?: boolean
+}
+
+export interface Curator {
+  userId: string
+  userEmail: string
+  userName: string
+  addedAt: string
+  addedAtTimestamp: number
+  addedBy: string
+  addedByName: string
 }

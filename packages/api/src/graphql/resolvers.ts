@@ -27,8 +27,21 @@ import { withdrawHitzResolver } from './withdraw-hitz';
 import { pendingMinesResolver, pendingMineResolver, rejectPendingMineResolver } from './pending-mines';
 import { approvePendingMineResolver } from './approve-pending-mine';
 import { mergePendingMineResolver } from './merge-pending-mine';
-import { uploadMintResolver } from './upload-mint';
+import {
+	pendingUploadsResolver,
+	pendingUploadsCountResolver,
+	pendingUploadResolver,
+	approvePendingUploadResolver,
+	rejectPendingUploadResolver,
+} from './pending-uploads';
+import {
+	isCuratorResolver,
+	curatorsResolver,
+	addCuratorResolver,
+	removeCuratorResolver,
+} from './curators';
 // REMOVED: sellSharesResolver - no longer supported in new contract
+// REMOVED: uploadMintResolver - replaced with curator approval flow
 
 const Query = {
 	entry: entryByIdResolver,
@@ -42,6 +55,11 @@ const Query = {
 	claimableEarningsPreview: claimEarningsPreviewResolver,
 	pendingMines: pendingMinesResolver,
 	pendingMine: pendingMineResolver,
+	pendingUploads: pendingUploadsResolver,
+	pendingUploadsCount: pendingUploadsCountResolver,
+	pendingUpload: pendingUploadResolver,
+	isCurator: isCuratorResolver,
+	curators: curatorsResolver,
 };
 
 const Mutation = {
@@ -66,7 +84,10 @@ const Mutation = {
 	approvePendingMine: approvePendingMineResolver,
 	mergePendingMine: mergePendingMineResolver,
 	rejectPendingMine: rejectPendingMineResolver,
-	uploadMint: uploadMintResolver,
+	approvePendingUpload: approvePendingUploadResolver,
+	rejectPendingUpload: rejectPendingUploadResolver,
+	addCurator: addCuratorResolver,
+	removeCurator: removeCuratorResolver,
 	updateUser: updateUserResolver,
 };
 

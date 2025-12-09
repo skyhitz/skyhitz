@@ -1,7 +1,7 @@
 'use client'
 import { SignInParam } from 'app/hooks/param/useSignInParam'
 import { useEffect } from 'react'
-import { useLogIn } from 'app/hooks/useLogIn'
+import { useSignInWithRedirect } from 'app/hooks/useSignIn'
 import { useSignInWithTokenMutation } from 'app/api/graphql/mutations'
 import { User } from 'app/api/graphql/types'
 import { useRouter } from 'solito/navigation'
@@ -14,15 +14,15 @@ export function AuthenticationView({
 }: {
   signInParam: SignInParam
 }) {
-  const [signIn, { error, loading }] = useSignInWithTokenMutation()
+  const [signInWithToken, { error, loading }] = useSignInWithTokenMutation()
   const { replace } = useRouter()
-  const logIn = useLogIn()
+  const signIn = useSignInWithRedirect(signInParam.redirect)
 
   useEffect(() => {
     const trySignIn = async () => {
       try {
         console.log('Attempting sign in with token...')
-        const { data } = await signIn({
+        const { data } = await signInWithToken({
           variables: {
             uid: signInParam.uid,
             token: signInParam.token,
@@ -40,8 +40,8 @@ export function AuthenticationView({
           // Double check that we have the necessary user fields
           if (userData.id && userData.email) {
             // Update the user state in Zustand
-            logIn(userData)
-            // The logIn function will handle redirect after setting user state
+            signIn(userData)
+            // The signIn function will handle redirect after setting user state
           } else {
             console.error('Invalid user data received:', userData)
             replace('/')
@@ -55,7 +55,7 @@ export function AuthenticationView({
     if (signInParam.token && signInParam.uid) {
       trySignIn()
     }
-  }, [signInParam, signIn, replace])
+  }, [signInParam, signInWithToken, replace, signIn])
 
   return (
     <View className="flex w-72 items-center">

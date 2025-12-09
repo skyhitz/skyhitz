@@ -19,6 +19,8 @@ export const ROUTES = {
   PROFILE_LIKES: '/profile/likes',
   PROFILE_COLLECTION: '/profile/collection',
   PROFILE_EDIT: '/profile/edit',
+  PROFILE_PENDING_UPLOADS: '/profile/pending-uploads',
+  PROFILE_CURATORS: '/profile/curators',
 }
 
 /**
