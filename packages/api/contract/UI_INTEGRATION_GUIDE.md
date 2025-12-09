@@ -14,6 +14,12 @@ This guide provides a comprehensive list of all changes needed to integrate the 
 - `calculate_apr(entry_id)` - On-chain APR calculation
 - `get_entry_stats(entry_id)` - Returns {total_staked, reward_pool, apr}
 
+### Artist Equity Functions (NEW)
+- `set_artist_equity(entry_id, artist, equity_bps)` - Admin sets artist's non-dilutable equity
+- `claim_artist_equity(entry_id, artist)` - Artist claims their share of rewards
+- `get_artist_equity(entry_id, artist)` - Returns (equity_bps, claimed, claimable)
+- `get_total_artist_equity(entry_id)` - Returns total artist equity in basis points
+
 ### Removed Methods
 - `sellShares()` - No longer supported
 - `mergeEntries()` - No longer supported
@@ -524,6 +530,135 @@ export class AlgoliaClient {
 - [ ] Error messages need to be user-friendly
 - [ ] Loading states for all async operations
 - [ ] Optimistic UI updates for better UX
+
+---
+
+## Phase 7: Artist Equity Integration (NEW)
+
+### Backend Changes (COMPLETED)
+
+#### packages/api/src/util/types.ts
+```typescript
+// User type - added verifiedArtist field
+export type User = {
+  // ... existing fields
+  verifiedArtist?: boolean;  // NEW: Whether user can set artist equity
+}
+
+// PendingUpload type - added artist equity fields
+export interface PendingUpload {
+  // ... existing fields
+  isVerifiedArtist?: boolean;   // NEW: Was uploader verified at upload time
+  artistEquityBps?: number;      // NEW: Artist's equity in basis points (0-9990)
+}
+```
+
+#### packages/api/src/graphql/schema.ts
+```graphql
+type User {
+  # ... existing fields
+  verifiedArtist: Boolean  # NEW
+}
+
+type PendingUpload {
+  # ... existing fields
+  isVerifiedArtist: Boolean  # NEW
+  artistEquityBps: Int        # NEW
+}
+```
+
+#### packages/api/src/upload-complete.ts
+- Parses `artistEquityBps` from upload form data
+- Validates range (0-9990 basis points)
+- Stores `isVerifiedArtist` and `artistEquityBps` in pending upload
+
+#### packages/api/src/graphql/pending-uploads.ts
+- After entry approval, calls `contract.setArtistEquity()` if upload has equity
+
+#### packages/api/contract/index.ts
+```typescript
+// New methods added:
+setArtistEquity(entryId, artistAddress, equityBps)
+getArtistEquity(entryId, artistAddress) -> { equityBps, claimed, claimable }
+getTotalArtistEquity(entryId) -> number
+claimArtistEquity(secret, entryId) -> { claimedAmount }
+```
+
+### Frontend Changes (COMPLETED)
+
+#### Upload Screen (packages/solito/.../features/upload/screen.tsx)
+- Added equity slider (0-99.9%) for verified artists only
+- Shows equity split preview (artist vs fan pool)
+- Sends `artistEquityBps` to backend when uploading
+
+```tsx
+// Only visible if user.verifiedArtist === true
+{isVerifiedArtist && (
+  <View className="...">
+    <P>Artist Equity</P>
+    <Slider
+      minimumValue={0}
+      maximumValue={99.9}
+      value={artistEquityPercent}
+      onValueChange={setArtistEquityPercent}
+    />
+    <P>Your equity: {artistEquityPercent.toFixed(1)}%</P>
+    <P>Fan pool: {(100 - artistEquityPercent).toFixed(1)}%</P>
+  </View>
+)}
+```
+
+#### Pending Upload Entry (packages/solito/.../pending-uploads/PendingUploadEntry.tsx)
+- Shows "✓ Artist" badge for verified artist uploads
+- Displays equity percentage in track info
+
+#### Approval Modal (packages/solito/.../pending-uploads/ApprovalModal.tsx)
+- Shows artist equity breakdown when reviewing uploads
+- Displays artist vs fan pool percentages
+
+### GraphQL Operations (packages/solito/.../api/graphql/operations.ts)
+```typescript
+// Updated SIGN_IN_WITH_TOKEN to include verifiedArtist
+export const SIGN_IN_WITH_TOKEN = gql`
+  mutation SignInWithToken($uid: String!, $token: String!) {
+    signInWithToken(uid: $uid, token: $token) {
+      # ... existing fields
+      verifiedArtist  # NEW
+    }
+  }
+`
+
+// Updated PENDING_UPLOADS to include artist equity fields
+export const PENDING_UPLOADS = gql`
+  query PendingUploads {
+    pendingUploads {
+      # ... existing fields
+      isVerifiedArtist  # NEW
+      artistEquityBps   # NEW
+    }
+  }
+`
+```
+
+### Testing Checklist (Artist Equity)
+
+#### Backend
+- [x] `setArtistEquity` sets equity correctly
+- [x] `getArtistEquity` returns correct values
+- [x] `getTotalArtistEquity` sums all artists
+- [x] `claimArtistEquity` transfers correct amount
+- [x] Staker rewards exclude artist equity portion
+- [x] Multiple artists (collaboration) works correctly
+- [x] Max equity (99.9%) enforced
+- [x] Error cases handled (duplicate, overflow, etc.)
+
+#### Frontend
+- [x] Equity slider only visible for verified artists
+- [x] Slider range 0-99.9%
+- [x] Fan pool percentage updates in real-time
+- [x] Equity sent with upload form data
+- [x] Curator sees equity info in pending uploads
+- [x] Approval modal shows equity breakdown
 
 ---
 

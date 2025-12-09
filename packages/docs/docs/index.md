@@ -14,7 +14,7 @@ Skyhitz is a music streaming and investment platform where:
 - **Listeners** earn HITZ tokens by streaming, liking, and downloading tracks
 - **Investors** stake HITZ tokens to gain equity in music entries and earn ongoing rewards
 - **Miners** bring external music onto the platform and earn as initial stakeholders
-- **Creators** can claim ownership and benefit from their music's performance
+- **Verified Artists** set non-dilutable equity on their uploads and earn ongoing rewards
 
 ## System Overview
 
@@ -89,6 +89,20 @@ Mine and Invest actions require staking HITZ tokens:
 - Grants proportional ownership in the entry
 - Enables claiming rewards from the entry's reward pool
 - Ownership percentage: `your_stake / total_staked`
+
+### Artist Equity (Non-Dilutable)
+
+Verified artists can set non-dilutable equity when uploading:
+- Up to 99.9% artist equity
+- Never diluted by fan investments
+- Supports collaborations (multiple artists per entry)
+- Separate claiming from staker rewards
+
+Example:
+- Artist sets 20% equity on upload
+- Entry earns 1000 HITZ in rewards
+- Artist claims 200 HITZ (20%)
+- Stakers share remaining 800 HITZ (80%)
 
 ### Treasury Bot Automation
 
