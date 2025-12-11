@@ -26,7 +26,7 @@ type NetworkPassphrase = typeof testnetNetworkPassphrase | typeof mainnetNetwork
 
 class ContractClient {
     private sourceKeys: Keypair;
-	private defaultOptions = { timeoutInSeconds: 60, fee: 100000000, restore: true };
+	private defaultOptions = { timeoutInSeconds: 60, fee: '100000000', restore: true };
 	private network: Network;
 	private horizonUrl: HorizonUrl;
 	private rpcUrl: RpcUrl;
