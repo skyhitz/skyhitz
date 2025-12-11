@@ -27,11 +27,11 @@
 //! - Admin can update via set_base_fee() to adjust all action fees proportionally
 //!
 //! Auto-stake (invest/mine only):
-//! - stake_amount = HITZ_invested / HITZ_market_price (oracle-based)
-//! - Users get the amount of HITZ they could have bought on the DEX
-//! - Prevents arbitrage: unstaking and selling returns approximately the same HITZ
+//! - stake_amount = (HITZ_invested × 10^7) / (USDC_price_per_HITZ_in_stroops)
+//! - Stake is calculated based on the USDC value of the HITZ investment
+//! - Prevents arbitrage: unstaking and selling returns approximately the same USDC value
 //! - Minted directly to contract (locked), updates per-user and total stake for entry
-//! - Example: Invest 100 HITZ at 0.1 XLM/HITZ → 10,000 HITZ staked
+//! - Example: Invest 100 HITZ at 1,000,000 stroops ($0.10 USDC/HITZ) → 1,000 HITZ staked
 //!
 //! Security Features:
 //! - Supply cap enforcement on all mints
@@ -77,7 +77,7 @@ pub enum DataKey {
     EmissionIntervalSec,                // u64: seconds per halving epoch (default 126,144,000)
     EmissionEpoch0UnitReward,           // i128: initial unit reward in stroops (default 3,000,000 = 0.3 HITZ)
     // Oracle price for dynamic emission
-    OraclePrice,                        // i128: Current HITZ/XLM market price in stroops (e.g., 100_000 = 0.01 XLM per HITZ)
+    OraclePrice,                        // i128: Current HITZ/USDC market price in stroops (e.g., 1_000_000 = $0.10 USDC per HITZ)
     OracleLastUpdate,                   // u64: Last oracle price update timestamp
     
     // Persistent storage
@@ -236,7 +236,7 @@ impl SkyhitzCore {
         e.storage().instance().set(&DataKey::HitzToken, &hitz_token);
         e.storage().instance().set(&DataKey::BaseFee, &base_fee);
         
-        // Initialize oracle price to 1,000,000 stroops (0.1 XLM per HITZ = 1 HITZ costs 0.1 XLM)
+        // Initialize oracle price to 1,000,000 stroops ($0.10 USDC per HITZ = 1 HITZ costs $0.10)
         e.storage().instance().set(&DataKey::OraclePrice, &1_000_000i128);
         e.storage().instance().set(&DataKey::OracleLastUpdate, &e.ledger().timestamp());
         
@@ -260,7 +260,7 @@ impl SkyhitzCore {
     /// Update base fee (admin-only)
     ///
     /// # Arguments
-    /// * `new_base_fee` - New base fee per difficulty unit in stroops (e.g., 100,000 = 0.01 XLM)
+    /// * `new_base_fee` - New base fee per difficulty unit in stroops (e.g., 1,000,000 = 0.1 HITZ)
     pub fn set_base_fee(e: Env, new_base_fee: i128) {
         let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
         admin.require_auth();
@@ -277,11 +277,11 @@ impl SkyhitzCore {
     /// Update oracle price (treasury-only)
     ///
     /// Treasury bot calls this after fetching current market price from DEX.
-    /// This price is used for dynamic emission rate calculations.
+    /// This price is used for dynamic staking calculations.
     ///
     /// # Arguments
     /// * `caller` - Treasury address (must be the configured Treasury)
-    /// * `new_price` - New HITZ/XLM price in stroops (e.g., 100,000 = 0.01 XLM per HITZ)
+    /// * `new_price` - New HITZ/USDC price in stroops (e.g., 1,000,000 = $0.10 USDC per HITZ)
     pub fn update_oracle_price(e: Env, caller: Address, new_price: i128) {
         caller.require_auth();
         
@@ -305,10 +305,11 @@ impl SkyhitzCore {
     /// Get oracle data (price and last update timestamp)
     ///
     /// Returns (price_in_stroops, last_update_timestamp)
+    /// Price is in USDC stroops per HITZ (e.g., 1,000,000 = $0.10 USDC per HITZ)
     pub fn get_oracle_data(e: Env) -> (i128, u64) {
         let price: i128 = e.storage().instance()
             .get(&DataKey::OraclePrice)
-            .unwrap_or(100_000); // Default: 0.01 XLM per HITZ
+            .unwrap_or(1_000_000); // Default: $0.10 USDC per HITZ
         let last_update: u64 = e.storage().instance()
             .get(&DataKey::OracleLastUpdate)
             .unwrap_or(0);
@@ -318,7 +319,7 @@ impl SkyhitzCore {
 
     /// Get current base fee
     pub fn get_base_fee(e: Env) -> i128 {
-        e.storage().instance().get(&DataKey::BaseFee).unwrap_or(100_000)
+        e.storage().instance().get(&DataKey::BaseFee).unwrap_or(1_000_000) // Default: 0.1 HITZ
     }
 
     /// Get total HITZ supply minted so far
@@ -374,12 +375,12 @@ impl SkyhitzCore {
     /// Record a user action (main entrypoint)
     ///
     /// Handles fee transfer, reward calculation, and optional auto-staking
-    /// For invest action, amount_xlm specifies the investment (min 0.3 XLM), ignored for other actions
-    pub fn record_action(e: Env, caller: Address, entry_id: String, kind: Symbol, amount_xlm: Option<i128>) {
+    /// For invest action, amount specifies the investment in HITZ stroops (min 3 HITZ = 30,000,000 stroops), ignored for other actions
+    pub fn record_action(e: Env, caller: Address, entry_id: String, kind: Symbol, amount: Option<i128>) {
         caller.require_auth();
 
         // Get action parameters
-        let (fee, difficulty, adds_to_tvl, requires_stake) = get_action_params(&e, &kind, amount_xlm);
+        let (fee, difficulty, adds_to_tvl, requires_stake) = get_action_params(&e, &kind, amount);
 
         // Load entry
         let entry_key = DataKey::Entry(entry_id.clone());
@@ -422,32 +423,34 @@ impl SkyhitzCore {
         };
 
         // ECONOMIC MODEL: Market-based staking (prevents arbitrage)
-        // Stake amount = XLM invested / HITZ market price
-        // This gives users exactly what they could have bought on the DEX
+        // Users invest HITZ directly, and stake is calculated based on HITZ market price
+        // Stake amount = (HITZ invested × 10^7) / (USDC price per HITZ in stroops)
+        // This gives users stake proportional to the USDC value of their HITZ investment
         // Examples at different prices:
-        //   - Invest 100 XLM at 0.01 XLM/HITZ → 10,000 HITZ stake
-        //   - Invest 100 XLM at 0.1 XLM/HITZ  → 1,000 HITZ stake
-        //   - Invest 100 XLM at 0.001 XLM/HITZ → 100,000 HITZ stake
-        // When they unstake and sell, they get approximately their XLM back (no arbitrage)
+        //   - Invest 100 HITZ at 1,000,000 stroops ($0.10 USDC/HITZ) → 1,000 HITZ stake
+        //   - Invest 100 HITZ at 500,000 stroops ($0.05 USDC/HITZ) → 2,000 HITZ stake
+        //   - Invest 100 HITZ at 2,000,000 stroops ($0.20 USDC/HITZ) → 500 HITZ stake
+        // When they unstake and sell, they get approximately their USDC value back (no arbitrage)
         if requires_stake {
-            // Get current HITZ market price from oracle (in stroops per HITZ)
-            let hitz_price_xlm: i128 = e
+            // Get current HITZ market price from oracle (in USDC stroops per HITZ)
+            // Example: 1,000,000 stroops = $0.10 USDC per 1 HITZ
+            let hitz_price_usdc: i128 = e
                 .storage()
                 .instance()
                 .get(&DataKey::OraclePrice)
-                .unwrap_or(100_000); // Default: 0.01 XLM per HITZ (100,000 stroops)
+                .unwrap_or(1_000_000); // Default: $0.10 USDC per HITZ (1,000,000 stroops)
             
-            if hitz_price_xlm <= 0 {
+            if hitz_price_usdc <= 0 {
                 panic!("Invalid oracle price: must be positive");
             }
             
-            // Calculate stake: fee (stroops) / price (stroops per HITZ)
-            // We need to convert fee to HITZ units:
-            // stake_hitz = (fee_stroops × 10^7) / (price_stroops_per_hitz)
-            // Both XLM and HITZ use 7 decimals, so we multiply by 10^7 for precision
+            // Calculate stake: (HITZ invested in stroops × 10^7) / (USDC price per HITZ in stroops)
+            // Formula: stake_hitz_stroops = (fee_hitz_stroops × 10^7) / (price_usdc_stroops_per_hitz)
+            // This converts HITZ investment to equivalent USDC value, then calculates stake
+            // Both USDC and HITZ use 7 decimals, so we multiply by 10^7 for precision
             let stake_amt = fee
                 .checked_mul(10_000_000)
-                .and_then(|v| v.checked_div(hitz_price_xlm))
+                .and_then(|v| v.checked_div(hitz_price_usdc))
                 .unwrap_or_else(|| panic!("Stake calculation overflow or division error"));
 
             if stake_amt > 0 {
@@ -473,9 +476,10 @@ impl SkyhitzCore {
 
                     log!(
                         &e,
-                        "Market-based stake: {} XLM at {} stroops/HITZ → {} HITZ staked for entry {} (user total: {})",
+                        "Market-based stake: {} HITZ at {} stroops/HITZ (${} USDC/HITZ) → {} HITZ staked for entry {} (user total: {})",
                         fee,
-                        hitz_price_xlm,
+                        hitz_price_usdc,
+                        hitz_price_usdc / 10_000_000 * 100, // Convert to cents for display (1 USDC = 10,000,000 stroops, 1 cent = 100,000 stroops)
                         staked_hitz,
                         entry_id,
                         new_stake
@@ -1718,32 +1722,32 @@ fn compute_unit_reward(e: &Env) -> i128 {
     // Apply halving to base reward
     let base_reward = epoch0_reward >> epoch;
     
-    // Get current market price from oracle (stroops per HITZ)
-    let hitz_price_xlm: i128 = e
+    // Get current market price from oracle (USDC stroops per HITZ)
+    let hitz_price_usdc: i128 = e
         .storage()
         .instance()
         .get(&DataKey::OraclePrice)
-        .unwrap_or(100_000); // Default: 0.01 XLM per HITZ
+        .unwrap_or(1_000_000); // Default: $0.10 USDC per HITZ
     
-    // Get base fee (XLM cost per difficulty unit)
+    // Get base fee (HITZ cost per difficulty unit)
     let base_fee: i128 = e
         .storage()
         .instance()
         .get(&DataKey::BaseFee)
-        .unwrap_or(100_000); // Default: 0.01 XLM
+        .unwrap_or(1_000_000); // Default: 0.1 HITZ
     
     // Calculate value-adjusted reward
     // Goal: Maintain value parity between fee paid and reward received
-    // If user pays 0.01 XLM and HITZ = 0.01 XLM, they should get ~1 HITZ
-    // Formula: reward = fee_paid / hitz_price
-    // Multiply by 10_000_000 to convert from XLM units to stroops precision
+    // If user pays 0.1 HITZ and HITZ = $0.10 USDC, they should get appropriate reward
+    // Formula: reward = (fee_paid × 10^7) / hitz_price_usdc
+    // Multiply by 10^7 to convert to stroops precision
     // SECURITY FIX: Use checked arithmetic to prevent overflow
-    let value_adjusted_reward = if hitz_price_xlm > 0 {
+    let value_adjusted_reward = if hitz_price_usdc > 0 {
         base_fee
             .checked_mul(10_000_000)
-            .and_then(|v| v.checked_div(hitz_price_xlm))
+            .and_then(|v| v.checked_div(hitz_price_usdc))
             .unwrap_or_else(|| {
-                log!(e, "Oracle reward calculation overflow: base_fee={}, price={}", base_fee, hitz_price_xlm);
+                log!(e, "Oracle reward calculation overflow: base_fee={}, price={}", base_fee, hitz_price_usdc);
                 base_reward // Fallback to base reward on overflow
             })
     } else {
@@ -1761,7 +1765,7 @@ fn compute_unit_reward(e: &Env) -> i128 {
     };
     
     log!(e, "Dynamic reward: base={}, value_adj={}, final={}, oracle_price={}", 
-         base_reward, value_adjusted_reward, final_reward, hitz_price_xlm);
+         base_reward, value_adjusted_reward, final_reward, hitz_price_usdc);
     
     final_reward
 }
@@ -1771,9 +1775,9 @@ fn compute_unit_reward(e: &Env) -> i128 {
 // ============================================================================
 
 /// Returns (fee, difficulty, adds_to_tvl, requires_stake) for an action kind
-/// For invest action, amount_xlm determines the fee and proportional difficulty
+/// For invest action, amount determines the fee and proportional difficulty
 /// For other actions, fee = base_fee * difficulty
-fn get_action_params(e: &Env, kind: &Symbol, amount_xlm: Option<i128>) -> (i128, i128, bool, bool) {
+fn get_action_params(e: &Env, kind: &Symbol, amount: Option<i128>) -> (i128, i128, bool, bool) {
     let stream = symbol_short!("stream");
     let like = symbol_short!("like");
     let download = symbol_short!("download");
@@ -1797,7 +1801,7 @@ fn get_action_params(e: &Env, kind: &Symbol, amount_xlm: Option<i128>) -> (i128,
         (base_fee * difficulty, difficulty, true, true) // 1 HITZ
     } else if kind == &invest {
         // Dynamic investment: user specifies amount (min 3 HITZ)
-        let investment_amount = amount_xlm.unwrap_or(30_000_000);
+        let investment_amount = amount.unwrap_or(30_000_000);
         
         // Validate minimum investment
         if investment_amount < 30_000_000 {

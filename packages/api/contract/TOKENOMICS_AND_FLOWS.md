@@ -47,29 +47,32 @@ Epoch 3: 0.0375000 HITZ per unit (Years 12-16)
 
 | Action | Difficulty | Default Fee | HITZ Reward (Epoch 0) | Stake Required | TVL/Escrow |
 |--------|-----------|-------------|---------------------|----------------|------------|
-| **Stream** | 1 | 0.01 XLM | 0.3 HITZ | No | Escrow |
-| **Like** | 2 | 0.02 XLM | 0.6 HITZ | No | Escrow |
-| **Download** | 3 | 0.03 XLM | 0.9 HITZ | No | Escrow |
-| **Mine** | 10 | 0.1 XLM | 3.0 HITZ | Yes (50 HITZ) | TVL |
-| **Invest** | 10-1000+ | 0.3-100+ XLM | 3.0-300+ HITZ | Yes (variable) | TVL |
+| **Stream** | 1 | 0.1 HITZ | 0.3 HITZ | No | Escrow |
+| **Like** | 2 | 0.2 HITZ | 0.6 HITZ | No | Escrow |
+| **Download** | 3 | 0.3 HITZ | 0.9 HITZ | No | Escrow |
+| **Mine** | 10 | 1.0 HITZ | 3.0 HITZ | Yes (auto-staked) | TVL |
+| **Invest** | 10-1000+ | 3+ HITZ | 3.0-300+ HITZ | Yes (auto-staked) | TVL |
 
 ### Invest Action (Dynamic)
 
-- **Minimum**: 0.3 XLM → 3 difficulty → 0.9 HITZ reward
-- **Scaling**: 10 difficulty units per 1 XLM
-- **Example**: 1 XLM → 10 difficulty → 3.0 HITZ reward + 500 HITZ stake
-- **Example**: 10 XLM → 100 difficulty → 30 HITZ reward + 5,000 HITZ stake
+- **Minimum**: 3 HITZ (30,000,000 stroops) → 30 difficulty → 9.0 HITZ reward
+- **Scaling**: 10 difficulty units per 1 HITZ invested
+- **Stake Calculation**: Based on USDC value of HITZ investment
+- **Example**: Invest 10 HITZ at $0.10 USDC/HITZ → 10 difficulty → 3.0 HITZ reward + 1,000 HITZ stake
+- **Example**: Invest 100 HITZ at $0.10 USDC/HITZ → 100 difficulty → 30 HITZ reward + 10,000 HITZ stake
 
-### Stake Requirements
+### Stake Requirements (Market-Based)
 
-**Stake Unit**: 5 HITZ (50,000,000 stroops) per difficulty unit
+Stake is calculated dynamically based on HITZ/USDC oracle price:
+- **Formula**: `stake = (HITZ_invested × 10^7) / (USDC_price_per_HITZ_in_stroops)`
+- Lower USDC price per HITZ → More stake (higher multiplier)
+- Higher USDC price per HITZ → Less stake (lower multiplier)
 
-| Action | Difficulty | Stake Required |
-|--------|-----------|----------------|
-| Mine | 10 | 50 HITZ |
-| Invest (0.3 XLM) | 3 | 15 HITZ |
-| Invest (1 XLM) | 10 | 50 HITZ |
-| Invest (10 XLM) | 100 | 500 HITZ |
+| Investment | Oracle Price | Stake Received |
+|------------|--------------|----------------|
+| 10 HITZ | $0.10/HITZ | 1,000 HITZ |
+| 10 HITZ | $0.05/HITZ | 2,000 HITZ |
+| 10 HITZ | $0.20/HITZ | 500 HITZ |
 
 ## 💰 Dual Revenue Stream Model
 
@@ -92,20 +95,20 @@ Epoch 3: 0.0375000 HITZ per unit (Years 12-16)
 │  User   │ Streams a song
 └────┬────┘
      │
-     │ 1. Pay 0.1 XLM fee
+     │ 1. Pay 0.1 HITZ fee
      ▼
 ┌─────────────────┐
 │ Skyhitz Core    │
 │ record_action() │
 └────┬───────┬────┘
      │       │
-     │       │ 2. Transfer fee to Treasury
+     │       │ 2. Transfer HITZ fee to Treasury
      │       ▼
      │    ┌──────────┐
      │    │ Treasury │
      │    └──────────┘
      │
-     │ 3. Add 0.1 XLM to entry.escrow_xlm
+     │ 3. Add 0.1 HITZ to entry.escrow
      │
      │ 4. Request reward from HITZ token
      ▼
@@ -125,24 +128,24 @@ Epoch 3: 0.0375000 HITZ per unit (Years 12-16)
 
 ```
 ┌─────────┐
-│  User   │ Mines song (1 XLM + 50 HITZ)
+│  User   │ Mines song (1 HITZ fee + auto-stake)
 └────┬────┘
      │
-     │ 1. Pay 1.0 XLM fee
-     │ 2. Approve 50 HITZ for staking
+     │ 1. Pay 1.0 HITZ fee
+     │ 2. Auto-stake calculated based on oracle price
      ▼
 ┌─────────────────┐
 │ Skyhitz Core    │
 │ record_action() │
 └─┬───┬───┬───┬──┘
   │   │   │   │
-  │   │   │   │ 3. Transfer 1 XLM to Treasury
+  │   │   │   │ 3. Transfer 1 HITZ fee to Treasury
   │   │   │   ▼
   │   │   │ ┌──────────┐
   │   │   │ │ Treasury │
   │   │   │ └──────────┘
   │   │   │
-  │   │   │ 4. Add 1 XLM to entry.tvl_xlm
+  │   │   │ 4. Add 1 HITZ to entry.tvl
   │   │   │
   │   │   │ 5. Request reward from HITZ token
   │   │   ▼
@@ -165,8 +168,8 @@ Epoch 3: 0.0375000 HITZ per unit (Years 12-16)
   │ └─────────────────┘    total → 50 HITZ
   │
   │ 10. Entry now has:
-  │     - TVL: 1 XLM
-  │     - Total Stake: 50 HITZ
+  │     - TVL: 1 HITZ
+  │     - Total Stake: (calculated based on USDC oracle price)
   │     - User owns % of entry
   └────────────────────────
 ```
@@ -178,9 +181,9 @@ Epoch 3: 0.0375000 HITZ per unit (Years 12-16)
 │ Treasury Bot │ Runs periodically
 └──────┬───────┘
        │
-       │ 1. Collect accumulated XLM fees
+       │ 1. Collect accumulated HITZ fees (or buy HITZ with XLM if needed)
        │
-       │ 2. Buy HITZ with XLM
+       │ 2. Buy HITZ with XLM (if converting XLM fees)
        │    (on Stellar DEX)
        ▼
 ┌──────────────┐
@@ -196,7 +199,7 @@ Epoch 3: 0.0375000 HITZ per unit (Years 12-16)
 └──┬────────┬────┬────┘
    │        │    │
    │ 4. Core calculates distribution
-   │    based on escrow_xlm performance:
+   │    based on escrow performance:
    │    - Entry A: 500 escrow → 50%
    │    - Entry B: 300 escrow → 30%
    │    - Entry C: 200 escrow → 20%
@@ -353,18 +356,18 @@ Basis points = 243.3 × 100 = 24,333
 ### For Users
 
 1. **Listeners** (Stream/Like/Download)
-   - Pay small fees (0.1-0.3 XLM)
+   - Pay small fees (0.1-0.3 HITZ)
    - Earn HITZ rewards immediately
    - No stake required
 
 2. **Miners** (Mine action)
-   - Pay 1 XLM + stake 50 HITZ
+   - Pay 1 HITZ fee + auto-stake (calculated based on USDC oracle price)
    - Earn 3.0 HITZ rewards
    - Get equity stake in entry
    - Receive proportional revenue share
 
 3. **Investors** (Invest action)
-   - Pay 0.3+ XLM + stake proportional HITZ
+   - Pay 3+ HITZ + auto-stake (calculated based on USDC oracle price)
    - Earn HITZ rewards proportional to investment
    - Get larger equity stake
    - Higher potential returns
@@ -388,10 +391,10 @@ Basis points = 243.3 × 100 = 24,333
    - Deflationary issuance (halving)
    - Utility: staking, governance, rewards
 
-2. **XLM Economy**
-   - All fees in XLM
-   - Treasury provides liquidity
-   - Market-making on DEX
+2. **HITZ Economy**
+   - All fees in HITZ
+   - Treasury manages HITZ distribution
+   - Oracle provides USDC pricing for staking calculations
 
 ## ⚙️ Contract Features Review
 
@@ -415,7 +418,7 @@ Basis points = 243.3 × 100 = 24,333
 |---------|--------|-------------|
 | **Action Recording** | ✅ | Stream, like, download, mine, invest |
 | **Dynamic Fees** | ✅ | Base fee adjustable by admin |
-| **Dynamic Investment** | ✅ | Invest any amount (min 0.3 XLM) |
+| **Dynamic Investment** | ✅ | Invest any amount (min 3 HITZ) |
 | **Auto-staking** | ✅ | Automatic for mine/invest actions |
 | **Reward Allocation** | ✅ | Admin/Treasury bot allocates HITZ |
 | **Reward Claims** | ✅ | Proportional to stake |
@@ -490,7 +493,7 @@ All tests are updated and cover:
    - Claim frequency
 
 4. **Economic Health**
-   - HITZ/XLM price
+   - HITZ/USDC price (oracle)
    - Treasury balance
    - Liquidity pool depth
    - Fee revenue
