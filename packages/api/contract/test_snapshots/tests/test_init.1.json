@@ -1,7 +1,8 @@
 {
   "generators": {
     "address": 6,
-    "nonce": 0
+    "nonce": 0,
+    "mux_id": 0
   },
   "auth": [
     [
@@ -69,8 +70,8 @@
             "data": {
               "account": {
                 "account_id": "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAL7NV",
-                "balance": 0,
-                "seq_num": 0,
+                "balance": "0",
+                "seq_num": "0",
                 "num_sub_entries": 0,
                 "inflation_dest": null,
                 "flags": 0,
@@ -91,7 +92,7 @@
             "contract": "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAL7NV",
             "key": {
               "ledger_key_nonce": {
-                "nonce": 801925984706572462
+                "nonce": "801925984706572462"
               }
             },
             "durability": "temporary"
@@ -106,7 +107,7 @@
                 "contract": "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAL7NV",
                 "key": {
                   "ledger_key_nonce": {
-                    "nonce": 801925984706572462
+                    "nonce": "801925984706572462"
                   }
                 },
                 "durability": "temporary",
@@ -124,7 +125,7 @@
             "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4",
             "key": {
               "ledger_key_nonce": {
-                "nonce": 5541220902715666415
+                "nonce": "5541220902715666415"
               }
             },
             "durability": "temporary"
@@ -139,7 +140,7 @@
                 "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4",
                 "key": {
                   "ledger_key_nonce": {
-                    "nonce": 5541220902715666415
+                    "nonce": "5541220902715666415"
                   }
                 },
                 "durability": "temporary",
@@ -220,10 +221,7 @@
                 },
                 "durability": "persistent",
                 "val": {
-                  "i128": {
-                    "hi": 0,
-                    "lo": 0
-                  }
+                  "i128": "0"
                 }
               }
             },
@@ -276,10 +274,7 @@
                           ]
                         },
                         "val": {
-                          "i128": {
-                            "hi": 0,
-                            "lo": 1000000
-                          }
+                          "i128": "1000000"
                         }
                       },
                       {
@@ -291,10 +286,7 @@
                           ]
                         },
                         "val": {
-                          "i128": {
-                            "hi": 0,
-                            "lo": 3000000
-                          }
+                          "i128": "3000000"
                         }
                       },
                       {
@@ -306,7 +298,7 @@
                           ]
                         },
                         "val": {
-                          "u64": 126144000
+                          "u64": "126144000"
                         }
                       },
                       {
@@ -318,7 +310,7 @@
                           ]
                         },
                         "val": {
-                          "u64": 0
+                          "u64": "0"
                         }
                       },
                       {
@@ -342,7 +334,7 @@
                           ]
                         },
                         "val": {
-                          "u64": 0
+                          "u64": "0"
                         }
                       },
                       {
@@ -354,10 +346,7 @@
                           ]
                         },
                         "val": {
-                          "i128": {
-                            "hi": 0,
-                            "lo": 1000000
-                          }
+                          "i128": "1000000"
                         }
                       },
                       {
