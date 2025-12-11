@@ -327,7 +327,7 @@
                     },
                     {
                       "key": {
-                        "symbol": "escrow"
+                        "symbol": "escrow_xlm"
                       },
                       "val": {
                         "i128": "0"
@@ -335,7 +335,7 @@
                     },
                     {
                       "key": {
-                        "symbol": "tvl"
+                        "symbol": "tvl_xlm"
                       },
                       "val": {
                         "i128": "0"

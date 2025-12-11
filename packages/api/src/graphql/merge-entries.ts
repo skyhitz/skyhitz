@@ -47,9 +47,9 @@ export const mergeEntriesResolver = async (_: any, { fromId, toId }: any, ctx: C
 			// Convert stroops to XLM for Algolia
 			await algolia.partialUpdateEntry({
 				objectID: toId,
-				tvl: Number(onchainTo.tvl) / 10_000_000,
+				tvl: Number(onchainTo.tvl_xlm) / 10_000_000,
 				apr: Number(stats.apr) / 100,
-				escrow: Number(onchainTo.escrow) / 10_000_000,
+				escrow: Number(onchainTo.escrow_xlm) / 10_000_000,
 				totalStaked: Number(stats.totalStaked) / 10_000_000, // Total HITZ staked
 			});
 			

@@ -105,15 +105,15 @@ export const mineExternalEntryResolver = async (_: any, { input }: { input: Exte
         // Update entry metrics
         await algolia.partialUpdateEntry({
           objectID: exactMatch.id,
-          tvl: Number(chainEntry.tvl) / 10_000_000,
-          escrow: Number(chainEntry.escrow) / 10_000_000,
+          tvl: Number(chainEntry.tvl_xlm) / 10_000_000,
+          escrow: Number(chainEntry.escrow_xlm) / 10_000_000,
           apr: Number(stats.apr) / 100,
           totalStaked: Number(stats.totalStaked) / 10_000_000,
         });
 
         console.log('✅ Algolia updated:', {
-          tvl: (Number(chainEntry.tvl) / 10_000_000).toFixed(2),
-          escrow: (Number(chainEntry.escrow) / 10_000_000).toFixed(2),
+          tvl: (Number(chainEntry.tvl_xlm) / 10_000_000).toFixed(2),
+          escrow: (Number(chainEntry.escrow_xlm) / 10_000_000).toFixed(2),
           apr: (Number(stats.apr) / 100).toFixed(2) + '%',
           totalStaked: (Number(stats.totalStaked) / 10_000_000).toFixed(2) + ' HITZ',
         });
@@ -308,15 +308,15 @@ export const mineExternalEntryResolver = async (_: any, { input }: { input: Exte
     // Update entry metrics in Algolia
     await algolia.partialUpdateEntry({
       objectID: metaCid,
-      tvl: Number(chainEntry.tvl) / 10_000_000,      // NEW: tvl field
-      escrow: Number(chainEntry.escrow) / 10_000_000, // NEW: escrow field
+      tvl: Number(chainEntry.tvl_xlm) / 10_000_000,      // NEW: tvl field
+      escrow: Number(chainEntry.escrow_xlm) / 10_000_000, // NEW: escrow field
       apr: Number(stats.apr) / 100,                        // APR in basis points -> percentage
       totalStaked: Number(stats.totalStaked) / 10_000_000, // Total HITZ staked
     });
     
     console.log('✅ Algolia updated:', {
-      tvl: (Number(chainEntry.tvl) / 10_000_000).toFixed(2),
-      escrow: (Number(chainEntry.escrow) / 10_000_000).toFixed(2),
+      tvl: (Number(chainEntry.tvl_xlm) / 10_000_000).toFixed(2),
+      escrow: (Number(chainEntry.escrow_xlm) / 10_000_000).toFixed(2),
       apr: (Number(stats.apr) / 100).toFixed(2) + '%',
       totalStaked: (Number(stats.totalStaked) / 10_000_000).toFixed(2) + ' HITZ',
     });

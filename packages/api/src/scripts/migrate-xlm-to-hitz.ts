@@ -37,8 +37,8 @@ export async function migrateContractData(env: Env) {
             
             // Convert HITZ values (already in HITZ on new contract)
             // Algolia values should be in display format (divided by 10_000_000)
-            const tvlHitz = Number(onChainEntry.tvl) / 10_000_000;
-            const escrowHitz = Number(onChainEntry.escrow) / 10_000_000;
+            const tvlHitz = Number(onChainEntry.tvl_xlm) / 10_000_000;
+            const escrowHitz = Number(onChainEntry.escrow_xlm) / 10_000_000;
             
             // Get stats for APR
             const stats = await contract.getEntryStats(entry.objectID);

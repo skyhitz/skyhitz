@@ -702,7 +702,7 @@
                     },
                     {
                       "key": {
-                        "symbol": "escrow"
+                        "symbol": "escrow_xlm"
                       },
                       "val": {
                         "i128": "400000"
@@ -710,7 +710,7 @@
                     },
                     {
                       "key": {
-                        "symbol": "tvl"
+                        "symbol": "tvl_xlm"
                       },
                       "val": {
                         "i128": "500000"

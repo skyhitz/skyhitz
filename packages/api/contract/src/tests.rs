@@ -62,8 +62,8 @@ fn test_create_entry() {
     client.create_entry(&entry_id);
 
     let entry = client.get_entry(&entry_id).unwrap();
-    assert_eq!(entry.tvl, 0);
-    assert_eq!(entry.escrow, 0);
+    assert_eq!(entry.tvl_xlm, 0);
+    assert_eq!(entry.escrow_xlm, 0);
 }
 
 #[test]
@@ -85,8 +85,8 @@ fn test_record_action_stream() {
 
     // Check entry updated (fee = base_fee * difficulty = 1M * 1 = 1M)
     let entry = client.get_entry(&entry_id).unwrap();
-    assert_eq!(entry.escrow, 1_000_000); // 0.1 HITZ fee added to escrow
-    assert_eq!(entry.tvl, 0);
+    assert_eq!(entry.escrow_xlm, 1_000_000); // 0.1 HITZ fee added to escrow
+    assert_eq!(entry.tvl_xlm, 0);
 
     // Check HITZ transferred to treasury
     let treasury_hitz = token::Client::new(&e, &hitz_addr).balance(&treasury);
@@ -118,8 +118,8 @@ fn test_record_action_mine_with_stake() {
     // Check entry updated (TVL not escrow)
     // fee = base_fee * difficulty = 100_000 * 10 = 1_000_000
     let entry = client.get_entry(&entry_id).unwrap();
-    assert_eq!(entry.tvl, 1_000_000); // 0.1 HITZ fee added to TVL
-    assert_eq!(entry.escrow, 0);
+    assert_eq!(entry.tvl_xlm, 1_000_000); // 0.1 HITZ fee added to TVL
+    assert_eq!(entry.escrow_xlm, 0);
 
     // Check user got reward
     // Log shows: base=3M, value_adj=1M, final=1M, so reward = 1M * difficulty 10 = 10M
@@ -257,15 +257,15 @@ fn test_multiple_action_kinds() {
 
     let entry = client.get_entry(&entry_id).unwrap();
     // 0.1 + 0.2 + 0.3 = 0.6 XLM = 6M stroops
-    assert_eq!(entry.escrow, 6_000_000);
-    assert_eq!(entry.tvl, 0);
+    assert_eq!(entry.escrow_xlm, 6_000_000);
+    assert_eq!(entry.tvl_xlm, 0);
 
     // Invest -> TVL (default is 3 HITZ min = 30M stroops)
     client.record_action(&user, &entry_id, &symbol_short!("invest"), &None);
 
     let entry = client.get_entry(&entry_id).unwrap();
-    assert_eq!(entry.escrow, 6_000_000);
-    assert_eq!(entry.tvl, 30_000_000); // 3 HITZ minimum investment
+    assert_eq!(entry.escrow_xlm, 6_000_000);
+    assert_eq!(entry.tvl_xlm, 30_000_000); // 3 HITZ minimum investment
 }
 
 #[test]
@@ -295,7 +295,7 @@ fn test_dynamic_investment() {
     client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(30_000_000i128));
     
     let entry = client.get_entry(&entry_id).unwrap();
-    assert_eq!(entry.tvl, 30_000_000); // 3 HITZ
+    assert_eq!(entry.tvl_xlm, 30_000_000); // 3 HITZ
     
     let stake1 = client.get_stake(&entry_id, &user);
     assert_eq!(stake1, 300_000_000); // 30 HITZ stake
@@ -306,7 +306,7 @@ fn test_dynamic_investment() {
     client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(60_000_000i128));
     
     let entry = client.get_entry(&entry_id).unwrap();
-    assert_eq!(entry.tvl, 90_000_000); // 3 + 6 = 9 HITZ
+    assert_eq!(entry.tvl_xlm, 90_000_000); // 3 + 6 = 9 HITZ
     
     let stake2 = client.get_stake(&entry_id, &user);
     assert_eq!(stake2, 900_000_000); // 90 HITZ stake
@@ -317,7 +317,7 @@ fn test_dynamic_investment() {
     client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(300_000_000i128));
     
     let entry = client.get_entry(&entry_id).unwrap();
-    assert_eq!(entry.tvl, 390_000_000); // 9 + 30 = 39 HITZ
+    assert_eq!(entry.tvl_xlm, 390_000_000); // 9 + 30 = 39 HITZ
     
     let stake3 = client.get_stake(&entry_id, &user);
     assert_eq!(stake3, 3_900_000_000); // 390 HITZ stake
@@ -368,7 +368,7 @@ fn test_base_fee_modification() {
     // Record a stream action with default base fee (0.01 XLM * 1 difficulty = 0.01 XLM)
     client.record_action(&user, &entry_id, &symbol_short!("stream"), &None);
     let entry = client.get_entry(&entry_id).unwrap();
-    assert_eq!(entry.escrow, 100_000); // 0.01 XLM
+    assert_eq!(entry.escrow_xlm, 100_000); // 0.01 XLM
 
     // Test 2: Update base fee to 0.02 XLM
     client.set_base_fee(&200_000i128);
@@ -377,7 +377,7 @@ fn test_base_fee_modification() {
     // Record another stream action (0.02 XLM * 1 difficulty = 0.02 XLM)
     client.record_action(&user, &entry_id, &symbol_short!("stream"), &None);
     let entry = client.get_entry(&entry_id).unwrap();
-    assert_eq!(entry.escrow, 300_000); // 0.01 + 0.02 = 0.03 XLM
+    assert_eq!(entry.escrow_xlm, 300_000); // 0.01 + 0.02 = 0.03 XLM
 
     // Test 3: Update base fee to 0.005 XLM
     client.set_base_fee(&50_000i128);
@@ -386,12 +386,12 @@ fn test_base_fee_modification() {
     // Record a like action (0.005 XLM * 2 difficulty = 0.01 XLM)
     client.record_action(&user, &entry_id, &symbol_short!("like"), &None);
     let entry = client.get_entry(&entry_id).unwrap();
-    assert_eq!(entry.escrow, 400_000); // 0.03 + 0.01 = 0.04 XLM
+    assert_eq!(entry.escrow_xlm, 400_000); // 0.03 + 0.01 = 0.04 XLM
 
     // Verify mine action also respects new base fee (0.005 XLM * 10 difficulty = 0.05 XLM)
     client.record_action(&user, &entry_id, &symbol_short!("mine"), &None);
     let entry = client.get_entry(&entry_id).unwrap();
-    assert_eq!(entry.tvl, 500_000); // 0.05 XLM in TVL
+    assert_eq!(entry.tvl_xlm, 500_000); // 0.05 XLM in TVL
 }
 
 #[test]
@@ -535,7 +535,7 @@ fn test_merge_and_remove_entry() {
 
     // Verify target has non-zero tvl/pool and source removed
     let into = client.get_entry(&into_id).unwrap();
-    assert!(into.tvl > 0 || into.escrow >= 0);
+    assert!(into.tvl_xlm > 0 || into.escrow_xlm >= 0);
     assert!(client.get_reward_pool(&into_id) >= 100_000_000);
     assert!(client.get_entry(&from_id.clone()).is_none());
     
@@ -1104,7 +1104,7 @@ fn test_merge_entries() {
     client.merge_entries(&entry2, &entry1, &stakers);
 
     let merged_entry = client.get_entry(&entry1).unwrap();
-    assert!(merged_entry.tvl >= 30_000_000); // Minimum 3 HITZ investment
+    assert!(merged_entry.tvl_xlm >= 30_000_000); // Minimum 3 HITZ investment
     assert!(client.get_reward_pool(&entry1) >= 100_000_000);
     assert!(client.get_entry(&entry2).is_none());
     

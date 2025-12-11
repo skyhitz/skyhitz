@@ -137,8 +137,8 @@ export const approvePendingMineResolver = async (
 
       await algolia.partialUpdateEntry({
         objectID: metaCid,
-        tvl: Number(chainEntry.tvl) / 10_000_000,
-        escrow: Number(chainEntry.escrow) / 10_000_000,
+        tvl: Number(chainEntry.tvl_xlm) / 10_000_000,
+        escrow: Number(chainEntry.escrow_xlm) / 10_000_000,
         apr: Number(stats.apr) / 100,
         totalStaked: Number(stats.totalStaked) / 10_000_000,
       });

@@ -102,8 +102,8 @@ pub enum DataKey {
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Entry {
-    pub tvl: i128,      // Total Value Locked (equity-bearing) in HITZ
-    pub escrow: i128,   // Non-equity revenue in HITZ
+    pub tvl_xlm: i128,      // Total Value Locked (equity-bearing) in HITZ
+    pub escrow_xlm: i128,   // Non-equity revenue in HITZ
     pub created_at: u64, // Timestamp
 }
 
@@ -360,8 +360,8 @@ impl SkyhitzCore {
 
         let now = e.ledger().timestamp();
         let entry = Entry {
-            tvl: 0,
-            escrow: 0,
+            tvl_xlm: 0,
+            escrow_xlm: 0,
             created_at: now,
         };
 
@@ -397,11 +397,11 @@ impl SkyhitzCore {
 
         // SECURITY FIX H5: Attribute fee to entry using checked arithmetic
         if adds_to_tvl {
-            entry.tvl = entry.tvl
+            entry.tvl_xlm = entry.tvl_xlm
                 .checked_add(fee)
                 .unwrap_or_else(|| panic!("TVL overflow for entry"));
         } else {
-            entry.escrow = entry.escrow
+            entry.escrow_xlm = entry.escrow_xlm
                 .checked_add(fee)
                 .unwrap_or_else(|| panic!("Escrow overflow for entry"));
         }
@@ -597,9 +597,9 @@ impl SkyhitzCore {
                     // Extend TTL AFTER confirming entry exists
                     e.storage().persistent().extend_ttl(&entry_key, STORAGE_LIFETIME_THRESHOLD, STORAGE_BUMP_AMOUNT);
                     
-                    if entry.escrow > 0 {
-                        total_escrow = total_escrow.saturating_add(entry.escrow);
-                        entries_with_escrow.push_back((entry_id, entry.escrow));
+                    if entry.escrow_xlm > 0 {
+                        total_escrow = total_escrow.saturating_add(entry.escrow_xlm);
+                        entries_with_escrow.push_back((entry_id, entry.escrow_xlm));
                     }
                 }
             }
@@ -701,8 +701,8 @@ impl SkyhitzCore {
             if let Some(entry_id) = e.storage().persistent().get::<DataKey, String>(&index_key) {
                 let entry_key = DataKey::Entry(entry_id.clone());
                 if let Some(entry) = e.storage().persistent().get::<DataKey, Entry>(&entry_key) {
-                    if entry.escrow > 0 {
-                        running_total = running_total.saturating_add(entry.escrow);
+                    if entry.escrow_xlm > 0 {
+                        running_total = running_total.saturating_add(entry.escrow_xlm);
                     }
                 }
             }
@@ -824,9 +824,9 @@ impl SkyhitzCore {
                 if let Some(entry) = e.storage().persistent().get::<DataKey, Entry>(&entry_key) {
                     e.storage().persistent().extend_ttl(&entry_key, STORAGE_LIFETIME_THRESHOLD, STORAGE_BUMP_AMOUNT);
                     
-                    if entry.escrow > 0 {
+                    if entry.escrow_xlm > 0 {
                         // Calculate this entry's share
-                        let entry_share = (total_hitz.saturating_mul(entry.escrow))
+                        let entry_share = (total_hitz.saturating_mul(entry.escrow_xlm))
                             .checked_div(total_escrow)
                             .unwrap_or(0);
                         
@@ -1217,7 +1217,7 @@ impl SkyhitzCore {
 
         let apr = Self::calculate_apr(e.clone(), entry_id);
 
-        (entry.tvl, entry.escrow, total_stake, reward_pool, apr)
+        (entry.tvl_xlm, entry.escrow_xlm, total_stake, reward_pool, apr)
     }
 
     // ========================================================================
@@ -1448,8 +1448,8 @@ impl SkyhitzCore {
         }
 
         // Move escrow and TVL
-        into.escrow = into.escrow.saturating_add(from.escrow);
-        into.tvl = into.tvl.saturating_add(from.tvl);
+        into.escrow_xlm = into.escrow_xlm.saturating_add(from.escrow_xlm);
+        into.tvl_xlm = into.tvl_xlm.saturating_add(from.tvl_xlm);
 
         // Move reward pool
         let from_pool_key = DataKey::RewardPool(from_id.clone());
