@@ -8,11 +8,8 @@ import ContractClient from '../../contract';
  * Price is in USDC per HITZ (e.g., 0.10 means 1 HITZ costs $0.10 USDC).
  * 
  * This price is updated by the treasury oracle bot using Soroswap DEX data.
- * 
- * Note: GraphQL schema field name remains hitzPriceXlm for backward compatibility,
- * but the value now represents USDC price instead of XLM price.
  */
-export const hitzPriceXlmResolver = async (_: any, __: any, context: Context) => {
+export const hitzPriceUsdcResolver = async (_: any, __: any, context: Context) => {
 	const contract = new ContractClient(context.env);
 
 	try {
@@ -31,4 +28,3 @@ export const hitzPriceXlmResolver = async (_: any, __: any, context: Context) =>
 		return 0.10;
 	}
 };
-

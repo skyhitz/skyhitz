@@ -10,6 +10,7 @@ import { handleWebhook } from './webhooks/stripe';
 import { handleUpload } from './upload';
 import { handleUploadComplete } from './upload-complete';
 import { runTreasuryBot } from './treasury/bot';
+import { processPendingPurchases } from './treasury/process-purchases';
 
 const server = new ApolloServer<Context>({
 	typeDefs: Schema,
@@ -71,14 +72,30 @@ export default {
 	},
 
 	async scheduled(controller: ScheduledController, env: Env, context: ExecutionContext) {
+		// Run every minute:
+		// 1. Process pending purchases (XLM → HITZ swaps)
+		// 2. Run treasury bot (oracle update rate-limited by UPDATE_INTERVAL)
+		
 		context.waitUntil(
-			runTreasuryBot(env)
-				.then((result) => {
-					console.log('Treasury bot cron result', result);
-				})
-				.catch((error) => {
-					console.error('Treasury bot cron failed', error);
-				})
+			(async () => {
+				// Always process pending purchases first (fast, ~1-2s per purchase)
+				try {
+					console.log('=== CRON: Processing pending purchases ===');
+					const purchaseResult = await processPendingPurchases(env);
+					console.log('Purchase processor result:', purchaseResult);
+				} catch (error) {
+					console.error('Purchase processor failed:', error);
+				}
+
+				// Then run treasury bot (oracle has its own rate limiting)
+				try {
+					console.log('=== CRON: Running treasury bot ===');
+					const treasuryResult = await runTreasuryBot(env);
+					console.log('Treasury bot result:', treasuryResult);
+				} catch (error) {
+					console.error('Treasury bot failed:', error);
+				}
+			})()
 		);
 	},
 };

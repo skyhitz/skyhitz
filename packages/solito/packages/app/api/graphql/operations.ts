@@ -92,9 +92,9 @@ export const USER_HITZ_BALANCE = gql`
 `
 
 // Market data
-export const HITZ_PRICE_XLM = gql`
-  query HitzPriceXlm {
-    hitzPriceXlm
+export const HITZ_PRICE_USDC = gql`
+  query HitzPriceUsdc {
+    hitzPriceUsdc
   }
 `
 

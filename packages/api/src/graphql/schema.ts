@@ -3,7 +3,7 @@ type Query {
   entry(id: String!, bypassCache: Boolean): EntryDetails!
   entryLikes(id: String!): EntryLikes!
   userHitzBalance: Float!
-  hitzPriceXlm: Float!
+  hitzPriceUsdc: Float!
   userEntries(userId: String!): [Entry!]!
   userLikes: [Entry!]!
   searchExternalMusic(query: String!, limit: Int, offset: Int): [ExternalTrack!]!

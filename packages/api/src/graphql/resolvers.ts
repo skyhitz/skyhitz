@@ -21,7 +21,7 @@ import { mergeEntriesResolver } from './merge-entries';
 import { unstakeEntryResolver } from './unstake-entry';
 import { recordActionResolver } from './record-action';
 import { userHitzBalanceResolver } from './user-hitz-balance';
-import { hitzPriceXlmResolver } from './hitz-price-xlm';
+import { hitzPriceUsdcResolver } from './hitz-price-usdc';
 import { withdrawHitzResolver } from './withdraw-hitz';
 import { pendingMinesResolver, pendingMineResolver, rejectPendingMineResolver } from './pending-mines';
 import { approvePendingMineResolver } from './approve-pending-mine';
@@ -46,7 +46,7 @@ const Query = {
 	entry: entryByIdResolver,
 	entryLikes: entryLikesResolver,
 	userHitzBalance: userHitzBalanceResolver,
-	hitzPriceXlm: hitzPriceXlmResolver,
+	hitzPriceUsdc: hitzPriceUsdcResolver,
 	userEntries: userEntriesResolver,
 	userLikes: userLikesResolver,
 	searchExternalMusic: searchExternalMusicResolver,

@@ -23,7 +23,7 @@ import {
   useIsCuratorQuery,
 } from 'app/api/graphql/mutations'
 import { useLazyQuery, useQuery } from '@apollo/client'
-import { CLAIMABLE_EARNINGS_PREVIEW, USER_HITZ_BALANCE, HITZ_PRICE_XLM } from 'app/api/graphql/operations'
+import { CLAIMABLE_EARNINGS_PREVIEW, USER_HITZ_BALANCE, HITZ_PRICE_USDC } from 'app/api/graphql/operations'
 import { P, ActivityIndicator } from 'app/design/typography'
 import { useToast } from 'app/provider/toast'
 import Lock from 'app/ui/icons/lock'
@@ -38,26 +38,8 @@ export function ProfileScreen({ user }: { user: User }) {
     useState<boolean>(false)
   const [withdrawVisible, setWithdrawVisible] = useState<boolean>(false)
   const [isClaimingEarnings, setIsClaimingEarnings] = useState(false)
-  const [xlmPriceUsd, setXlmPriceUsd] = useState<number>(0)
   const { data: hitzBalanceData, refetch: refetchHitzBalance } = useQuery(USER_HITZ_BALANCE, { skip: !user })
-  const { data: hitzPriceData } = useQuery(HITZ_PRICE_XLM)
-  
-  // Fetch real XLM/USD price from Kraken
-  useEffect(() => {
-    const fetchXlmPrice = async () => {
-      try {
-        const response = await fetch('https://api.kraken.com/0/public/Ticker?pair=XLMUSD')
-        const data = await response.json()
-        const price = parseFloat(data.result.XXLMZUSD.c[0])
-        setXlmPriceUsd(price)
-      } catch (error) {
-        console.error('Error fetching XLM price:', error)
-      }
-    }
-    fetchXlmPrice()
-    const interval = setInterval(fetchXlmPrice, 60000) // Refresh every minute
-    return () => clearInterval(interval)
-  }, [])
+  const { data: hitzPriceData } = useQuery(HITZ_PRICE_USDC)
   const { data: userLikesData } = useUserLikesQuery()
   const { data: userCollectionData } = useUserCollectionQuery(user.id)
   const { data: pendingUploadsCountData } = usePendingUploadsCountQuery()
@@ -91,13 +73,13 @@ export function ProfileScreen({ user }: { user: User }) {
   }, [user.id])
 
   const stakedHitz = stroopsToToken(totalStakedStroops, AssetType.HITZ)
-  const hitzPriceXlm = Number.parseFloat((hitzPriceData?.hitzPriceXlm as string) || '0') || 0
+  const hitzPriceUsdc = Number.parseFloat((hitzPriceData?.hitzPriceUsdc as string) || '0') || 0
   
   // Calculate total USD value (HITZ + staked HITZ)
-  // HITZ → XLM (from oracle) → USD (from Kraken)
+  // Price is already in USDC from the oracle
   const hitzBalance = hitzBalanceData?.userHitzBalance || 0
   const totalHitz = hitzBalance + stakedHitz
-  const approxUsd = totalHitz * hitzPriceXlm * xlmPriceUsd
+  const approxUsd = totalHitz * hitzPriceUsdc
 
   // Attempt to claim earnings when the profile screen loads, but only once
   useEffect(() => {
