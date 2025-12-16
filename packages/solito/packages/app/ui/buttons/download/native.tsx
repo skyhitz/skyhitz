@@ -7,6 +7,7 @@ import DownloadIcon from 'app/ui/icons/download'
 import { useState } from 'react'
 import { View, ActivityIndicator } from 'react-native'
 import * as FileSystem from 'expo-file-system'
+import { downloadSrc } from 'app/utils/entry'
 
 interface Props {
   size?: number
@@ -70,7 +71,7 @@ const DownloadBtn = ({ size = 24, className = '', entry }: Props) => {
       }
 
       const downloadResumable = FileSystem.createDownloadResumable(
-        entry.videoUrl,
+        downloadSrc(entry.videoUrl),
         filePath,
         {},
         callback

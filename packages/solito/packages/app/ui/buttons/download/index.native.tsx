@@ -12,6 +12,7 @@ import { useTopUpModalStore } from 'app/state/topup'
 import { MICRO_SPEND_DOWNLOAD_HITZ } from 'app/constants/constants'
 import { trackDownload } from 'app/utils/analytics'
 import { isExternalPreview } from 'app/utils/external-entry'
+import { downloadSrc } from 'app/utils/entry'
 
 // Safely check for FileSystem support without importing it directly
 // This prevents crashes in Expo Go during component initialization
@@ -88,8 +89,8 @@ const DownloadBtn = ({
           setDownloading(true)
           setProgress(0)
 
-          // Execute the actual download logic
-          await downloadWithFileSystem(FileSystemModule, entry.videoUrl)
+          // Execute the actual download logic - uses original file which works for all formats
+          await downloadWithFileSystem(FileSystemModule, downloadSrc(entry.videoUrl))
           toast.show(`Downloaded! Fee: ${fee.toFixed(4)} HITZ`, { type: 'success' })
         }
       } catch (error) {

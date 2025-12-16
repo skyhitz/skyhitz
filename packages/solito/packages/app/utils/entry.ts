@@ -36,6 +36,42 @@ export function videoSrc(videoUrl?: string, useFallback = false): string {
   return `${gateway}/${videoUrl.replace(ipfsProtocol, '')}`;
 }
 
+// downloadSrc: Returns the direct URL to the original file for downloads
+// Uses <cid>/index which always exists (original file in original format)
+// This works for all formats: MP3, MP4, WAV, AIFF
+export function downloadSrc(videoUrl?: string): string {
+  if (!videoUrl) return '';
+  // Pass through absolute URLs (external previews like Audius/Sound.xyz)
+  if (videoUrl.startsWith('http://') || videoUrl.startsWith('https://')) {
+    return videoUrl;
+  }
+
+  if (useR2 && isIpfs(videoUrl)) {
+    const hash = videoUrl.replace('ipfs://', '');
+    // Return original file at <cid>/index - always exists, original format
+    return `${r2BaseUrl}/${hash}/index`;
+  }
+
+  // Existing Pinata logic as fallback
+  return `${pinataGateway}/${videoUrl.replace(ipfsProtocol, '')}`;
+}
+
+// mp4Src: Returns the transcoded MP4 URL (only exists for migrated video content)
+// Use downloadSrc() for downloads - it works for all file types
+export function mp4Src(videoUrl?: string): string {
+  if (!videoUrl) return '';
+  if (videoUrl.startsWith('http://') || videoUrl.startsWith('https://')) {
+    return videoUrl;
+  }
+
+  if (useR2 && isIpfs(videoUrl)) {
+    const hash = videoUrl.replace('ipfs://', '');
+    return `${r2BaseUrl}/${hash}/mp4/index.mp4`;
+  }
+
+  return `${pinataGateway}/${videoUrl.replace(ipfsProtocol, '')}`;
+}
+
 // New imageSrc for R2 - no extension needed, just like IPFS!
 export function imageSrc(imageUrl?: string): string {
   if (!imageUrl) return '';

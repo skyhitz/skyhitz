@@ -2,7 +2,7 @@
 // Import from our typed components file instead of directly from react-native
 import { Pressable } from 'react-native'
 import { Entry } from 'app/api/graphql/types'
-import { videoSrc } from 'app/utils/entry'
+import { downloadSrc } from 'app/utils/entry'
 import { MICRO_SPEND_DOWNLOAD_HITZ } from 'app/constants/constants'
 import { useRouter } from 'solito/navigation'
 import { useUserStore } from 'app/state/user'
@@ -54,10 +54,10 @@ const DownloadBtn = ({ size = 24, className = '', entry }: Props) => {
     // Track download event
     trackDownload(entry.id, entry.title, entry.artist)
 
-    // Create a download link for the video
+    // Create a download link - uses original file which works for all formats
     const a = document.createElement('a')
-    a.href = videoSrc(entry.videoUrl)
-    a.download = `${entry.title}.mp4`
+    a.href = downloadSrc(entry.videoUrl)
+    a.download = entry.title
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
