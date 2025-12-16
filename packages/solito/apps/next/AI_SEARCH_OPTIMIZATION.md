@@ -4,7 +4,7 @@ This document outlines all AI search optimization implementations for Skyhitz to
 
 ## Overview
 
-Skyhitz has implemented comprehensive AI search optimization to help AI systems understand and index our music NFT marketplace effectively. This includes multiple standards and formats used by different AI platforms.
+Skyhitz has implemented comprehensive AI search optimization to help AI systems understand and index our Music DeFi Protocol effectively. This includes multiple standards and formats used by different AI platforms.
 
 ## Implemented Files & Standards
 

@@ -4,7 +4,7 @@ import { Config } from 'app/config'
 export async function GET() {
   const baseUrl = Config.APP_URL
   
-  const content = `# Skyhitz - Music NFT Marketplace
+  const content = `# Skyhitz - Music DeFi Protocol
 
 > Skyhitz is a next-generation decentralized music platform powered by Stellar smart contracts. We offer music fans, collectors, and creators a groundbreaking way to discover, stream, and invest in unique tracks.
 
@@ -14,7 +14,7 @@ Collect, stream and trade valuable music NFTs with the best smart music contract
 
 ## Key Features
 
-- **Music NFT Marketplace**: Discover and collect expertly curated music NFTs
+- **Music DeFi Protocol**: Discover and collect expertly curated music NFTs
 - **Fractional Ownership**: Purchase fractions of tracks at affordable prices
 - **Free Downloads**: Download music videos (mp4) for offline enjoyment
 - **Interactive Charts**: Trending tracks influenced by user interactions (buying, streaming, liking)

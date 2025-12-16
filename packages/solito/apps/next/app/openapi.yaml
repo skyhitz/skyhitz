@@ -5,11 +5,11 @@ info:
   description: |
     Public API specification for Skyhitz content discovery.
     
-    Skyhitz is a decentralized music NFT marketplace built on Stellar blockchain.
+    Skyhitz is a decentralized Music DeFi Protocol built on Stellar blockchain.
     Users can discover, collect, stream, and invest in curated music NFTs.
     
     Features:
-    - Music NFT marketplace with fractional ownership
+    - Music DeFi Protocol with fractional ownership
     - Staking and earning rewards
     - Free music downloads
     - Interactive trending charts

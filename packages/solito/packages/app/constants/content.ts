@@ -5,10 +5,10 @@ import Chart from 'app/ui/icons/chart'
 import Download from 'app/ui/icons/download'
 
 export const orgName = 'Skyhitz'
-export const siteTitle = `${orgName} - Music NFT marketplace`
+export const siteTitle = `${orgName} - Defi Music Protocol`
 
 export const keywords =
-  'music nfts, music nft, nft music, nft for music, nft music meaning, nft and music, music nft marketplace, sell music nft, blockchain technology, non custodial, music blockchain, MFTs, music ownership, on-chain music, music creators, exclusive music nfts, download music nfts, stream music nfts, blockchain music, collect, music nft platform'
+  'music nfts, music nft, nft music, nft for music, nft music meaning, nft and music, music nft marketplace, music defi protocol, sell music nft, blockchain technology, non custodial, music blockchain, MFTs, music ownership, on-chain music, music creators, exclusive music nfts, download music nfts, stream music nfts, blockchain music, collect, music nft platform'
 
 export const socialDesc =
   'Collect, stream and trade valuable music NFTs with the best smart music contracts platform!'
