@@ -1,7 +1,7 @@
 'use client'
 import { create } from 'zustand'
 
-type TopUpAction = 'mine' | 'download' | 'like' | 'playback'
+type TopUpAction = 'mine' | 'download' | 'like' | 'playback' | 'search'
 
 type TopUpContext = {
   action: TopUpAction

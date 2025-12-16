@@ -17,6 +17,7 @@ export function TopUpRequiredModal() {
     download: 'to download this file',
     like: 'to like this entry',
     playback: 'to keep streaming',
+    search: 'for unlimited search',
   }
 
   const title = 'Top up required'
