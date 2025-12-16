@@ -12,7 +12,7 @@ import { useTopUpModalStore } from 'app/state/topup'
 import { MICRO_SPEND_DOWNLOAD_HITZ } from 'app/constants/constants'
 import { trackDownload } from 'app/utils/analytics'
 import { isExternalPreview } from 'app/utils/external-entry'
-import { downloadSrc } from 'app/utils/entry'
+import { getDownloadUrl } from 'app/utils/entry'
 
 // Safely check for FileSystem support without importing it directly
 // This prevents crashes in Expo Go during component initialization
@@ -74,6 +74,9 @@ const DownloadBtn = ({
       // Track download event
       trackDownload(entry.id, entry.title, entry.artist)
 
+      // Get the correct download URL (tries MP4 first, falls back to original for audio files)
+      const { url, extension } = await getDownloadUrl(entry.videoUrl)
+
       // Expo Go compatibility check - don't use direct imports at the module level
       let isExpoGo = true
 
@@ -89,8 +92,8 @@ const DownloadBtn = ({
           setDownloading(true)
           setProgress(0)
 
-          // Execute the actual download logic - uses original file which works for all formats
-          await downloadWithFileSystem(FileSystemModule, downloadSrc(entry.videoUrl))
+          // Execute the actual download logic
+          await downloadWithFileSystem(FileSystemModule, url, extension)
           toast.show(`Downloaded! Fee: ${fee.toFixed(4)} HITZ`, { type: 'success' })
         }
       } catch (error) {
@@ -113,11 +116,9 @@ const DownloadBtn = ({
 
   // Separate the actual download logic into its own function
   // This prevents any FileSystem code from executing during initialization
-  const downloadWithFileSystem = async (FileSystem: any, videoUrl: string) => {
+  const downloadWithFileSystem = async (FileSystem: any, downloadUrl: string, extension: string) => {
     try {
-      // Format filename: artist_title.mp4 format
-      let fileName = ''
-
+      // Format filename: artist_title.extension format
       // Format artist name (if available)
       const artistPart = entry.artist
         ? entry.artist
@@ -136,8 +137,8 @@ const DownloadBtn = ({
             .substring(0, 10) // Limit title to 10 chars
         : entry.id || 'track'
 
-      // Combine as artist_title.mp4
-      fileName = `${artistPart}_${titlePart}.mp4`
+      // Combine as artist_title.extension
+      const fileName = `${artistPart}_${titlePart}.${extension}`
       const fileUri = `${FileSystem.documentDirectory}downloads/`
       const filePath = `${fileUri}${fileName}`
 
@@ -158,7 +159,7 @@ const DownloadBtn = ({
       }
 
       const downloadResumable = FileSystem.createDownloadResumable(
-        videoUrl,
+        downloadUrl,
         filePath,
         {},
         callback

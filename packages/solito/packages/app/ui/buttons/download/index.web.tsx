@@ -1,5 +1,5 @@
 'use client'
-import { downloadSrc } from 'app/utils/entry'
+import { getDownloadUrl } from 'app/utils/entry'
 import { useToast } from 'app/provider/toast'
 import { DownloadButtonProps } from './types'
 import { BaseDownloadButton } from './base'
@@ -55,10 +55,13 @@ const DownloadBtn = ({ size = 24, className = '', entry }: DownloadButtonProps) 
         // Track download event
         trackDownload(entry.id, entry.title, entry.artist)
 
-        // Start the actual download - uses original file which works for all formats
+        // Get the correct download URL (tries MP4 first, falls back to original for audio files)
+        const { url, extension } = await getDownloadUrl(entry.videoUrl)
+
+        // Start the actual download
         const a = document.createElement('a')
-        a.href = downloadSrc(entry.videoUrl)
-        a.download = entry.title
+        a.href = url
+        a.download = `${entry.title}.${extension}`
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)

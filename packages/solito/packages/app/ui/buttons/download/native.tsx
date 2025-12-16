@@ -7,7 +7,7 @@ import DownloadIcon from 'app/ui/icons/download'
 import { useState } from 'react'
 import { View, ActivityIndicator } from 'react-native'
 import * as FileSystem from 'expo-file-system'
-import { downloadSrc } from 'app/utils/entry'
+import { getDownloadUrl } from 'app/utils/entry'
 
 interface Props {
   size?: number
@@ -27,9 +27,10 @@ const DownloadBtn = ({ size = 24, className = '', entry }: Props) => {
     }
 
     try {
-      // Format filename: artist_title.mp4 format
-      let fileName = ''
+      // Get the correct download URL (tries MP4 first, falls back to original for audio files)
+      const { url, extension } = await getDownloadUrl(entry.videoUrl)
 
+      // Format filename: artist_title.extension format
       // Format artist name (if available)
       const artistPart = entry.artist
         ? entry.artist
@@ -48,8 +49,8 @@ const DownloadBtn = ({ size = 24, className = '', entry }: Props) => {
             .substring(0, 10) // Limit title to 10 chars
         : entry.id || 'track'
 
-      // Combine as artist_title.mp4
-      fileName = `${artistPart}_${titlePart}.mp4`
+      // Combine as artist_title.extension
+      const fileName = `${artistPart}_${titlePart}.${extension}`
       const fileUri = `${FileSystem.documentDirectory}downloads/`
       const filePath = `${fileUri}${fileName}`
 
@@ -71,7 +72,7 @@ const DownloadBtn = ({ size = 24, className = '', entry }: Props) => {
       }
 
       const downloadResumable = FileSystem.createDownloadResumable(
-        downloadSrc(entry.videoUrl),
+        url,
         filePath,
         {},
         callback

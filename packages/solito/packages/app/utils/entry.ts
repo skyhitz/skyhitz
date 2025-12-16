@@ -36,9 +36,7 @@ export function videoSrc(videoUrl?: string, useFallback = false): string {
   return `${gateway}/${videoUrl.replace(ipfsProtocol, '')}`;
 }
 
-// downloadSrc: Returns the direct URL to the original file for downloads
-// Uses <cid>/index which always exists (original file in original format)
-// This works for all formats: MP3, MP4, WAV, AIFF
+// downloadSrc: Returns the direct MP4 URL for downloads (migrated video content)
 export function downloadSrc(videoUrl?: string): string {
   if (!videoUrl) return '';
   // Pass through absolute URLs (external previews like Audius/Sound.xyz)
@@ -48,12 +46,76 @@ export function downloadSrc(videoUrl?: string): string {
 
   if (useR2 && isIpfs(videoUrl)) {
     const hash = videoUrl.replace('ipfs://', '');
-    // Return original file at <cid>/index - always exists, original format
-    return `${r2BaseUrl}/${hash}/index`;
+    return `${r2BaseUrl}/${hash}/mp4/index.mp4`;
   }
 
   // Existing Pinata logic as fallback
   return `${pinataGateway}/${videoUrl.replace(ipfsProtocol, '')}`;
+}
+
+// originalSrc: Returns the original file URL (for audio files: MP3, WAV, AIFF)
+export function originalSrc(videoUrl?: string): string {
+  if (!videoUrl) return '';
+  // Pass through absolute URLs
+  if (videoUrl.startsWith('http://') || videoUrl.startsWith('https://')) {
+    return videoUrl;
+  }
+
+  if (useR2 && isIpfs(videoUrl)) {
+    const hash = videoUrl.replace('ipfs://', '');
+    return `${r2BaseUrl}/${hash}/index`;
+  }
+
+  return `${pinataGateway}/${videoUrl.replace(ipfsProtocol, '')}`;
+}
+
+// getDownloadUrl: Checks if MP4 exists, falls back to original file
+// Returns { url, extension } for the download
+export async function getDownloadUrl(videoUrl?: string): Promise<{ url: string; extension: string }> {
+  if (!videoUrl) return { url: '', extension: '' };
+  
+  // Pass through absolute URLs
+  if (videoUrl.startsWith('http://') || videoUrl.startsWith('https://')) {
+    // Try to determine extension from URL
+    const ext = videoUrl.split('.').pop()?.toLowerCase() || 'mp4';
+    return { url: videoUrl, extension: ext };
+  }
+
+  const mp4Url = downloadSrc(videoUrl);
+  const origUrl = originalSrc(videoUrl);
+
+  try {
+    // Check if MP4 exists
+    const response = await fetch(mp4Url, { method: 'HEAD' });
+    if (response.ok) {
+      return { url: mp4Url, extension: 'mp4' };
+    }
+  } catch {
+    // MP4 doesn't exist, continue to fallback
+  }
+
+  // Fallback to original file - check content type to determine extension
+  try {
+    const response = await fetch(origUrl, { method: 'HEAD' });
+    if (response.ok) {
+      const contentType = response.headers.get('content-type') || '';
+      let extension = 'mp4'; // default
+      if (contentType.includes('audio/mpeg') || contentType.includes('audio/mp3')) {
+        extension = 'mp3';
+      } else if (contentType.includes('audio/wav') || contentType.includes('audio/wave')) {
+        extension = 'wav';
+      } else if (contentType.includes('audio/aiff')) {
+        extension = 'aiff';
+      } else if (contentType.includes('video/mp4')) {
+        extension = 'mp4';
+      }
+      return { url: origUrl, extension };
+    }
+  } catch {
+    // If all fails, return MP4 URL as last resort
+  }
+
+  return { url: mp4Url, extension: 'mp4' };
 }
 
 // mp4Src: Returns the transcoded MP4 URL (only exists for migrated video content)
