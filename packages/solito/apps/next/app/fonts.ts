@@ -1,17 +1,22 @@
 import { Inter, Raleway, Unbounded } from 'next/font/google'
 
+// Optimized font loading - reduced weights for faster load
 export const inter = Inter({
-  weight: ['400', '600', '700'],
+  weight: ['400', '600'],
   subsets: ['latin'],
   variable: '--font-inter',
   display: 'swap',
+  preload: true,
+  fallback: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
 })
 
 export const raleway = Raleway({
-  weight: ['300', '400', '500', '600', '700'],
+  weight: ['400', '600', '700'],
   subsets: ['latin'],
   variable: '--font-raleway',
   display: 'swap',
+  preload: true,
+  fallback: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
 })
 
 export const unbounded = Unbounded({
@@ -19,6 +24,8 @@ export const unbounded = Unbounded({
   subsets: ['latin'],
   variable: '--font-unbounded',
   display: 'swap',
+  preload: true,
+  fallback: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
 })
 
 // Export font variables for use in tailwind theme

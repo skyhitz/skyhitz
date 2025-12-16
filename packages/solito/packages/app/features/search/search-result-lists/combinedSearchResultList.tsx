@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, memo, useMemo } from 'react'
 import { View, FlatList, ScrollView } from 'react-native'
 import { ActivityIndicator, P } from 'app/design/typography'
 import { entriesIndex, usersIndex } from 'app/api/algolia'
@@ -23,6 +23,7 @@ import { useUserStore } from 'app/state/user'
 import { useToast } from 'app/provider/toast'
 import { trackMine } from 'app/utils/analytics'
 import { EntryImageWithFallback } from 'app/ui/entry-image-with-fallback'
+import { useDebounce } from 'app/hooks/useDebounce'
 
 // Define a union type for our search results
 type SearchResult = {
@@ -36,7 +37,8 @@ type CombinedSearchResultListProps = {
 }
 
 // A simpler component to render user cards that strictly follows React Native rules
-function UserCard({ user }: { user: User }) {
+// Memoized for better list performance
+const UserCard = memo(function UserCard({ user }: { user: User }) {
   const displayName = user.displayName || user.username || 'User'
 
   return (
@@ -71,13 +73,14 @@ function UserCard({ user }: { user: User }) {
       </TextLink>
     </View>
   )
-}
+})
 
 export function CombinedSearchResultList({
   searchPhrase,
 }: CombinedSearchResultListProps) {
-  const [debouncedSearchPhrase, setDebouncedSearchPhrase] =
-    useState(searchPhrase)
+  // Use the reusable debounce hook for better performance
+  const debouncedSearchPhrase = useDebounce(searchPhrase, 300)
+  
   // Progressive, per-section state
   const [entryResults, setEntryResults] = useState<SearchResult[]>([])
   const [userResults, setUserResults] = useState<SearchResult[]>([])
@@ -90,19 +93,8 @@ export function CombinedSearchResultList({
   const [resolveAudioUrl] = useLazyQuery(EXTERNAL_AUDIO_URL)
   const { playEntry } = usePlayback()
   const [mineExternal] = useMutation(MINE_EXTERNAL_ENTRY)
-  const { data: creditsData } = useQuery(USER_CREDITS, { fetchPolicy: 'network-only' })
+  const { data: creditsData } = useQuery(USER_CREDITS)
   const { push } = useRouter()
-
-  // Debounce search phrase to avoid too many API calls
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearchPhrase(searchPhrase)
-    }, 300)
-
-    return () => {
-      clearTimeout(handler)
-    }
-  }, [searchPhrase])
 
   // Progressive searches per section
   useEffect(() => {
@@ -333,8 +325,9 @@ type ExternalTrack = {
   imageUrl?: string
 }
 
-function ExternalTrackRow({ track, onSelect }: { track: ExternalTrack; onSelect: () => void }) {
-  const { data: creditsData, refetch: refetchCredits } = useQuery(USER_CREDITS, { fetchPolicy: 'network-only' })
+// Memoized external track row for better list performance
+const ExternalTrackRow = memo(function ExternalTrackRow({ track, onSelect }: { track: ExternalTrack; onSelect: () => void }) {
+  const { data: creditsData, refetch: refetchCredits } = useQuery(USER_CREDITS)
   const [mineExternal] = useMutation(MINE_EXTERNAL_ENTRY)
   const { push } = useRouter()
   const openTopUpModal = useTopUpModalStore((s) => s.openTopUpModal)
@@ -422,4 +415,4 @@ function ExternalTrackRow({ track, onSelect }: { track: ExternalTrack; onSelect:
       
     </Pressable>
   )
-}
+})

@@ -9,11 +9,13 @@ import VerticalDots from 'app/ui/icons/verticalDots'
 import LikeButton from 'app/ui/buttons/likeButton'
 // import DownloadBtn from 'app/ui/buttons/download'
 import { usePlayback } from 'app/hooks/usePlayback'
+import { memo, useCallback, useMemo } from 'react'
 
 // Reusable component for APR text with consistent styling
-function APRText({ apr }: { apr: string }) {
-  return <P className="mr-3 text-xs text-[--primary-color]">APR: {apr}</P>
-}
+const APRText = memo(({ apr }: { apr: string }) => (
+  <P className="mr-3 text-xs text-[--primary-color]">APR: {apr}</P>
+))
+APRText.displayName = 'APRText'
 
 export type PressableState = Readonly<{
   hovered?: boolean
@@ -25,7 +27,8 @@ type BeatListEntryProps = {
   playlist?: Entry[]
 }
 
-export function BeatListEntry({
+// Memoize the component to prevent re-renders when playlist changes but entry doesn't
+export const BeatListEntry = memo(function BeatListEntry({
   entry,
   spot,
   playlist = [],
@@ -33,13 +36,25 @@ export function BeatListEntry({
   const { push } = useRouter()
   const { playEntry } = usePlayback()
 
-  const handlePress = () => {
-    console.log('[BeatListEntry] Pressed entry', entry.id)
+  const handlePress = useCallback(() => {
     playEntry(entry, playlist)
-  }
+  }, [entry, playlist, playEntry])
 
-  // Format TVL in lumens and APR values to match legacy app styling
-  const aprFormatted = entry.apr ? `${Math.round(entry.apr)}%` : '0%'
+  const handleNavigate = useCallback(() => {
+    push(`/music/${entry.id}`)
+  }, [push, entry.id])
+
+  // Memoize APR formatting
+  const aprFormatted = useMemo(
+    () => (entry.apr ? `${Math.round(entry.apr)}%` : '0%'),
+    [entry.apr]
+  )
+
+  // Memoize image URL
+  const imageUrl = useMemo(
+    () => imageUrlSmall(entry.imageUrl),
+    [entry.imageUrl]
+  )
 
   return (
     <Pressable onPress={handlePress} className="flex">
@@ -51,7 +66,7 @@ export function BeatListEntry({
           {/* Album artwork */}
           <View className="aspect-[2/2] w-12 object-cover">
             <SolitoImage
-              src={imageUrlSmall(entry.imageUrl)}
+              src={imageUrl}
               alt={entry.title || ''}
               contentFit="cover"
               fill
@@ -81,7 +96,7 @@ export function BeatListEntry({
             {entry.apr ? (
               <Pressable
                 className="flex flex-row items-center md:hidden"
-                onPress={() => push(`/music/${entry.id}`)}
+                onPress={handleNavigate}
               >
                 <APRText apr={aprFormatted} />
               </Pressable>
@@ -94,7 +109,7 @@ export function BeatListEntry({
             {entry.apr ? (
               <Pressable
                 className="hidden flex-row items-center md:flex"
-                onPress={() => push(`/music/${entry.id}`)}
+                onPress={handleNavigate}
               >
                 <APRText apr={aprFormatted} />
               </Pressable>
@@ -106,7 +121,7 @@ export function BeatListEntry({
             <LikeButton size={20} entry={entry} />
 
             {/* More options dots */}
-            <Pressable onPress={() => push(`/music/${entry.id}`)}>
+            <Pressable onPress={handleNavigate}>
               <VerticalDots size={24} className="stroke-[--text-color]" />
             </Pressable>
           </View>
@@ -114,4 +129,7 @@ export function BeatListEntry({
       )}
     </Pressable>
   )
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison - only re-render if entry ID changes or spot changes
+  return prevProps.entry.id === nextProps.entry.id && prevProps.spot === nextProps.spot
+})
