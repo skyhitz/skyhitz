@@ -37,6 +37,7 @@ export function ChangeImages({
             progressText={progressText}
             text="Change Avatar"
             current={avatar}
+            requireSquare={true}
           />
         </View>
         <View className="m-2">
