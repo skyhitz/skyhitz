@@ -1,11 +1,11 @@
-'use client'
-import { ComponentAuthGuard } from 'app/utils/authGuard'
 import { UploadScreen } from 'app/features/upload/screen'
+import { ComponentAuthGuard } from 'app/utils/authGuard'
 
-export default function UploadPage() {
+export default function UploadScreenPage() {
   return (
     <ComponentAuthGuard>
       <UploadScreen />
     </ComponentAuthGuard>
   )
 }
+
