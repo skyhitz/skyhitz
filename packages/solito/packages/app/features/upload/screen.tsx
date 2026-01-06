@@ -264,7 +264,7 @@ export function UploadScreen() {
   return (
     <SafeAreaView className="bg-[--bg-color] w-full">
       <ScrollView>
-        <View className="mx-auto flex min-h-screen w-full max-w-2xl items-start justify-start px-4 py-8">
+        <View className="mx-auto flex min-h-screen w-full max-w-2xl items-start justify-start px-4 py-8 pb-32">
           <H1 className="text-center text-lg mb-8 w-full">Upload Music</H1>
 
           {/* Audio File Upload */}
