@@ -48,6 +48,9 @@ async function fetchMarketPriceFromSoroswap(
 		maxHops: 3,
 	};
 	
+	console.log(`   HITZ Contract ID: ${HITZ_CONTRACT_ID}`);
+	console.log(`   Request body:`, JSON.stringify(requestBody));
+	
 	const response = await fetch(`${apiUrl}/quote?network=${networkParam}`, {
 		method: 'POST',
 		headers: {
@@ -59,6 +62,9 @@ async function fetchMarketPriceFromSoroswap(
 	
 	if (!response.ok) {
 		const errorText = await response.text();
+		console.error(`❌ Soroswap quote failed:`);
+		console.error(`   Status: ${response.status}`);
+		console.error(`   Response: ${errorText}`);
 		throw new Error(`Soroswap quote failed (${response.status}): ${errorText}`);
 	}
 	

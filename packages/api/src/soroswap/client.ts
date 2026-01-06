@@ -45,25 +45,35 @@ export class SoroswapClient {
 	async getQuote(xlmAmount: number): Promise<SoroswapQuote> {
 		const xlmStroops = BigInt(Math.floor(xlmAmount * STROOPS));
 
+		const requestBody = {
+			assetIn: XLM_CONTRACT_ID,
+			assetOut: HITZ_CONTRACT_ID,
+			amount: xlmStroops.toString(),
+			tradeType: 'EXACT_IN',
+			protocols: ['aqua', 'sdex', 'soroswap', 'phoenix'],
+			slippageBps: '100', // 1% slippage
+			maxHops: 3,
+		};
+
+		console.log(`🔍 Soroswap quote request (XLM→HITZ):`);
+		console.log(`   XLM Amount: ${xlmAmount}`);
+		console.log(`   Network: ${this.network}`);
+		console.log(`   Request:`, JSON.stringify(requestBody));
+
 		const response = await fetch(`${SOROSWAP_API_URL}/quote?network=${this.network}`, {
 			method: 'POST',
 			headers: {
 				'Authorization': `Bearer ${this.apiKey}`,
 				'Content-Type': 'application/json',
 			},
-			body: JSON.stringify({
-				assetIn: XLM_CONTRACT_ID,
-				assetOut: HITZ_CONTRACT_ID,
-				amount: xlmStroops.toString(),
-				tradeType: 'EXACT_IN',
-				protocols: ['aqua', 'sdex', 'soroswap', 'phoenix'],
-				slippageBps: '100', // 1% slippage
-				maxHops: 3,
-			}),
+			body: JSON.stringify(requestBody),
 		});
 
 		if (!response.ok) {
 			const errorText = await response.text();
+			console.error(`❌ Soroswap quote failed:`);
+			console.error(`   Status: ${response.status}`);
+			console.error(`   Response: ${errorText}`);
 			throw new Error(`Soroswap quote failed (${response.status}): ${errorText}`);
 		}
 
