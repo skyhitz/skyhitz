@@ -98,6 +98,10 @@ pub enum DataKey {
     // Artist equity (non-dilutable creator rewards)
     ArtistEquity((String, Address)),    // (entry_id, artist) -> ArtistEquityClaim
     ArtistEquityTotal(String),          // entry_id -> total equity bps across all artists (max 9990)
+    
+    // Treasury Distribution State
+    LastDistributionTime,               // u64: Timestamp of last daily cap reset
+    DailyDistributedAmount,             // i128: Amount distributed in current 24h window
 }
 
 #[contracttype]
@@ -448,9 +452,20 @@ impl SkyhitzCore {
             .checked_mul(difficulty)
             .unwrap_or_else(|| panic!("Reward calculation overflow: {} * {}", unit_reward, difficulty));
         
-        // SECURITY FIX C1: Enforce supply cap and verify admin rights before minting
+        // TREASURY FIX: Distribute from contract balance with 1% daily cap
         let reward = if reward > 0 {
-            safe_mint_with_cap(&e, &hitz_token, &caller, &reward)
+            let hitz_client = token::Client::new(&e, &hitz_token);
+            let contract_addr = e.current_contract_address();
+            let treasury_balance = hitz_client.balance(&contract_addr);
+            
+            let payout = check_and_update_daily_cap(&e, reward, treasury_balance);
+            
+            if payout > 0 {
+                hitz_client.transfer(&contract_addr, &caller, &payout);
+            }
+            
+            log!(&e, "Distributed Reward: {} (Requested: {}, Cap Remaining)", payout, reward);
+            payout
         } else {
             0
         };
@@ -816,12 +831,18 @@ impl SkyhitzCore {
         // Store HITZ amount (The calculated amount, NOT the requested amount)
         e.storage().instance().set(&DataKey::BatchDistHitzAmount, &calculated_hitz_amount);
 
-        // Transfer HITZ from Treasury to contract
+        // TREASURY: Verify contract has enough funds and respect Daily Cap
+        // We do NOT pull funds because the Treasury (20M) is already in the contract.
         let hitz_token: Address = e.storage().instance().get(&DataKey::HitzToken).unwrap();
+        let hitz_client = token::Client::new(&e, &hitz_token);
         let contract_addr = e.current_contract_address();
+        let treasury_balance = hitz_client.balance(&contract_addr);
         
-        // Use calculated amount
-        safe_transfer(&e, &hitz_token, &caller, &contract_addr, &calculated_hitz_amount, "batch reward distribution");
+        let allowed_amount = check_and_update_daily_cap(&e, calculated_hitz_amount, treasury_balance);
+        
+        if allowed_amount < calculated_hitz_amount {
+             panic!("Daily Cap Exceeded for Batch Distribution");
+        }
 
         log!(&e, "Distribution initialized: {} HITZ across {} XLM total escrow", calculated_hitz_amount, total_escrow);
     }
@@ -1725,6 +1746,33 @@ fn safe_transfer(e: &Env, token: &Address, from: &Address, to: &Address, amount:
     }
 }
 
+/// TREASURY FIX: Check and update daily distribution cap (1% of treasury)
+fn check_and_update_daily_cap(e: &Env, request: i128, balance: i128) -> i128 {
+    let now = e.ledger().timestamp();
+    let last_time: u64 = e.storage().instance().get(&DataKey::LastDistributionTime).unwrap_or(0);
+    let mut daily_dist: i128 = e.storage().instance().get(&DataKey::DailyDistributedAmount).unwrap_or(0);
+
+    // Reset if 24h passed
+    if now >= last_time + 86400 {
+        daily_dist = 0;
+        e.storage().instance().set(&DataKey::LastDistributionTime, &now);
+    }
+
+    // Cap is 0.05% of CURRENT treasury balance (balance / 2000)
+    // 1% = / 100. 0.05% = 1/2000.
+    let cap = balance.checked_div(2000).unwrap_or(0);
+    let remaining = cap.saturating_sub(daily_dist);
+    
+    if remaining <= 0 {
+        return 0;
+    }
+
+    let allowed = if request > remaining { remaining } else { request };
+    e.storage().instance().set(&DataKey::DailyDistributedAmount, &(daily_dist + allowed));
+    
+    allowed
+}
+
 /// SECURITY FIX C1: Safe mint with supply cap enforcement
 /// Mints HITZ tokens while respecting the 21M supply cap
 /// Returns actual amount minted (may be less than requested if cap reached)
@@ -1944,6 +1992,9 @@ mod test {
         // CRITICAL: Set contract as HITZ token admin (required for minting)
         let hitz_admin = token::StellarAssetClient::new(&e, &hitz_token.address());
         hitz_admin.set_admin(&contract_id);
+
+        // TREASURY SETUP: Fund contract with 20M HITZ (for transfer-based distribution)
+        hitz_admin.mint(&contract_id, &200_000_000_000_000i128);
 
         (e, admin, treasury, user, hitz_token.address(), xlm_token.address(), contract_id)
     }
@@ -3586,9 +3637,15 @@ mod test {
         log!(&e, "Target Dump: {}", exploit_dump_amount);
         log!(&e, "Actual Contract Balance: {}", contract_balance);
 
-        // Assert contract only pulled 1.0 HITZ (10_000_000 stroops)
+        // Assert contract calculated 1.0 HITZ (10_000_000 stroops)
         // NOT 13.5M.
-        assert_eq!(contract_balance, 10_000_000, "Contract accepted exploit amount in Batch Mode!");
+        let stored_batch_hitz: i128 = e.as_contract(&contract_id, || {
+            e.storage().instance().get(&DataKey::BatchDistHitzAmount).unwrap()
+        });
+        assert_eq!(stored_batch_hitz, 10_000_000, "Contract accepted exploit amount in Batch Mode!");
+        
+        // Also verify balance is still ~20M (Treasury)
+        assert!(contract_balance > 190_000_000_000_000, "Treasury funds missing?");
         
         // 5. Batch Phase 3: Distribute & Reset Escrow
         contract.distribute_rewards_batch(&treasury, &0, &10);
