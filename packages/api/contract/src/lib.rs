@@ -102,6 +102,7 @@ pub enum DataKey {
     // Treasury Distribution State
     LastDistributionTime,               // u64: Timestamp of last daily cap reset
     DailyDistributedAmount,             // i128: Amount distributed in current 24h window
+    DailyCapBps,                        // u32: Daily cap in basis points (e.g. 5 = 0.05%, 100 = 1%)
 }
 
 #[contracttype]
@@ -1331,6 +1332,24 @@ impl SkyhitzCore {
         log!(&e, "Total Minted counter reset to: {}", new_amount);
     }
 
+    /// Set Daily Distribution Cap (admin-only)
+    ///
+    /// Allows adjusting the Treasury Cap if 0.05% proves too restrictive.
+    ///
+    /// # Arguments
+    /// * `bps` - Basis points (1-10000). 5 = 0.05%, 100 = 1%.
+    pub fn admin_set_daily_cap(e: Env, bps: u32) {
+        let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
+        admin.require_auth();
+        
+        if bps == 0 || bps > 10000 {
+            panic!("Invalid BPS: 1-10000");
+        }
+        
+        e.storage().instance().set(&DataKey::DailyCapBps, &bps);
+        log!(&e, "Daily Cap updated to {} bps", bps);
+    }
+
     /// Set non-dilutable artist equity for an entry (admin-only)
     /// 
     /// Allows verified artists to receive a fixed percentage of all rewards.
@@ -1758,9 +1777,14 @@ fn check_and_update_daily_cap(e: &Env, request: i128, balance: i128) -> i128 {
         e.storage().instance().set(&DataKey::LastDistributionTime, &now);
     }
 
-    // Cap is 0.05% of CURRENT treasury balance (balance / 2000)
-    // 1% = / 100. 0.05% = 1/2000.
-    let cap = balance.checked_div(2000).unwrap_or(0);
+    // Dynamic Cap: 0.05% default (5 bps), adjustable by admin
+    // 1% = 100 bps. 0.05% = 5 bps.
+    let bps: u32 = e.storage().instance().get(&DataKey::DailyCapBps).unwrap_or(5);
+    
+    // cap = balance * bps / 10000
+    let cap = (balance.checked_mul(i128::from(bps)).unwrap_or(0))
+        .checked_div(10000).unwrap_or(0);
+        
     let remaining = cap.saturating_sub(daily_dist);
     
     if remaining <= 0 {

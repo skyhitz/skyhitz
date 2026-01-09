@@ -221,6 +221,30 @@ export interface Client {
   }) => Promise<AssembledTransaction<null>>
 
   /**
+   * Construct and simulate a admin_set_daily_cap transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Set Daily Distribution Cap (admin-only)
+   * 
+   * # Arguments
+   * * `bps` - Basis points (1-10000). 5 = 0.05%, 100 = 1%.
+   */
+  admin_set_daily_cap: ({ bps }: { bps: u32 }, options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<null>>
+
+  /**
    * Construct and simulate a admin_set_total_minted transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    * Set total minted amount (admin-only)
    * 
