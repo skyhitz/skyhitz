@@ -602,10 +602,7 @@ impl SkyhitzCore {
                    entry_count, MAX_DISTRIBUTION_ENTRIES);
         }
 
-        // SECURITY FIX H2: Transfer HITZ from Treasury to contract with verification
-        let hitz_token: Address = e.storage().instance().get(&DataKey::HitzToken).unwrap();
-        let contract_addr = e.current_contract_address();
-        safe_transfer(&e, &hitz_token, &caller, &contract_addr, &hitz_amount, "reward distribution");
+        // Transfer moved after total_escrow calculation for Dynamic Fix
 
         let entry_count: u32 = e.storage().persistent().get(&DataKey::EntryCount).unwrap_or(0);
         
@@ -635,9 +632,29 @@ impl SkyhitzCore {
             }
         }
 
+
         if total_escrow == 0 {
             panic!("No escrow to distribute to");
         }
+
+        // DYNAMIC FIX D1: Calculate correct HITZ amount based on Oracle Price and Revenue
+        // Ensures 1:1 Value Mapping (Fees In = HITZ Out) and ignores potentially incorrect input
+        let oracle_price: i128 = e.storage().instance().get(&DataKey::OraclePrice).unwrap_or(100_000);
+        if oracle_price == 0 { panic!("Oracle price zero"); }
+
+        // Calculate exact HITZ amount needed to cover the escrow revenue
+        // Formula: (Revenue_XLM * 10^7) / Price_Stroops
+        let calculated_hitz_amount = (total_escrow.checked_mul(10_000_000).unwrap())
+                                     .checked_div(oracle_price).unwrap();
+                                     
+        // Transfer Exact Amount from Treasury
+        let hitz_token: Address = e.storage().instance().get(&DataKey::HitzToken).unwrap();
+        let contract_addr = e.current_contract_address();
+        // Use calculated amount, ignoring the user input hitz_amount
+        safe_transfer(&e, &hitz_token, &caller, &contract_addr, &calculated_hitz_amount, "reward distribution");
+        
+        // Shadow the argument with the correct amount for distribution loop
+        let hitz_amount = calculated_hitz_amount;
 
         // SECURITY FIX C2: Fair dust distribution
         // Distribute rewards proportionally, accumulate dust instead of giving to last entry
@@ -665,6 +682,13 @@ impl SkyhitzCore {
                     entry_id,
                     (escrow * 100) / total_escrow
                 );
+
+                // DYNAMIC FIX D1 Part 2: Reset Escrow to 0
+                // Essential to convert from Accumulation to Revenue Share model
+                if let Some(mut entry) = e.storage().persistent().get::<DataKey, Entry>(&DataKey::Entry(entry_id.clone())) {
+                    entry.escrow_xlm = 0;
+                    e.storage().persistent().set(&DataKey::Entry(entry_id.clone()), &entry);
+                }
             }
         }
         
@@ -780,15 +804,26 @@ impl SkyhitzCore {
             panic!("No escrow to distribute to");
         }
 
-        // Store HITZ amount
-        e.storage().instance().set(&DataKey::BatchDistHitzAmount, &hitz_amount);
+        // DYNAMIC FIX D1 (BATCH): Calculate correct HITZ amount based on Oracle Price and Revenue
+        // Ensures 1:1 Value Mapping (Fees In = HITZ Out) and ignores potentially incorrect input
+        let oracle_price: i128 = e.storage().instance().get(&DataKey::OraclePrice).unwrap_or(100_000);
+        if oracle_price == 0 { panic!("Oracle price zero"); }
+
+        // Calculate exact HITZ amount needed to cover the escrow revenue
+        let calculated_hitz_amount = (total_escrow.checked_mul(10_000_000).unwrap())
+                                     .checked_div(oracle_price).unwrap();
+
+        // Store HITZ amount (The calculated amount, NOT the requested amount)
+        e.storage().instance().set(&DataKey::BatchDistHitzAmount, &calculated_hitz_amount);
 
         // Transfer HITZ from Treasury to contract
         let hitz_token: Address = e.storage().instance().get(&DataKey::HitzToken).unwrap();
         let contract_addr = e.current_contract_address();
-        safe_transfer(&e, &hitz_token, &caller, &contract_addr, &hitz_amount, "batch reward distribution");
+        
+        // Use calculated amount
+        safe_transfer(&e, &hitz_token, &caller, &contract_addr, &calculated_hitz_amount, "batch reward distribution");
 
-        log!(&e, "Distribution initialized: {} HITZ across {} XLM total escrow", hitz_amount, total_escrow);
+        log!(&e, "Distribution initialized: {} HITZ across {} XLM total escrow", calculated_hitz_amount, total_escrow);
     }
 
     /// Distribute HITZ rewards in batches (Phase 3 of 3-phase distribution)
@@ -851,7 +886,7 @@ impl SkyhitzCore {
                 
                 let entry_key = DataKey::Entry(entry_id.clone());
                 
-                if let Some(entry) = e.storage().persistent().get::<DataKey, Entry>(&entry_key) {
+                if let Some(mut entry) = e.storage().persistent().get::<DataKey, Entry>(&entry_key) {
                     e.storage().persistent().extend_ttl(&entry_key, STORAGE_LIFETIME_THRESHOLD, STORAGE_BUMP_AMOUNT);
                     
                     if entry.escrow_xlm > 0 {
@@ -874,6 +909,11 @@ impl SkyhitzCore {
                                 entry_id,
                                 i
                             );
+
+                            // DYNAMIC FIX D1 (BATCH) Part 2: Reset Escrow to 0
+                            // Essential to convert from Accumulation to Revenue Share model
+                            entry.escrow_xlm = 0;
+                            e.storage().persistent().set(&DataKey::Entry(entry_id.clone()), &entry);
                         }
                     }
                 }
@@ -3451,6 +3491,97 @@ mod test {
         // Verify total claimed
         let (_, total_claimed, _) = client.get_artist_equity(&entry_id, &user);
         assert_eq!(total_claimed, 100_000_000);
+    }
+    
+    #[test]
+    fn test_exploit_distribution_ratio() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        let hitz_admin = token::StellarAssetClient::new(&e, &hitz_addr);
+        hitz_admin.mint(&treasury, &1_000_000_000_000_000i128); // Treasury has huge HITZ
+
+        let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
+        xlm_admin.mint(&user, &100_000_000i128);
+
+        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+
+        let entry_id = String::from_str(&e, "exploit_song");
+        client.create_entry(&entry_id);
+
+        // 1. User performs minimal action (Stream)
+        // Cost: 0.01 XLM (100,000 stroops)
+        client.record_action(&user, &entry_id, &symbol_short!("stream"), &None);
+
+        // 2. Treasury attempts to distribute MASSIVE Rewards (13.5M HITZ)
+        // With Dynamic Fix, contract should IGNORE this and calculate correct amount (1 HITZ)
+        let exploit_amount = 13_500_000_000_000i128; // 13.5M HITZ
+        client.distribute_rewards(&treasury, &exploit_amount);
+
+        // 3. User claims rewards
+        client.record_action(&user, &entry_id, &symbol_short!("invest"), &None);
+        let claimable = client.get_claimable_rewards(&entry_id, &user);
+        
+        log!(&e, "Exploit Amount Attempted: {}", exploit_amount);
+        log!(&e, "User Claimable: {}", claimable);
+
+        // CORRECT BEHAVIOR:
+        // Revenue 0.01 XLM. Price 0.01 XLM. HITZ = 1.0 (10,000,000 stroops).
+        assert_eq!(claimable, 10_000_000); 
+        
+        // Ensure vulnerability is fixed (User does NOT get 13.5M)
+        assert!(claimable < exploit_amount);
+    }
+
+    #[test]
+    fn test_exploit_batch_distribution() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+        let contract = SkyhitzCoreClient::new(&e, &contract_id);
+        let hitz_token = token::Client::new(&e, &hitz_addr);
+        let hitz_admin = token::StellarAssetClient::new(&e, &hitz_addr);
+        
+        // Initialize Contract!
+        contract.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+        
+        // 1. Setup: User creates legitimate stream entry
+        let entry_id = String::from_str(&e, "exploit_batch");
+        contract.create_entry(&entry_id);
+        contract.update_oracle_price(&treasury, &100_000); // 0.01 XLM Price
+
+        let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
+        xlm_admin.mint(&user, &100_000_000i128); // Give user XLM for fees
+
+        contract.record_action(&user, &entry_id, &symbol_short!("stream"), &None);
+
+        // 2. Batch Phase 1: Calc Escrow (Should be 0.01 XLM)
+        contract.calculate_total_escrow_batch(&treasury, &0, &10);
+
+        // 3. Batch Phase 2: The Attack (Dump 13.5M)
+        let exploit_dump_amount: i128 = 13_500_000 * 10_000_000;
+        hitz_admin.mint(&treasury, &exploit_dump_amount);
+
+        // Treasury calls initialize_distribution with 13.5M
+        // Contract should IGNORE this and use Oracle Calc (1.0 HITZ)
+        contract.initialize_distribution(&treasury, &exploit_dump_amount);
+
+        // 4. Verification
+        let contract_balance = hitz_token.balance(&contract_id);
+        
+        log!(&e, "Target Dump: {}", exploit_dump_amount);
+        log!(&e, "Actual Contract Balance: {}", contract_balance);
+
+        // Assert contract only pulled 1.0 HITZ (10_000_000 stroops)
+        // NOT 13.5M.
+        assert_eq!(contract_balance, 10_000_000, "Contract accepted exploit amount in Batch Mode!");
+        
+        // 5. Batch Phase 3: Distribute & Reset Escrow
+        contract.distribute_rewards_batch(&treasury, &0, &10);
+        
+        // Verify Escrow Reset
+        let stats = contract.get_entry_stats(&entry_id);
+        // stats returns tuple: (tvl, escrow, staked, pool, apr)
+        // escrow is 2nd element (index 1)
+        assert_eq!(stats.1, 0, "Escrow was not reset!");
     }
 }
 

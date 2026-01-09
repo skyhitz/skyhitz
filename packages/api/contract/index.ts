@@ -25,7 +25,7 @@ type ContractId = typeof testnetContractId | typeof mainnetContractId;
 type NetworkPassphrase = typeof testnetNetworkPassphrase | typeof mainnetNetworkPassphrase;
 
 class ContractClient {
-    private sourceKeys: Keypair;
+	private sourceKeys: Keypair;
 	private defaultOptions = { timeoutInSeconds: 60, fee: 100000000, restore: true };
 	private network: Network;
 	private horizonUrl: HorizonUrl;
@@ -34,15 +34,15 @@ class ContractClient {
 	private networkPassphrase: NetworkPassphrase;
 	private contract: Client;
 
-    constructor(env: Env) {
-        this.sourceKeys = Keypair.fromSecret(env.ISSUER_SEED);
-        this.network = env.STELLAR_NETWORK as Network;
-        this.horizonUrl = env.STELLAR_NETWORK === 'testnet' ? testnetHorizonUrl : mainnetHorizonUrl;
-        this.rpcUrl = env.STELLAR_NETWORK === 'testnet' ? testnetRpcUrl : mainnetRpcUrl;
-        this.contractId = env.STELLAR_NETWORK === 'testnet' ? testnetContractId : mainnetContractId;
-        this.networkPassphrase = env.STELLAR_NETWORK === 'testnet' ? testnetNetworkPassphrase : mainnetNetworkPassphrase;
-        this.contract = this.getClientForKeypair(this.sourceKeys);
-    }
+	constructor(env: Env) {
+		this.sourceKeys = Keypair.fromSecret(env.ISSUER_SEED);
+		this.network = env.STELLAR_NETWORK as Network;
+		this.horizonUrl = env.STELLAR_NETWORK === 'testnet' ? testnetHorizonUrl : mainnetHorizonUrl;
+		this.rpcUrl = env.STELLAR_NETWORK === 'testnet' ? testnetRpcUrl : mainnetRpcUrl;
+		this.contractId = env.STELLAR_NETWORK === 'testnet' ? testnetContractId : mainnetContractId;
+		this.networkPassphrase = env.STELLAR_NETWORK === 'testnet' ? testnetNetworkPassphrase : mainnetNetworkPassphrase;
+		this.contract = this.getClientForKeypair(this.sourceKeys);
+	}
 
 	public getClientForKeypair(keys: Keypair) {
 		return new Client({
@@ -68,12 +68,12 @@ class ContractClient {
 		});
 	}
 
-    /**
-     * Read HITZ token symbol from the token contract
-     */
-    public getHitzSymbol = async () => {
-        return 'HITZ';
-    };
+	/**
+	 * Read HITZ token symbol from the token contract
+	 */
+	public getHitzSymbol = async () => {
+		return 'HITZ';
+	};
 
 	public async fetchCurrentLedger() {
 		try {
@@ -92,17 +92,17 @@ class ContractClient {
 
 	public getEntry = async (entry_id: string) => {
 		const tx = await this.contract.get_entry({ entry_id }, this.defaultOptions);
-		
+
 		// Handle Option<Entry> return type - manually parse the raw result
 		// The TypeScript bindings struggle with Option types, so we parse the XDR directly
 		try {
 			const simulation = tx.simulation as any;
 			const rawResult = simulation?.result?.retval;
-			
+
 			if (!rawResult || rawResult._value === undefined) {
 				throw new Error(`Entry ${entry_id} not found`);
 			}
-			
+
 			// If it's a map (Some(Entry)), extract the values
 			if (rawResult._arm === 'map' && Array.isArray(rawResult._value)) {
 				const entryMap = rawResult._value;
@@ -115,9 +115,9 @@ class ContractClient {
 						}
 						return false;
 					});
-					
+
 					if (!item) return 0;
-					
+
 					const val = item._attributes?.val;
 					if (val?._arm === 'u64') {
 						return Number(val._value._value);
@@ -126,7 +126,7 @@ class ContractClient {
 					}
 					return 0;
 				};
-				
+
 				return {
 					created_at: getValue('created_at'),
 					escrow_xlm: getValue('escrow_xlm'),
@@ -136,10 +136,10 @@ class ContractClient {
 					tvl: getValue('tvl_xlm'),
 				};
 			}
-			
+
 			// If None (void), entry doesn't exist
 			throw new Error(`Entry ${entry_id} not found`);
-			
+
 		} catch (e) {
 			console.error(`Error parsing entry ${entry_id}:`, (e as any)?.message);
 			throw e;
@@ -153,10 +153,10 @@ class ContractClient {
 	// - cleanEmptyEntries → not needed in new contract
 	// - cleanEmptyEntriesBatch → not needed in new contract
 
-    /**
-     * Initialize the contract (admin-only, one-time)
-     * New signature: (admin, treasury, hitz_token, xlm_token, base_fee)
-     */
+	/**
+	 * Initialize the contract (admin-only, one-time)
+	 * New signature: (admin, treasury, hitz_token, xlm_token, base_fee)
+	 */
 	public init = async (
 		admin: string,
 		treasury: string,
@@ -164,9 +164,9 @@ class ContractClient {
 		xlm_token: string,
 		base_fee: bigint
 	) => {
-        console.log('init', { admin, treasury, hitz_token, xlm_token, base_fee });
+		console.log('init', { admin, treasury, hitz_token, xlm_token, base_fee });
 		const tx = await this.contract.init(
-            { admin, treasury, hitz_token, xlm_token, base_fee },
+			{ admin, treasury, hitz_token, xlm_token, base_fee },
 			this.defaultOptions
 		);
 		console.log(tx);
@@ -203,7 +203,7 @@ class ContractClient {
 		const jsonFromUser = txUser.toJSON();
 		const txRoot = this.contract.fromJSON['record_action'](jsonFromUser);
 		const result = await txRoot.signAndSend();
-		
+
 		try {
 			const getRes = result.getTransactionResponse as any;
 			if (getRes?.resultXdr) {
@@ -260,7 +260,7 @@ class ContractClient {
 		const jsonFromUser = txUser.toJSON();
 		const txRoot = this.contract.fromJSON['claim_rewards'](jsonFromUser);
 		const result = await txRoot.signAndSend();
-		
+
 		return {
 			...result,
 			claimedAmount: Number(result.result) || 0,
@@ -276,26 +276,26 @@ class ContractClient {
 	 * Get user's HITZ token balance
 	 * Uses Horizon API to query SAC token balance
 	 */
-    public getHitzBalance = async (userPublicKey: string) => {
-        try {
-            const server = new Horizon.Server(this.horizonUrl);
-            const account = await server.loadAccount(userPublicKey);
-            
-            // Find HITZ balance in account balances
-            const hitzBalance = account.balances.find((balance: any) => {
-                return balance.asset_code === 'HITZ' && 
-                       balance.asset_issuer === this.sourceKeys.publicKey();
-            });
-            
-            if (hitzBalance && 'balance' in hitzBalance) {
-                return Number(parseFloat(hitzBalance.balance) * 10_000_000); // Convert to stroops
-            }
-            return 0;
-        } catch (error) {
-            console.error('Error fetching HITZ balance:', error);
-            return 0;
-        }
-    };
+	public getHitzBalance = async (userPublicKey: string) => {
+		try {
+			const server = new Horizon.Server(this.horizonUrl);
+			const account = await server.loadAccount(userPublicKey);
+
+			// Find HITZ balance in account balances
+			const hitzBalance = account.balances.find((balance: any) => {
+				return balance.asset_code === 'HITZ' &&
+					balance.asset_issuer === this.sourceKeys.publicKey();
+			});
+
+			if (hitzBalance && 'balance' in hitzBalance) {
+				return Number(parseFloat(hitzBalance.balance) * 10_000_000); // Convert to stroops
+			}
+			return 0;
+		} catch (error) {
+			console.error('Error fetching HITZ balance:', error);
+			return 0;
+		}
+	};
 
 	/**
 	 * Transfer HITZ tokens to another address
@@ -304,44 +304,44 @@ class ContractClient {
 	 * @param toAddress - Destination Stellar address
 	 * @param amount - Amount in HITZ (not stroops) - e.g., 2000 for 2000 HITZ
 	 */
-    public transferHitz = async (secret: string, toAddress: string, amount: number) => {
-        try {
-            const userKeys = Keypair.fromSecret(secret);
-            const server = new Horizon.Server(this.horizonUrl);
-            const sourceAccount = await server.loadAccount(userKeys.publicKey());
-            
-            // Amount is already in human-readable HITZ format (e.g., 2000 HITZ)
-            // Just format it to 7 decimal places for Stellar
-            const amountStr = amount.toFixed(7);
-            
-            // Build payment operation
-            const asset = new Asset('HITZ', this.sourceKeys.publicKey());
-            const transaction = new TransactionBuilder(sourceAccount, {
-                fee: BASE_FEE,
-                networkPassphrase: this.networkPassphrase,
-            })
-                .addOperation(
-                    Operation.payment({
-                        destination: toAddress,
-                        asset: asset,
-                        amount: amountStr,
-                    })
-                )
-                .setTimeout(30)
-                .build();
-            
-            transaction.sign(userKeys);
-            const result = await server.submitTransaction(transaction);
-            
-            return {
-                success: true,
-                txHash: result.hash,
-            };
-        } catch (error) {
-            console.error('Error transferring HITZ:', error);
-            throw new Error('Failed to transfer HITZ tokens');
-        }
-    };
+	public transferHitz = async (secret: string, toAddress: string, amount: number) => {
+		try {
+			const userKeys = Keypair.fromSecret(secret);
+			const server = new Horizon.Server(this.horizonUrl);
+			const sourceAccount = await server.loadAccount(userKeys.publicKey());
+
+			// Amount is already in human-readable HITZ format (e.g., 2000 HITZ)
+			// Just format it to 7 decimal places for Stellar
+			const amountStr = amount.toFixed(7);
+
+			// Build payment operation
+			const asset = new Asset('HITZ', this.sourceKeys.publicKey());
+			const transaction = new TransactionBuilder(sourceAccount, {
+				fee: BASE_FEE,
+				networkPassphrase: this.networkPassphrase,
+			})
+				.addOperation(
+					Operation.payment({
+						destination: toAddress,
+						asset: asset,
+						amount: amountStr,
+					})
+				)
+				.setTimeout(30)
+				.build();
+
+			transaction.sign(userKeys);
+			const result = await server.submitTransaction(transaction);
+
+			return {
+				success: true,
+				txHash: result.hash,
+			};
+		} catch (error) {
+			console.error('Error transferring HITZ:', error);
+			throw new Error('Failed to transfer HITZ tokens');
+		}
+	};
 
 	/**
 	 * Distribute rewards from Treasury to all entries proportionally
@@ -369,7 +369,7 @@ class ContractClient {
 		const jsonFromTreasury = txTreasury.toJSON();
 		const txRoot = this.contract.fromJSON['distribute_rewards'](jsonFromTreasury);
 		const result = await txRoot.signAndSend();
-		
+
 		return result;
 	};
 
@@ -386,21 +386,21 @@ class ContractClient {
 	 * @returns Summary of distribution process
 	 */
 	public distributeRewardsBatch = async (
-		treasurySecret: string, 
+		treasurySecret: string,
 		hitzAmount: bigint,
 		calcBatchSize: number = 40,
 		distBatchSize: number = 15
 	) => {
 		const treasuryKeys = Keypair.fromSecret(treasurySecret);
 		const entryCount = await this.getEntryCount();
-		
+
 		if (entryCount === 0) {
 			throw new Error('No entries to distribute to');
 		}
 
 		console.log(`Starting 3-phase batched distribution: ${entryCount} entries`);
 		console.log(`Phase 1: Calculating total escrow (batch size: ${calcBatchSize})`);
-		
+
 		// PHASE 1: Calculate total escrow in batches
 		let startIndex = 0;
 		let batchNum = 0;
@@ -428,17 +428,17 @@ class ContractClient {
 				const jsonFromTreasury = txTreasury.toJSON();
 				const txRoot = this.contract.fromJSON['calculate_total_escrow_batch'](jsonFromTreasury);
 				const result = await txRoot.signAndSend();
-				
+
 				// Result is tuple: [next_index, running_total]
 				const [nextIndex, runningTotal] = result.result as [number, bigint];
 				totalEscrow = runningTotal;
 				console.log(`  Batch ${batchNum} complete. Running total escrow: ${Number(runningTotal) / 10_000_000} XLM`);
-				
+
 				if (nextIndex >= entryCount) {
 					console.log(`✅ Phase 1 complete! Total escrow: ${Number(totalEscrow) / 10_000_000} XLM`);
 					break;
 				}
-				
+
 				startIndex = nextIndex;
 			} catch (error: any) {
 				console.error(`Calculation batch ${batchNum} failed:`, error?.message || error);
@@ -446,89 +446,117 @@ class ContractClient {
 			}
 		}
 
-		// PHASE 2: Initialize distribution with HITZ transfer
-		console.log(`Phase 2: Initializing distribution with ${Number(hitzAmount) / 10_000_000} HITZ`);
-		try {
-			const tx = await this.contract.initialize_distribution(
-				{
-					caller: treasuryKeys.publicKey(),
-					hitz_amount: hitzAmount,
-				},
-				this.defaultOptions
-			);
+	}
+}
 
-			const jsonFromRoot = tx.toJSON();
-			const treasuryClient = this.getClientForKeypair(treasuryKeys);
-			const txTreasury = treasuryClient.fromJSON['initialize_distribution'](jsonFromRoot);
-			const ledger = (await this.fetchCurrentLedger()) + 100;
-			await txTreasury.signAuthEntries({ expiration: ledger });
-			const jsonFromTreasury = txTreasury.toJSON();
-			const txRoot = this.contract.fromJSON['initialize_distribution'](jsonFromTreasury);
-			await txRoot.signAndSend();
-			
-			console.log('✅ Phase 2 complete! Distribution initialized');
-		} catch (error: any) {
-			console.error('Distribution initialization failed:', error?.message || error);
-			throw new Error(`Distribution initialization failed: ${error?.message || error}`);
+// PHASE 2: Initialize distribution with HITZ transfer
+console.log(`Phase 2: Initializing distribution...`);
+
+// DYNAMIC FIX (Client-Side): Calculate correct HITZ amount to prevent over-distribution
+// Query Oracle Price
+let amountToDistribute = hitzAmount;
+try {
+	const [priceStroops] = await this.getOracleData();
+	if (BigInt(priceStroops) > 0n) {
+		const calculatedHitz = (totalEscrow * 10_000_000n) / BigInt(priceStroops);
+		console.log(`  Oracle Check: Revenue ${Number(totalEscrow) / 10_000_000} XLM @ ${Number(priceStroops) / 10_000_000} XLM/HITZ`);
+		console.log(`  Calculated Requirement: ${Number(calculatedHitz) / 10_000_000} HITZ`);
+
+		// Use the calculated amount, effectively ignoring the "Dump All" request
+		// Unless we don't have enough HITZ, then we send what we have (and partial pay)
+		// modifying 'hitzAmount' usage
+		if (calculatedHitz < hitzAmount) {
+			console.log(`  ⚠️  Limiting distribution from ${Number(hitzAmount) / 10_000_000} to ${Number(calculatedHitz) / 10_000_000} HITZ (Fair Value)`);
+			amountToDistribute = calculatedHitz;
+		}
+	}
+} catch (e) {
+	console.warn("  Oracle check failed, relying on contract validation:", e);
+}
+
+console.log(`  Distributing: ${Number(amountToDistribute) / 10_000_000} HITZ`);
+
+try {
+	const tx = await this.contract.initialize_distribution(
+		{
+			caller: treasuryKeys.publicKey(),
+			hitz_amount: amountToDistribute,
+		},
+		this.defaultOptions
+	);
+
+	const jsonFromRoot = tx.toJSON();
+	const treasuryClient = this.getClientForKeypair(treasuryKeys);
+	const txTreasury = treasuryClient.fromJSON['initialize_distribution'](jsonFromRoot);
+	const ledger = (await this.fetchCurrentLedger()) + 100;
+	await txTreasury.signAuthEntries({ expiration: ledger });
+	const jsonFromTreasury = txTreasury.toJSON();
+	const txRoot = this.contract.fromJSON['initialize_distribution'](jsonFromTreasury);
+	await txRoot.signAndSend();
+
+	console.log('✅ Phase 2 complete! Distribution initialized');
+} catch (error: any) {
+	console.error('Distribution initialization failed:', error?.message || error);
+	throw new Error(`Distribution initialization failed: ${error?.message || error}`);
+}
+
+// PHASE 3: Distribute rewards in batches
+console.log(`Phase 3: Distributing rewards to entries (batch size: ${distBatchSize})`);
+
+startIndex = 0;
+batchNum = 0;
+const distResults = [];
+
+while (startIndex < entryCount) {
+	batchNum++;
+	console.log(`  Distribution batch ${batchNum}: indices ${startIndex}-${Math.min(startIndex + distBatchSize - 1, entryCount - 1)}`);
+
+	try {
+		const tx = await this.contract.distribute_rewards_batch(
+			{
+				caller: treasuryKeys.publicKey(),
+				start_index: startIndex,
+				batch_size: distBatchSize,
+			},
+			this.defaultOptions
+		);
+
+		const jsonFromRoot = tx.toJSON();
+		const treasuryClient = this.getClientForKeypair(treasuryKeys);
+		const txTreasury = treasuryClient.fromJSON['distribute_rewards_batch'](jsonFromRoot);
+		const ledger = (await this.fetchCurrentLedger()) + 100;
+		await txTreasury.signAuthEntries({ expiration: ledger });
+		const jsonFromTreasury = txTreasury.toJSON();
+		const txRoot = this.contract.fromJSON['distribute_rewards_batch'](jsonFromTreasury);
+		const result = await txRoot.signAndSend();
+
+		distResults.push(result);
+
+		// Get next start index from result
+		const nextIndex = Number(result.result);
+		console.log(`  Batch ${batchNum} complete. Next index: ${nextIndex}`);
+
+		if (nextIndex >= entryCount) {
+			console.log('✅ Phase 3 complete! All rewards distributed');
+			break;
 		}
 
-		// PHASE 3: Distribute rewards in batches
-		console.log(`Phase 3: Distributing rewards to entries (batch size: ${distBatchSize})`);
-		
-		startIndex = 0;
-		batchNum = 0;
-		const distResults = [];
+		startIndex = nextIndex;
+	} catch (error: any) {
+		console.error(`Distribution batch ${batchNum} failed:`, error?.message || error);
+		throw new Error(`Distribution failed at batch ${batchNum}: ${error?.message || error}`);
+	}
+}
 
-		while (startIndex < entryCount) {
-			batchNum++;
-			console.log(`  Distribution batch ${batchNum}: indices ${startIndex}-${Math.min(startIndex + distBatchSize - 1, entryCount - 1)}`);
-
-			try {
-				const tx = await this.contract.distribute_rewards_batch(
-					{
-						caller: treasuryKeys.publicKey(),
-						start_index: startIndex,
-						batch_size: distBatchSize,
-					},
-					this.defaultOptions
-				);
-
-				const jsonFromRoot = tx.toJSON();
-				const treasuryClient = this.getClientForKeypair(treasuryKeys);
-				const txTreasury = treasuryClient.fromJSON['distribute_rewards_batch'](jsonFromRoot);
-				const ledger = (await this.fetchCurrentLedger()) + 100;
-				await txTreasury.signAuthEntries({ expiration: ledger });
-				const jsonFromTreasury = txTreasury.toJSON();
-				const txRoot = this.contract.fromJSON['distribute_rewards_batch'](jsonFromTreasury);
-				const result = await txRoot.signAndSend();
-				
-				distResults.push(result);
-
-				// Get next start index from result
-				const nextIndex = Number(result.result);
-				console.log(`  Batch ${batchNum} complete. Next index: ${nextIndex}`);
-				
-				if (nextIndex >= entryCount) {
-					console.log('✅ Phase 3 complete! All rewards distributed');
-					break;
-				}
-				
-				startIndex = nextIndex;
-			} catch (error: any) {
-				console.error(`Distribution batch ${batchNum} failed:`, error?.message || error);
-				throw new Error(`Distribution failed at batch ${batchNum}: ${error?.message || error}`);
-			}
-		}
-
-		return {
-			success: true,
-			phase1Batches: Math.ceil(entryCount / calcBatchSize),
-			phase3Batches: batchNum,
-			totalEntries: entryCount,
-			totalEscrow: Number(totalEscrow) / 10_000_000,
-			hitzDistributed: Number(hitzAmount) / 10_000_000,
-			results: distResults,
-		};
+return {
+	success: true,
+	phase1Batches: Math.ceil(entryCount / calcBatchSize),
+	phase3Batches: batchNum,
+	totalEntries: entryCount,
+	totalEscrow: Number(totalEscrow) / 10_000_000,
+	hitzDistributed: Number(hitzAmount) / 10_000_000,
+	results: distResults,
+};
 	};
 
 	/**
@@ -536,68 +564,68 @@ class ContractClient {
 	 * Returns: [tvl_xlm, escrow_xlm, total_staked, reward_pool, apr]
 	 */
 	public getEntryStats = async (entryId: string) => {
-		const tx = await this.contract.get_entry_stats({ entry_id: entryId }, this.defaultOptions);
-		// Result is a tuple: [tvl_xlm, escrow_xlm, total_staked, reward_pool, apr]
-		const [tvl_xlm, escrow_xlm, total_staked, reward_pool, apr] = tx.result;
-		return {
-			tvlXlm: Number(tvl_xlm),
-			escrowXlm: Number(escrow_xlm),
-			totalStaked: Number(total_staked),
-			rewardPool: Number(reward_pool),
-			apr: Number(apr),
-		};
+	const tx = await this.contract.get_entry_stats({ entry_id: entryId }, this.defaultOptions);
+	// Result is a tuple: [tvl_xlm, escrow_xlm, total_staked, reward_pool, apr]
+	const [tvl_xlm, escrow_xlm, total_staked, reward_pool, apr] = tx.result;
+	return {
+		tvlXlm: Number(tvl_xlm),
+		escrowXlm: Number(escrow_xlm),
+		totalStaked: Number(total_staked),
+		rewardPool: Number(reward_pool),
+		apr: Number(apr),
 	};
+};
 
 	/**
 	 * Get current base fee in stroops
 	 */
 	public getBaseFee = async () => {
-		const tx = await this.contract.get_base_fee(this.defaultOptions);
-		return Number(tx.result);
-	};
+	const tx = await this.contract.get_base_fee(this.defaultOptions);
+	return Number(tx.result);
+};
 
 	public unstake = async (secret: string, entryId: string, amount: number) => {
-		const userKeys = Keypair.fromSecret(secret);
-		const tx = await this.contract.unstake(
-			{
-				entry_id: entryId,
-				caller: userKeys.publicKey(),
-				amount: BigInt(amount),
-			},
-			this.defaultOptions
-		);
+	const userKeys = Keypair.fromSecret(secret);
+	const tx = await this.contract.unstake(
+		{
+			entry_id: entryId,
+			caller: userKeys.publicKey(),
+			amount: BigInt(amount),
+		},
+		this.defaultOptions
+	);
 
-		const jsonFromRoot = tx.toJSON();
-		const userClient = this.getClientForKeypair(userKeys);
-		const txUser = userClient.fromJSON['unstake'](jsonFromRoot);
-		const ledger = (await this.fetchCurrentLedger()) + 100;
-		await txUser.signAuthEntries({ expiration: ledger });
-		const jsonFromUser = txUser.toJSON();
-		const txRoot = this.contract.fromJSON['unstake'](jsonFromUser);
-		const result = await txRoot.signAndSend();
-		
-		return {
-			...result,
-			unstakedAmount: Number(result.result) || 0,
-		};
+	const jsonFromRoot = tx.toJSON();
+	const userClient = this.getClientForKeypair(userKeys);
+	const txUser = userClient.fromJSON['unstake'](jsonFromRoot);
+	const ledger = (await this.fetchCurrentLedger()) + 100;
+	await txUser.signAuthEntries({ expiration: ledger });
+	const jsonFromUser = txUser.toJSON();
+	const txRoot = this.contract.fromJSON['unstake'](jsonFromUser);
+	const result = await txRoot.signAndSend();
+
+	return {
+		...result,
+		unstakedAmount: Number(result.result) || 0,
 	};
+};
 
 	/**
 	 * Get oracle data (price and last update timestamp)
 	 * Returns [price_in_stroops, last_update_timestamp]
 	 */
 	public getOracleData = async (): Promise<readonly [bigint, bigint]> => {
-		const tx = await this.contract.get_oracle_data(this.defaultOptions);
-		return tx.result;
-	};
+	const tx = await this.contract.get_oracle_data(this.defaultOptions);
+	return tx.result;
+};
 
 	/**
 	 * Get entry count
 	 */
 	public getEntryCount = async (): Promise<number> => {
-		const tx = await this.contract.entry_count(this.defaultOptions);
-		return Number(tx.result);
-	};
+	const tx = await this.contract.entry_count(this.defaultOptions);
+	return Number(tx.result);
+};
 
 	/**
 	 * List entry IDs with pagination
@@ -605,28 +633,28 @@ class ContractClient {
 	 * @param limit - Number of entries to fetch
 	 */
 	public listEntries = async (start: number, limit: number): Promise<string[]> => {
-		const tx = await this.contract.list_entries(
-			{ start: start, limit: limit },
-			this.defaultOptions
-		);
-		return tx.result as string[];
-	};
+	const tx = await this.contract.list_entries(
+		{ start: start, limit: limit },
+		this.defaultOptions
+	);
+	return tx.result as string[];
+};
 
 	/**
 	 * Get all entry IDs (handles pagination automatically)
 	 */
 	public getAllEntryIds = async (): Promise<string[]> => {
-		const count = await this.getEntryCount();
-		const allEntryIds: string[] = [];
-		const batchSize = 100; // Fetch in batches of 100
-		
-		for (let i = 0; i < count; i += batchSize) {
-			const batch = await this.listEntries(i, Math.min(batchSize, count - i));
-			allEntryIds.push(...batch);
-		}
-		
-		return allEntryIds;
-	};
+	const count = await this.getEntryCount();
+	const allEntryIds: string[] = [];
+	const batchSize = 100; // Fetch in batches of 100
+
+	for (let i = 0; i < count; i += batchSize) {
+		const batch = await this.listEntries(i, Math.min(batchSize, count - i));
+		allEntryIds.push(...batch);
+	}
+
+	return allEntryIds;
+};
 
 	/**
 	 * Update oracle price (treasury-only)
@@ -634,27 +662,27 @@ class ContractClient {
 	 * Requires Treasury keypair for auth entry signing
 	 */
 	public updateOraclePrice = async (treasurySecret: string, newPriceStroops: bigint) => {
-		const treasuryKeys = Keypair.fromSecret(treasurySecret);
-		const tx = await this.contract.update_oracle_price(
-			{
-				caller: treasuryKeys.publicKey(),
-				new_price: newPriceStroops,
-			},
-			this.defaultOptions
-		);
+	const treasuryKeys = Keypair.fromSecret(treasurySecret);
+	const tx = await this.contract.update_oracle_price(
+		{
+			caller: treasuryKeys.publicKey(),
+			new_price: newPriceStroops,
+		},
+		this.defaultOptions
+	);
 
-		// Auth entry signing pattern (same as other auth-required methods)
-		const jsonFromRoot = tx.toJSON();
-		const treasuryClient = this.getClientForKeypair(treasuryKeys);
-		const txTreasury = treasuryClient.fromJSON['update_oracle_price'](jsonFromRoot);
-		const ledger = (await this.fetchCurrentLedger()) + 100;
-		await txTreasury.signAuthEntries({ expiration: ledger });
-		const jsonFromTreasury = txTreasury.toJSON();
-		const txRoot = this.contract.fromJSON['update_oracle_price'](jsonFromTreasury);
-		const result = await txRoot.signAndSend();
-		
-		return result;
-	};
+	// Auth entry signing pattern (same as other auth-required methods)
+	const jsonFromRoot = tx.toJSON();
+	const treasuryClient = this.getClientForKeypair(treasuryKeys);
+	const txTreasury = treasuryClient.fromJSON['update_oracle_price'](jsonFromRoot);
+	const ledger = (await this.fetchCurrentLedger()) + 100;
+	await txTreasury.signAuthEntries({ expiration: ledger });
+	const jsonFromTreasury = txTreasury.toJSON();
+	const txRoot = this.contract.fromJSON['update_oracle_price'](jsonFromTreasury);
+	const result = await txRoot.signAndSend();
+
+	return result;
+};
 
 	/**
 	 * Merge one entry into another (admin-only)
@@ -664,13 +692,13 @@ class ContractClient {
 	 * @param stakers - List of staker addresses to migrate (empty array to skip stake migration)
 	 */
 	public mergeEntries = async (fromId: string, toId: string, stakers: string[] = []) => {
-		const tx = await this.contract.merge_entries(
-			{ from_id: fromId, into_id: toId, stakers },
-			this.defaultOptions
-		);
-		const result = await tx.signAndSend();
-		return result;
-	};
+	const tx = await this.contract.merge_entries(
+		{ from_id: fromId, into_id: toId, stakers },
+		this.defaultOptions
+	);
+	const result = await tx.signAndSend();
+	return result;
+};
 
 	/**
 	 * Remove an entry completely (admin-only)
@@ -679,13 +707,13 @@ class ContractClient {
 	 * @param stakers - List of staker addresses to return stakes to (empty array if no stakes)
 	 */
 	public removeEntry = async (entryId: string, stakers: string[] = []) => {
-		const tx = await this.contract.remove_entry(
-			{ entry_id: entryId, stakers },
-			this.defaultOptions
-		);
-		const result = await tx.signAndSend();
-		return result;
-	};
+	const tx = await this.contract.remove_entry(
+		{ entry_id: entryId, stakers },
+		this.defaultOptions
+	);
+	const result = await tx.signAndSend();
+	return result;
+};
 
 	/**
 	 * Set artist equity for an entry (admin-only)
@@ -695,13 +723,13 @@ class ContractClient {
 	 * @param equityBps - Equity in basis points (e.g., 1000 = 10%, max 9990 = 99.9%)
 	 */
 	public setArtistEquity = async (entryId: string, artistAddress: string, equityBps: number) => {
-		const tx = await this.contract.set_artist_equity(
-			{ entry_id: entryId, artist: artistAddress, equity_bps: equityBps },
-			this.defaultOptions
-		);
-		const result = await tx.signAndSend();
-		return result;
-	};
+	const tx = await this.contract.set_artist_equity(
+		{ entry_id: entryId, artist: artistAddress, equity_bps: equityBps },
+		this.defaultOptions
+	);
+	const result = await tx.signAndSend();
+	return result;
+};
 
 	/**
 	 * Get artist equity info for an entry (view function)
@@ -710,22 +738,22 @@ class ContractClient {
 	 * @returns (equity_bps, claimed_amount, claimable_amount) or null if no equity
 	 */
 	public getArtistEquity = async (entryId: string, artistAddress: string): Promise<{ equityBps: number; claimed: number; claimable: number } | null> => {
-		try {
-			const tx = await this.contract.get_artist_equity(
-				{ entry_id: entryId, artist: artistAddress },
-				this.defaultOptions
-			);
-			if (!tx.result) return null;
-			const [equityBps, claimed, claimable] = tx.result;
-			return {
-				equityBps: Number(equityBps),
-				claimed: Number(claimed),
-				claimable: Number(claimable),
-			};
-		} catch {
-			return null;
-		}
-	};
+	try {
+		const tx = await this.contract.get_artist_equity(
+			{ entry_id: entryId, artist: artistAddress },
+			this.defaultOptions
+		);
+		if (!tx.result) return null;
+		const [equityBps, claimed, claimable] = tx.result;
+		return {
+			equityBps: Number(equityBps),
+			claimed: Number(claimed),
+			claimable: Number(claimable),
+		};
+	} catch {
+		return null;
+	}
+};
 
 	/**
 	 * Get total artist equity for an entry (view function)
@@ -733,12 +761,12 @@ class ContractClient {
 	 * @returns Total artist equity in basis points
 	 */
 	public getTotalArtistEquity = async (entryId: string): Promise<number> => {
-		const tx = await this.contract.get_total_artist_equity(
-			{ entry_id: entryId },
-			this.defaultOptions
-		);
-		return Number(tx.result);
-	};
+	const tx = await this.contract.get_total_artist_equity(
+		{ entry_id: entryId },
+		this.defaultOptions
+	);
+	return Number(tx.result);
+};
 
 	/**
 	 * Claim artist equity rewards (artist-only)
@@ -748,30 +776,30 @@ class ContractClient {
 	 * @returns Amount claimed
 	 */
 	public claimArtistEquity = async (secret: string, entryId: string) => {
-		const artistKeys = Keypair.fromSecret(secret);
-		const tx = await this.contract.claim_artist_equity(
-			{
-				entry_id: entryId,
-				artist: artistKeys.publicKey(),
-			},
-			this.defaultOptions
-		);
+	const artistKeys = Keypair.fromSecret(secret);
+	const tx = await this.contract.claim_artist_equity(
+		{
+			entry_id: entryId,
+			artist: artistKeys.publicKey(),
+		},
+		this.defaultOptions
+	);
 
-		// Auth entry signing pattern
-		const jsonFromRoot = tx.toJSON();
-		const artistClient = this.getClientForKeypair(artistKeys);
-		const txArtist = artistClient.fromJSON['claim_artist_equity'](jsonFromRoot);
-		const ledger = (await this.fetchCurrentLedger()) + 100;
-		await txArtist.signAuthEntries({ expiration: ledger });
-		const jsonFromArtist = txArtist.toJSON();
-		const txRoot = this.contract.fromJSON['claim_artist_equity'](jsonFromArtist);
-		const result = await txRoot.signAndSend();
-		
-		return {
-			...result,
-			claimedAmount: Number(result.result) || 0,
-		};
+	// Auth entry signing pattern
+	const jsonFromRoot = tx.toJSON();
+	const artistClient = this.getClientForKeypair(artistKeys);
+	const txArtist = artistClient.fromJSON['claim_artist_equity'](jsonFromRoot);
+	const ledger = (await this.fetchCurrentLedger()) + 100;
+	await txArtist.signAuthEntries({ expiration: ledger });
+	const jsonFromArtist = txArtist.toJSON();
+	const txRoot = this.contract.fromJSON['claim_artist_equity'](jsonFromArtist);
+	const result = await txRoot.signAndSend();
+
+	return {
+		...result,
+		claimedAmount: Number(result.result) || 0,
 	};
+};
 }
 
 export default ContractClient;
