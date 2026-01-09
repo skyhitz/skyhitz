@@ -444,32 +444,9 @@ impl SkyhitzCore {
                 .unwrap_or_else(|| panic!("Escrow overflow for entry"));
         }
 
-        // Compute HITZ reward using core-managed emission schedule and mint via SAC (core is admin)
-        let hitz_token: Address = e.storage().instance().get(&DataKey::HitzToken).unwrap();
-        let unit_reward = compute_unit_reward(&e);
-        
-        // SECURITY FIX H5: Use checked arithmetic instead of saturating
-        let reward: i128 = unit_reward
-            .checked_mul(difficulty)
-            .unwrap_or_else(|| panic!("Reward calculation overflow: {} * {}", unit_reward, difficulty));
-        
-        // TREASURY FIX: Distribute from contract balance with 1% daily cap
-        let reward = if reward > 0 {
-            let hitz_client = token::Client::new(&e, &hitz_token);
-            let contract_addr = e.current_contract_address();
-            let treasury_balance = hitz_client.balance(&contract_addr);
-            
-            let payout = check_and_update_daily_cap(&e, reward, treasury_balance);
-            
-            if payout > 0 {
-                hitz_client.transfer(&contract_addr, &caller, &payout);
-            }
-            
-            log!(&e, "Distributed Reward: {} (Requested: {}, Cap Remaining)", payout, reward);
-            payout
-        } else {
-            0
-        };
+        // COMMERCIAL MODEL V2: Fee Collection Only
+        // Rewards are distributed asynchronously via Treasury Distribution.
+        let reward: i128 = 0;
 
         // ECONOMIC MODEL: Market-based staking (prevents arbitrage)
         // Stake amount = XLM invested / HITZ market price
@@ -487,50 +464,34 @@ impl SkyhitzCore {
                 .get(&DataKey::OraclePrice)
                 .unwrap_or(100_000); // Default: 0.01 XLM per HITZ (100,000 stroops)
             
-            if hitz_price_xlm <= 0 {
-                panic!("Invalid oracle price: must be positive");
-            }
-            
-            // Calculate stake: fee (stroops) / price (stroops per HITZ)
-            // We need to convert fee to HITZ units:
-            // stake_hitz = (fee_stroops × 10^7) / (price_stroops_per_hitz)
-            // Both XLM and HITZ use 7 decimals, so we multiply by 10^7 for precision
-            let stake_amt = fee
-                .checked_mul(10_000_000)
-                .and_then(|v| v.checked_div(hitz_price_xlm))
-                .unwrap_or_else(|| panic!("Stake calculation overflow or division error"));
+            // V2 SECURITY: 1:1 Staking (Fee = Stake)
+            // User pays XLM fee, gets equivalent HITZ stake record.
+            // No minting. No Oracle dependency.
+            let stake_amt = fee;
 
             if stake_amt > 0 {
-                // Mint stake HITZ directly to contract (locked, not to user first)
-                let contract_addr = e.current_contract_address();
-                let staked_hitz = safe_mint_with_cap(&e, &hitz_token, &contract_addr, &stake_amt);
-                
-                if staked_hitz > 0 {
-                    // SECURITY FIX H5: Update stake maps using checked arithmetic
-                    let stake_key = DataKey::Stake((entry_id.clone(), caller.clone()));
-                    let current_stake: i128 = e.storage().persistent().get(&stake_key).unwrap_or(0);
-                    let new_stake = current_stake
-                        .checked_add(staked_hitz)
-                        .unwrap_or_else(|| panic!("User stake overflow for entry"));
-                    e.storage().persistent().set(&stake_key, &new_stake);
+                // SECURITY FIX H5: Update stake maps using checked arithmetic
+                let stake_key = DataKey::Stake((entry_id.clone(), caller.clone()));
+                let current_stake: i128 = e.storage().persistent().get(&stake_key).unwrap_or(0);
+                let new_stake = current_stake
+                    .checked_add(stake_amt)
+                    .unwrap_or_else(|| panic!("User stake overflow for entry"));
+                e.storage().persistent().set(&stake_key, &new_stake);
 
-                    let total_key = DataKey::StakeTotal(entry_id.clone());
-                    let current_total: i128 = e.storage().persistent().get(&total_key).unwrap_or(0);
-                    let new_total = current_total
-                        .checked_add(staked_hitz)
-                        .unwrap_or_else(|| panic!("Total stake overflow for entry"));
-                    e.storage().persistent().set(&total_key, &new_total);
+                let total_key = DataKey::StakeTotal(entry_id.clone());
+                let current_total: i128 = e.storage().persistent().get(&total_key).unwrap_or(0);
+                let new_total = current_total
+                    .checked_add(stake_amt)
+                    .unwrap_or_else(|| panic!("Total stake overflow for entry"));
+                e.storage().persistent().set(&total_key, &new_total);
 
-                    log!(
-                        &e,
-                        "Market-based stake: {} XLM at {} stroops/HITZ → {} HITZ staked for entry {} (user total: {})",
-                        fee,
-                        hitz_price_xlm,
-                        staked_hitz,
-                        entry_id,
-                        new_stake
-                    );
-                }
+                log!(
+                    &e,
+                    "V2 Stake: {} XLM fee → {} HITZ stake for entry {} (1:1)",
+                    fee,
+                    stake_amt,
+                    entry_id
+                );
             }
         }
 
@@ -1797,136 +1758,11 @@ fn check_and_update_daily_cap(e: &Env, request: i128, balance: i128) -> i128 {
     allowed
 }
 
-/// SECURITY FIX C1: Safe mint with supply cap enforcement
-/// Mints HITZ tokens while respecting the 21M supply cap
-/// Returns actual amount minted (may be less than requested if cap reached)
-fn safe_mint_with_cap(e: &Env, hitz_token: &Address, to: &Address, amount: &i128) -> i128 {
-    if *amount <= 0 {
-        return 0;
-    }
-    
-    // Get current total minted from storage
-    let total_minted: i128 = e.storage()
-        .persistent()
-        .get(&DataKey::TotalMinted)
-        .unwrap_or(0);
-    
-    // Check if we've already hit the cap
-    if total_minted >= MAX_HITZ_SUPPLY {
-        log!(e, "HITZ supply cap reached: {} / {} stroops", total_minted, MAX_HITZ_SUPPLY);
-        return 0;
-    }
-    
-    // Calculate how much we can actually mint (cap remaining supply)
-    let remaining = MAX_HITZ_SUPPLY - total_minted;
-    let to_mint = if *amount > remaining { 
-        log!(e, "Capping mint: requested {} but only {} remaining", amount, remaining);
-        remaining 
-    } else { 
-        *amount 
-    };
-    
-    if to_mint <= 0 {
-        return 0;
-    }
-    
-    // Verify core contract still has admin rights (prevents brick if admin changed)
-    let sac_admin = token::StellarAssetClient::new(e, hitz_token);
-    let current_admin = sac_admin.admin();
-    if current_admin != e.current_contract_address() {
-        panic!("Core contract is not HITZ token admin. Cannot mint rewards.");
-    }
-    
-    // Mint the tokens via SAC
-    sac_admin.mint(to, &to_mint);
-    
-    // Update total minted counter (CRITICAL: must happen after successful mint)
-    let new_total = total_minted + to_mint;
-    e.storage().persistent().set(&DataKey::TotalMinted, &new_total);
-    
-    // Extend TTL for the counter
-    e.storage().persistent().extend_ttl(&DataKey::TotalMinted, STORAGE_LIFETIME_THRESHOLD, STORAGE_BUMP_AMOUNT);
-    
-    log!(e, "Minted {} HITZ. Total supply: {} / {} stroops", to_mint, new_total, MAX_HITZ_SUPPLY);
-    
-    to_mint
-}
-
-// ============================================================================
-// Emission helpers (moved from token into core for SAC-based HITZ)
-// ============================================================================
-
-fn compute_epoch_index(e: &Env) -> u64 {
-    let start_ts: u64 = e.storage().instance().get(&DataKey::EmissionStartTs).unwrap_or(0);
-    let interval: u64 = e
-        .storage()
-        .instance()
-        .get(&DataKey::EmissionIntervalSec)
-        .unwrap_or(126_144_000);
-    let now = e.ledger().timestamp();
-    if now < start_ts || interval == 0 { return 0; }
-    (now - start_ts) / interval
-}
-
-fn compute_unit_reward(e: &Env) -> i128 {
-    let epoch = compute_epoch_index(e);
-    let epoch0_reward: i128 = e
-        .storage()
-        .instance()
-        .get(&DataKey::EmissionEpoch0UnitReward)
-        .unwrap_or(3_000_000);
-    if epoch >= 64 { return 0; }
-    
-    // Apply halving to base reward
-    let base_reward = epoch0_reward >> epoch;
-    
-    // Get current market price from oracle (stroops per HITZ)
-    let hitz_price_xlm: i128 = e
-        .storage()
-        .instance()
-        .get(&DataKey::OraclePrice)
-        .unwrap_or(100_000); // Default: 0.01 XLM per HITZ
-    
-    // Get base fee (XLM cost per difficulty unit)
-    let base_fee: i128 = e
-        .storage()
-        .instance()
-        .get(&DataKey::BaseFee)
-        .unwrap_or(100_000); // Default: 0.01 XLM
-    
-    // Calculate value-adjusted reward
-    // Goal: Maintain value parity between fee paid and reward received
-    // If user pays 0.01 XLM and HITZ = 0.01 XLM, they should get ~1 HITZ
-    // Formula: reward = fee_paid / hitz_price
-    // Multiply by 10_000_000 to convert from XLM units to stroops precision
-    // SECURITY FIX: Use checked arithmetic to prevent overflow
-    let value_adjusted_reward = if hitz_price_xlm > 0 {
-        base_fee
-            .checked_mul(10_000_000)
-            .and_then(|v| v.checked_div(hitz_price_xlm))
-            .unwrap_or_else(|| {
-                log!(e, "Oracle reward calculation overflow: base_fee={}, price={}", base_fee, hitz_price_xlm);
-                base_reward // Fallback to base reward on overflow
-            })
-    } else {
-        log!(e, "Oracle price is zero, using base_reward");
-        base_reward // Fallback if price is zero
-    };
-    
-    // Take the minimum of:
-    // 1. Base halving schedule reward (prevents over-emission during bear markets)
-    // 2. Value-adjusted reward (prevents arbitrage during bull markets)
-    let final_reward = if value_adjusted_reward < base_reward {
-        value_adjusted_reward
-    } else {
-        base_reward
-    };
-    
-    log!(e, "Dynamic reward: base={}, value_adj={}, final={}, oracle_price={}", 
-         base_reward, value_adjusted_reward, final_reward, hitz_price_xlm);
-    
-    final_reward
-}
+// [V2 CLEANUP] Minting and Oracle Math functions removed.
+// - safe_mint_with_cap
+// - compute_epoch_index
+// - compute_unit_reward
+// Logic replaced by 1:1 Staking and Treasury Distribution.
 
 // ============================================================================
 // Helper Functions
@@ -2085,9 +1921,9 @@ mod test {
         let treasury_xlm = token::Client::new(&e, &xlm_addr).balance(&treasury);
         assert_eq!(treasury_xlm, 100_000);
 
-        // Check HITZ reward: difficulty 1, base=3M, value_adj=10M, final=3M
+        // Check HITZ reward: V2 Model (No Minting)
         let user_hitz = token::Client::new(&e, &hitz_addr).balance(&user);
-        assert_eq!(user_hitz, 3_000_000); // Dynamic reward capped by halving schedule
+        assert_eq!(user_hitz, 0); // No immediate reward
     }
 
     #[test]
@@ -2118,17 +1954,17 @@ mod test {
         assert_eq!(entry.tvl_xlm, 1_000_000); // 0.1 XLM (base_fee * 10)
         assert_eq!(entry.escrow_xlm, 0);
 
-        // Check user got reward (separate from stake)
+        // Check user got reward (V2: No immediate reward)
         let user_hitz = token::Client::new(&e, &hitz_addr).balance(&user);
-        // Reward: difficulty 10, base=3M per unit, value_adj=100M, final=3M per unit × 10 = 30M
-        assert_eq!(user_hitz, 30_000_000);
+        assert_eq!(user_hitz, 0);
 
-        // Check stake recorded (market-based: 0.1 XLM / 0.01 price = 10 HITZ)
+        // Check stake recorded (V2: 1:1 with Fee)
+        // Fee = 1,000,000 (0.1 XLM) -> Stake = 1,000,000 (0.1 HITZ)
         let stake = client.get_stake(&entry_id, &user);
-        assert_eq!(stake, 100_000_000); // 10 HITZ in stroops
+        assert_eq!(stake, 1_000_000);
 
         let stake_total = client.get_stake_total(&entry_id);
-        assert_eq!(stake_total, 100_000_000); // 10 HITZ in stroops
+        assert_eq!(stake_total, 1_000_000);
     }
 
     #[test]
@@ -2145,18 +1981,18 @@ mod test {
         let entry_id = String::from_str(&e, "song123");
         client.create_entry(&entry_id);
 
-        // Epoch 0 (start): unit reward = 3,000,000; stream difficulty = 1 → 3,000,000 minted
+        // Epoch 0 (start): V2 Model -> No Minting. Reward = 0.
         let start_time = e.ledger().timestamp();
         e.ledger().with_mut(|li| li.timestamp = start_time);
         client.record_action(&user, &entry_id, &symbol_short!("stream"), &None);
         let r0 = token::Client::new(&e, &hitz_addr).balance(&user);
-        assert_eq!(r0, 3_000_000);
+        assert_eq!(r0, 0);
 
-        // Advance to next epoch (4 years later) and record another stream
+        // Advance to next epoch
         e.ledger().with_mut(|li| li.timestamp += 126_144_000);
         client.record_action(&user, &entry_id, &symbol_short!("stream"), &None);
-        let r1 = token::Client::new(&e, &hitz_addr).balance(&user) - r0;
-        assert_eq!(r1, 1_500_000); // halved
+        let r1 = token::Client::new(&e, &hitz_addr).balance(&user);
+        assert_eq!(r1, 0); // No Minting
     }
 
     #[test]
@@ -2185,10 +2021,9 @@ mod test {
 
         client.record_action(&user, &entry_id, &symbol_short!("stream"), &None);
 
-        // With SAC minting, contract can mint directly without balance constraints
-        // User gets full reward: 3M HITZ (unit_reward=3M, difficulty=1)
+        // With SAC minting gone, no reward is minted.
         let user_hitz = token::Client::new(&e, &hitz_addr).balance(&user);
-        assert_eq!(user_hitz, 3_000_000);
+        assert_eq!(user_hitz, 0);
     }
 
     #[test]
@@ -2297,41 +2132,41 @@ mod test {
         let entry_id = String::from_str(&e, "song123");
         client.create_entry(&entry_id);
 
-        // Test 1: Minimum investment (0.3 XLM = 3M stroops) at 0.01 XLM per HITZ
-        // Market-based stake: 0.3 XLM / 0.01 = 30 HITZ = 300M stroops
+        // Test 1: Minimum investment (0.3 XLM = 3M stroops)
+        // V2 Stake: 1:1 (3M stroops)
         client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(3_000_000i128));
         
         let entry = client.get_entry(&entry_id).unwrap();
         assert_eq!(entry.tvl_xlm, 3_000_000); // 0.3 XLM
         
         let stake1 = client.get_stake(&entry_id, &user);
-        assert_eq!(stake1, 300_000_000); // 30 HITZ
+        assert_eq!(stake1, 3_000_000); // 1:1
 
         // Test 2: Double investment (0.6 XLM = 6M stroops)
-        // Market-based stake: 0.6 XLM / 0.01 = 60 HITZ = 600M stroops
-        // Total: 30 + 60 = 90 HITZ = 900M stroops
+        // V2 Stake: 1:1 (6M stroops)
+        // Total: 3M + 6M = 9M stroops
         client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(6_000_000i128));
         
         let entry = client.get_entry(&entry_id).unwrap();
-        assert_eq!(entry.tvl_xlm, 9_000_000); // 0.3 + 0.6 = 0.9 XLM
+        assert_eq!(entry.tvl_xlm, 9_000_000); // 0.9 XLM
         
         let stake2 = client.get_stake(&entry_id, &user);
-        assert_eq!(stake2, 900_000_000); // 90 HITZ
+        assert_eq!(stake2, 9_000_000); // 9M
 
         // Test 3: Large investment (3.0 XLM = 30M stroops)
-        // Market-based stake: 3.0 XLM / 0.01 = 300 HITZ = 3B stroops
-        // Total: 90 + 300 = 390 HITZ = 3.9B stroops
+        // V2 Stake: 1:1 (30M stroops)
+        // Total: 9M + 30M = 39M stroops
         client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(30_000_000i128));
         
         let entry = client.get_entry(&entry_id).unwrap();
         assert_eq!(entry.tvl_xlm, 39_000_000); // 0.9 + 3.0 = 3.9 XLM
         
         let stake3 = client.get_stake(&entry_id, &user);
-        assert_eq!(stake3, 3_900_000_000); // 390 HITZ
+        assert_eq!(stake3, 39_000_000); // 39M
 
         // Verify proportional stakes
         let total_stake = client.get_stake_total(&entry_id);
-        assert_eq!(total_stake, 3_900_000_000); // 390 HITZ
+        assert_eq!(total_stake, 39_000_000); // 39M
     }
 
     #[test]
@@ -2449,8 +2284,8 @@ mod test {
         client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(10_000_000i128));
 
         let user_stake = client.get_stake(&entry_id, &user);
-        // Market-based: 1 XLM / 0.1 price = 10 HITZ = 100M stroops
-        assert_eq!(user_stake, 100_000_000);
+        // V2: 1 XLM = 1 HITZ = 10M stroops
+        assert_eq!(user_stake, 10_000_000);
 
         // Admin allocates 1000 HITZ as rewards
         client.allocate_rewards(&entry_id, &1_000_000_000i128);
@@ -2473,8 +2308,8 @@ mod test {
 
         // User should have received HITZ (invest reward + claimed rewards)
         let user_hitz = token::Client::new(&e, &hitz_addr).balance(&user);
-        // 30M from invest reward + 1,000M from claimed rewards = 1,030M
-        assert_eq!(user_hitz, 1_030_000_000);
+        // 0 from invest reward + 1,000M from claimed rewards = 1,000M
+        assert_eq!(user_hitz, 1_000_000_000);
     }
 
     #[test]
@@ -2560,8 +2395,8 @@ mod test {
         
         // Verify stake was migrated
         let stake = client.get_stake(&into_id, &user);
-        // Market-based: 1 XLM / 0.01 price = 100 HITZ = 1B stroops
-        assert_eq!(stake, 1_000_000_000);
+        // V2: 1:1 Fee = Stake
+        assert_eq!(stake, 10_000_000);
 
         // Remove target (user has stake, so provide stakers list)
         let mut stakers = Vec::new(&e);
@@ -2596,8 +2431,8 @@ mod test {
         client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(100_000_000i128));
 
         let stake = client.get_stake(&entry_id, &user);
-        // Market-based: 10 XLM / 0.01 price = 1,000 HITZ = 10B stroops
-        assert_eq!(stake, 10_000_000_000);
+        // V2: 10 XLM = 10 HITZ = 100M stroops
+        assert_eq!(stake, 100_000_000);
 
         // Admin allocates 500M HITZ rewards on day 30
         e.ledger().with_mut(|li| li.timestamp = 30 * 86_400);
@@ -2606,16 +2441,18 @@ mod test {
         // Calculate APR (allow off-by-one rounding)
         // APR = (500M / 10B / 30 days) × 365 × 10000 = 6,083 basis points
         let apr = client.calculate_apr(&entry_id);
-        assert!(apr >= 6_080 && apr <= 6_090);
+        // APR = (500M / 100M / 30) * 365 * 10000 = 5 * 12.16 * 10000 = 608,333
+        // Allow variance
+        assert!(apr >= 608_000 && apr <= 609_000);
 
         // Test with more rewards on day 60
         e.ledger().with_mut(|li| li.timestamp = 60 * 86_400);
         client.allocate_rewards(&entry_id, &500_000_000i128);
 
         // Total rewards: 1000M over 60 days
-        // APR = (1000M / 10B / 60 days) × 365 × 10000 = 6,083 basis points
+        // APR = (1000M / 100M / 60 days) × 365 × 10000 = 608,333 basis points
         let apr2 = client.calculate_apr(&entry_id);
-        assert!(apr2 >= 6_080 && apr2 <= 6_090);
+        assert!(apr2 >= 608_000 && apr2 <= 609_000);
     }
 
     #[test]
@@ -2655,8 +2492,8 @@ mod test {
 
         assert_eq!(tvl, 10_000_000); // 1 XLM invested
         assert_eq!(escrow, 150_000_000); // stream (5 XLM) + like (10 XLM) = 15 XLM
-        // Market-based stake: 1 XLM / 5 XLM price (base_fee=50M) = 0.2 HITZ = 2M stroops
-        assert_eq!(stake, 2_000_000); // 0.2 HITZ staked
+        // Market-based stake: 1 XLM = 1 HITZ = 10M stroops
+        assert_eq!(stake, 10_000_000); // 1 HITZ staked
         assert_eq!(pool, 100_000_000); // 100M HITZ allocated
         
         // APR = (pool / stake / days) × 365 × 10000
@@ -2747,25 +2584,31 @@ mod test {
 
         let user_stake_before = client.get_stake(&entry_id, &user);
         let total_stake_before = client.get_stake_total(&entry_id);
-        // Market-based: 1 XLM / 0.01 = 100 HITZ = 1B stroops
-        assert_eq!(user_stake_before, 1_000_000_000);
-        assert_eq!(total_stake_before, 1_000_000_000);
+        // V2: 1 XLM Fee = 1 HITZ Stake = 10,000,000 stroops
+        assert_eq!(user_stake_before, 10_000_000);
+        assert_eq!(total_stake_before, 10_000_000);
 
         let user_balance_before = hitz_balance_client.balance(&user);
 
-        // Unstake 400M stroops (40 HITZ, which is 40% of 100 HITZ stake)
-        let unstaked = client.unstake(&entry_id, &user, &400_000_000i128);
-        assert_eq!(unstaked, 400_000_000);
+        // Unstake 40,000 stroops (0.004 HITZ)
+        // Note: Treasury must have funds! But here strict mock might fail if contract balance is 0?
+        // Ah, unstake uses transfer. If contract has 0 balance, transfer fails.
+        // We need to fund contract in setup!
+        hitz_admin.mint(&contract_id, &20_000_000_000_000i128); // Fund Treasury
+        
+        let unstaked = client.unstake(&entry_id, &user, &4_000_000i128);
+        assert_eq!(unstaked, 4_000_000);
 
+        // Verify stake updated
         // Verify stake updated
         let user_stake_after = client.get_stake(&entry_id, &user);
         let total_stake_after = client.get_stake_total(&entry_id);
-        assert_eq!(user_stake_after, 600_000_000); // 60 HITZ remaining
-        assert_eq!(total_stake_after, 600_000_000);
+        assert_eq!(user_stake_after, 6_000_000); // 10M - 4M = 6M
+        assert_eq!(total_stake_after, 6_000_000);
 
         // Verify HITZ returned to user
         let user_balance_after = hitz_balance_client.balance(&user);
-        assert_eq!(user_balance_after, user_balance_before + 400_000_000);
+        assert_eq!(user_balance_after, user_balance_before + 4_000_000);
     }
 
     #[test]
@@ -2796,12 +2639,15 @@ mod test {
         client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(10_000_000i128));
 
         let user_stake_before = client.get_stake(&entry_id, &user);
-        // Market-based: 1 XLM / 0.01 = 100 HITZ = 1B stroops
-        assert_eq!(user_stake_before, 1_000_000_000);
+        // V2: 1:1
+        assert_eq!(user_stake_before, 10_000_000);
+
+        // Fund Treasury
+        hitz_admin.mint(&contract_id, &20_000_000_000_000i128);
 
         // Unstake ALL HITZ
-        let unstaked = client.unstake(&entry_id, &user, &1_000_000_000i128);
-        assert_eq!(unstaked, 1_000_000_000);
+        let unstaked = client.unstake(&entry_id, &user, &10_000_000i128);
+        assert_eq!(unstaked, 10_000_000);
 
         // Verify stake removed
         let user_stake_after = client.get_stake(&entry_id, &user);
@@ -2926,11 +2772,14 @@ mod test {
         client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(10_000_000i128));
         client.record_action(&user2, &entry_id, &symbol_short!("invest"), &Some(20_000_000i128));
 
-        // User1: 1 XLM / 5 = 0.2 HITZ = 2M stroops
-        // User2: 2 XLM / 5 = 0.4 HITZ = 4M stroops
-        // Total stake = 2M + 4M = 6M stroops
+        // User1: 1 XLM = 1 HITZ (10M stroops)
+        // User2: 2 XLM = 2 HITZ (20M stroops)
+        // Total stake = 30M stroops
         let total_stake_before = client.get_stake_total(&entry_id);
-        assert_eq!(total_stake_before, 6_000_000);
+        assert_eq!(total_stake_before, 30_000_000);
+
+        // Fund Treasury
+        hitz_admin.mint(&contract_id, &20_000_000_000_000i128);
 
         // User1 unstakes half of their stake (1M stroops = 0.1 HITZ)
         client.unstake(&entry_id, &user, &1_000_000i128);
@@ -2938,12 +2787,12 @@ mod test {
         // Verify individual stakes
         let user1_stake = client.get_stake(&entry_id, &user);
         let user2_stake = client.get_stake(&entry_id, &user2);
-        assert_eq!(user1_stake, 1_000_000); // 2M - 1M = 1M
-        assert_eq!(user2_stake, 4_000_000); // unchanged
+        assert_eq!(user1_stake, 9_000_000); // 10M - 1M = 9M
+        assert_eq!(user2_stake, 20_000_000); // 20M unchanged
 
         // Verify total stake
         let total_stake_after = client.get_stake_total(&entry_id);
-        assert_eq!(total_stake_after, 5_000_000); // 1M + 4M
+        assert_eq!(total_stake_after, 29_000_000); // 9M + 20M
     }
 
     #[test]
@@ -2964,18 +2813,20 @@ mod test {
         let entry_id = String::from_str(&e, "song123");
         client.create_entry(&entry_id);
 
-        // User invests 1 XLM at 5 XLM/HITZ price
+        // User invests 1 XLM (10M stroops) -> 10M Stake
         client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(10_000_000i128));
-        // Market-based: 1 XLM / 5 = 0.2 HITZ = 2M stroops
-        assert_eq!(client.get_stake(&entry_id, &user), 2_000_000);
+        assert_eq!(client.get_stake(&entry_id, &user), 10_000_000);
+
+        // Fund Treasury
+        hitz_admin.mint(&contract_id, &20_000_000_000_000i128);
 
         // User unstakes all
-        client.unstake(&entry_id, &user, &2_000_000i128);
+        client.unstake(&entry_id, &user, &10_000_000i128);
         assert_eq!(client.get_stake(&entry_id, &user), 0);
 
         // User reinvests same amount
         client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(10_000_000i128));
-        assert_eq!(client.get_stake(&entry_id, &user), 2_000_000);
+        assert_eq!(client.get_stake(&entry_id, &user), 10_000_000);
     }
 
     #[test]
@@ -3043,7 +2894,8 @@ mod test {
     }
 
     #[test]
-    fn test_dynamic_emission_with_oracle() {
+    #[test]
+    fn test_v2_oracle_immunity() {
         let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
 
         let client = SkyhitzCoreClient::new(&e, &contract_id);
@@ -3051,35 +2903,30 @@ mod test {
         let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
         xlm_admin.mint(&user, &100_000_000i128);
 
-        // Initialize with base_fee = 0.01 XLM, oracle_price = 0.01 XLM per HITZ
+        // Initialize
         client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
-
         let entry_id = String::from_str(&e, "song123");
         client.create_entry(&entry_id);
 
-        // Test 1: Default price (0.01 XLM per HITZ)
-        // Stream: difficulty 1, pays 0.01 XLM
-        // base_reward = 3M, value_adjusted = 10M, final = min(3M, 10M) = 3M
+        // Test 1: Default price
         client.record_action(&user, &entry_id, &symbol_short!("stream"), &None);
         let user_hitz_1 = token::Client::new(&e, &hitz_addr).balance(&user);
-        assert_eq!(user_hitz_1, 3_000_000); // 0.3 HITZ (capped by halving schedule)
+        assert_eq!(user_hitz_1, 0); // V2: No Minting
 
-        // Test 2: Update oracle to higher price (0.05 XLM per HITZ)
-        // This should reduce rewards (to prevent arbitrage)
+        // Test 2: Update oracle to huge price (Should NOT reduce reward, because reward is 0)
         client.update_oracle_price(&treasury, &500_000i128);
         client.record_action(&user, &entry_id, &symbol_short!("stream"), &None);
         let user_hitz_2 = token::Client::new(&e, &hitz_addr).balance(&user) - user_hitz_1;
-        // At 0.05 XLM per HITZ: base=3M, value_adj=(100K×10M)/500K=2M, final=2M
-        assert_eq!(user_hitz_2, 2_000_000); // 0.2 HITZ
+        assert_eq!(user_hitz_2, 0);
 
-        // Test 3: Update oracle to lower price (0.001 XLM per HITZ)
-        // Reward would increase but capped by halving schedule
-        client.update_oracle_price(&treasury, &10_000i128);
+        // Test 3: Update oracle to DUST price (The Exploit Vector)
+        // Previous behavior: Infinite Minting.
+        // V2 Behavior: Zero.
+        client.update_oracle_price(&treasury, &1i128); // 0.0000001 XLM
         let balance_before = token::Client::new(&e, &hitz_addr).balance(&user);
         client.record_action(&user, &entry_id, &symbol_short!("stream"), &None);
         let user_hitz_3 = token::Client::new(&e, &hitz_addr).balance(&user) - balance_before;
-        // Should be capped at base_reward (3_000_000 for epoch 0)
-        assert_eq!(user_hitz_3, 3_000_000);
+        assert_eq!(user_hitz_3, 0); // Confirmed Immune
     }
 
     #[test]
