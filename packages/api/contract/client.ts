@@ -33,7 +33,7 @@ if (typeof window !== 'undefined') {
 
 
 
-export type DataKey = {tag: "Admin", values: void} | {tag: "Treasury", values: void} | {tag: "HitzToken", values: void} | {tag: "XlmToken", values: void} | {tag: "BaseFee", values: void} | {tag: "EmissionStartTs", values: void} | {tag: "EmissionIntervalSec", values: void} | {tag: "EmissionEpoch0UnitReward", values: void} | {tag: "OraclePrice", values: void} | {tag: "OracleLastUpdate", values: void} | {tag: "Entry", values: readonly [string]} | {tag: "Stake", values: readonly [readonly [string, string]]} | {tag: "StakeTotal", values: readonly [string]} | {tag: "RewardPool", values: readonly [string]} | {tag: "Claimed", values: readonly [readonly [string, string]]} | {tag: "EntryAt", values: readonly [u32]} | {tag: "EntryCount", values: void} | {tag: "TotalMinted", values: void} | {tag: "BatchDistTotalEscrow", values: void} | {tag: "BatchDistHitzAmount", values: void} | {tag: "ArtistEquity", values: readonly [readonly [string, string]]} | {tag: "ArtistEquityTotal", values: readonly [string]};
+export type DataKey = { tag: "Admin", values: void } | { tag: "Treasury", values: void } | { tag: "HitzToken", values: void } | { tag: "XlmToken", values: void } | { tag: "BaseFee", values: void } | { tag: "EmissionStartTs", values: void } | { tag: "EmissionIntervalSec", values: void } | { tag: "EmissionEpoch0UnitReward", values: void } | { tag: "OraclePrice", values: void } | { tag: "OracleLastUpdate", values: void } | { tag: "Entry", values: readonly [string] } | { tag: "Stake", values: readonly [readonly [string, string]] } | { tag: "StakeTotal", values: readonly [string] } | { tag: "RewardPool", values: readonly [string] } | { tag: "Claimed", values: readonly [readonly [string, string]] } | { tag: "EntryAt", values: readonly [u32] } | { tag: "EntryCount", values: void } | { tag: "TotalMinted", values: void } | { tag: "BatchDistTotalEscrow", values: void } | { tag: "BatchDistHitzAmount", values: void } | { tag: "ArtistEquity", values: readonly [readonly [string, string]] } | { tag: "ArtistEquityTotal", values: readonly [string] };
 
 
 export interface Entry {
@@ -58,7 +58,7 @@ export interface Client {
    * Upgrade core contract to new WASM code (admin-only)
    * Note: Named `upgrade_core` to avoid export name collision with token's `upgrade`.
    */
-  upgrade_core: ({new_wasm_hash}: {new_wasm_hash: Buffer}, options?: {
+  upgrade_core: ({ new_wasm_hash }: { new_wasm_hash: Buffer }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -109,7 +109,7 @@ export interface Client {
    * Admin-only: remove entries in chunks to stay under footprint limits.
    * Removes entries at indexes [start, start+limit) using EntryAt(i).
    */
-  reset_entries_chunk: ({start, limit}: {start: u32, limit: u32}, options?: {
+  reset_entries_chunk: ({ start, limit }: { start: u32, limit: u32 }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -151,7 +151,7 @@ export interface Client {
    * Construct and simulate a reset_entry_by_pos transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    * Admin-only: remove one entry by its position (EntryAt(i)) and related keys.
    */
-  reset_entry_by_pos: ({i}: {i: u32}, options?: {
+  reset_entry_by_pos: ({ i }: { i: u32 }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -179,7 +179,7 @@ export interface Client {
    * * `xlm_token` - XLM token contract address (SAC)
    * * `base_fee` - Base fee per difficulty unit in stroops (default 100,000 = 0.01 XLM)
    */
-  init: ({admin, treasury, hitz_token, xlm_token, base_fee}: {admin: string, treasury: string, hitz_token: string, xlm_token: string, base_fee: i128}, options?: {
+  init: ({ admin, treasury, hitz_token, xlm_token, base_fee }: { admin: string, treasury: string, hitz_token: string, xlm_token: string, base_fee: i128 }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -203,7 +203,31 @@ export interface Client {
    * # Arguments
    * * `new_base_fee` - New base fee per difficulty unit in stroops (e.g., 100,000 = 0.01 XLM)
    */
-  set_base_fee: ({new_base_fee}: {new_base_fee: i128}, options?: {
+  set_base_fee: ({ new_base_fee }: { new_base_fee: i128 }, options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<null>>
+
+  /**
+   * Construct and simulate a admin_set_total_minted transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Set total minted amount (admin-only)
+   * 
+   * EMERGENCY FUNCTION: Used for protocol state restoration after exploit recovery.
+   * Allows admin to reset the Total Minted counter if tokens are burned.
+   */
+  admin_set_total_minted: ({ new_amount }: { new_amount: i128 }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -258,7 +282,7 @@ export interface Client {
    * * `caller` - Treasury address (must be the configured Treasury)
    * * `new_price` - New HITZ/XLM price in stroops (e.g., 100,000 = 0.01 XLM per HITZ)
    */
-  update_oracle_price: ({caller, new_price}: {caller: string, new_price: i128}, options?: {
+  update_oracle_price: ({ caller, new_price }: { caller: string, new_price: i128 }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -368,7 +392,7 @@ export interface Client {
    * Create a new entry (admin-only)
    * SECURITY: Limited to MAX_ENTRIES to prevent DOS
    */
-  create_entry: ({entry_id}: {entry_id: string}, options?: {
+  create_entry: ({ entry_id }: { entry_id: string }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -392,7 +416,7 @@ export interface Client {
    * Handles fee transfer, reward calculation, and optional auto-staking
    * For invest action, amount_xlm specifies the investment (min 0.3 XLM), ignored for other actions
    */
-  record_action: ({caller, entry_id, kind, amount_xlm}: {caller: string, entry_id: string, kind: string, amount_xlm: Option<i128>}, options?: {
+  record_action: ({ caller, entry_id, kind, amount_xlm }: { caller: string, entry_id: string, kind: string, amount_xlm: Option<i128> }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -413,7 +437,7 @@ export interface Client {
    * Construct and simulate a get_entry transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    * Get entry data
    */
-  get_entry: ({entry_id}: {entry_id: string}, options?: {
+  get_entry: ({ entry_id }: { entry_id: string }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -434,7 +458,7 @@ export interface Client {
    * Construct and simulate a list_entries transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    * List entry IDs with pagination
    */
-  list_entries: ({start, limit}: {start: u32, limit: u32}, options?: {
+  list_entries: ({ start, limit }: { start: u32, limit: u32 }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -455,7 +479,7 @@ export interface Client {
    * Construct and simulate a get_stake transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    * Get user's stake for an entry
    */
-  get_stake: ({entry_id, owner}: {entry_id: string, owner: string}, options?: {
+  get_stake: ({ entry_id, owner }: { entry_id: string, owner: string }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -476,7 +500,7 @@ export interface Client {
    * Construct and simulate a get_stake_total transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    * Get total stake for an entry
    */
-  get_stake_total: ({entry_id}: {entry_id: string}, options?: {
+  get_stake_total: ({ entry_id }: { entry_id: string }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -509,7 +533,7 @@ export interface Client {
    * Optimized to single loop - O(n) where n = number of entries
    * SECURITY: Limited to 1000 entries to prevent DOS
    */
-  distribute_rewards: ({caller, hitz_amount}: {caller: string, hitz_amount: i128}, options?: {
+  distribute_rewards: ({ caller, hitz_amount }: { caller: string, hitz_amount: i128 }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -541,7 +565,7 @@ export interface Client {
    * # Usage
    * Call repeatedly with increasing start_index until next_start_index >= entry_count
    */
-  calculate_total_escrow_batch: ({caller, start_index, batch_size}: {caller: string, start_index: u32, batch_size: u32}, options?: {
+  calculate_total_escrow_batch: ({ caller, start_index, batch_size }: { caller: string, start_index: u32, batch_size: u32 }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -568,7 +592,7 @@ export interface Client {
    * * `caller` - Treasury address that holds the HITZ
    * * `hitz_amount` - Total HITZ to distribute
    */
-  initialize_distribution: ({caller, hitz_amount}: {caller: string, hitz_amount: i128}, options?: {
+  initialize_distribution: ({ caller, hitz_amount }: { caller: string, hitz_amount: i128 }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -604,7 +628,7 @@ export interface Client {
    * 2. Then: Call initialize_distribution once with total HITZ amount
    * 3. Finally: Call distribute_rewards_batch repeatedly until complete
    */
-  distribute_rewards_batch: ({caller, start_index, batch_size}: {caller: string, start_index: u32, batch_size: u32}, options?: {
+  distribute_rewards_batch: ({ caller, start_index, batch_size }: { caller: string, start_index: u32, batch_size: u32 }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -627,7 +651,7 @@ export interface Client {
    * 
    * Admin-only function for manual reward allocation (e.g., promotions, bonuses)
    */
-  allocate_rewards: ({entry_id, hitz_amount}: {entry_id: string, hitz_amount: i128}, options?: {
+  allocate_rewards: ({ entry_id, hitz_amount }: { entry_id: string, hitz_amount: i128 }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -650,7 +674,7 @@ export interface Client {
    * 
    * Admin-only function for manual batch allocation (e.g., campaigns, airdrops)
    */
-  batch_allocate_rewards: ({entry_ids, amounts}: {entry_ids: Array<string>, amounts: Array<i128>}, options?: {
+  batch_allocate_rewards: ({ entry_ids, amounts }: { entry_ids: Array<string>, amounts: Array<i128> }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -675,7 +699,7 @@ export interface Client {
    * If artist equity exists, stakers share (100% - total_artist_equity) of rewards.
    * Formula: claimable = (staker_pool × user_stake) / total_stake - already_claimed
    */
-  claim_rewards: ({entry_id, claimer}: {entry_id: string, claimer: string}, options?: {
+  claim_rewards: ({ entry_id, claimer }: { entry_id: string, claimer: string }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -712,7 +736,7 @@ export interface Client {
    * - If amount exceeds user's stake
    * - If amount <= 0
    */
-  unstake: ({entry_id, caller, amount}: {entry_id: string, caller: string, amount: i128}, options?: {
+  unstake: ({ entry_id, caller, amount }: { entry_id: string, caller: string, amount: i128 }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -733,7 +757,7 @@ export interface Client {
    * Construct and simulate a get_claimable_rewards transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    * Get claimable HITZ rewards for a staker (accounts for artist equity)
    */
-  get_claimable_rewards: ({entry_id, user}: {entry_id: string, user: string}, options?: {
+  get_claimable_rewards: ({ entry_id, user }: { entry_id: string, user: string }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -754,7 +778,7 @@ export interface Client {
    * Construct and simulate a get_reward_pool transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    * Get reward pool size for an entry
    */
-  get_reward_pool: ({entry_id}: {entry_id: string}, options?: {
+  get_reward_pool: ({ entry_id }: { entry_id: string }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -778,7 +802,7 @@ export interface Client {
    * APR = ((reward_pool / total_stake) / days_since_creation) × 365 × 100
    * Returns APR as basis points (1% = 100, 10% = 1000)
    */
-  calculate_apr: ({entry_id}: {entry_id: string}, options?: {
+  calculate_apr: ({ entry_id }: { entry_id: string }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -801,7 +825,7 @@ export interface Client {
    * 
    * Returns: (tvl_xlm, escrow_xlm, total_stake_hitz, reward_pool_hitz, apr_basis_points)
    */
-  get_entry_stats: ({entry_id}: {entry_id: string}, options?: {
+  get_entry_stats: ({ entry_id }: { entry_id: string }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -836,7 +860,7 @@ export interface Client {
    * - Each artist can only have one equity claim per entry
    * - Equity is immutable once set
    */
-  set_artist_equity: ({entry_id, artist, equity_bps}: {entry_id: string, artist: string, equity_bps: u32}, options?: {
+  set_artist_equity: ({ entry_id, artist, equity_bps }: { entry_id: string, artist: string, equity_bps: u32 }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -864,7 +888,7 @@ export interface Client {
    * # Returns
    * Amount of HITZ claimed
    */
-  claim_artist_equity: ({entry_id, artist}: {entry_id: string, artist: string}, options?: {
+  claim_artist_equity: ({ entry_id, artist }: { entry_id: string, artist: string }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -888,7 +912,7 @@ export interface Client {
    * # Returns
    * (equity_bps, claimed_amount, claimable_amount) or (0, 0, 0) if no equity
    */
-  get_artist_equity: ({entry_id, artist}: {entry_id: string, artist: string}, options?: {
+  get_artist_equity: ({ entry_id, artist }: { entry_id: string, artist: string }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -912,7 +936,7 @@ export interface Client {
    * # Returns
    * Total equity in basis points (0-9990)
    */
-  get_total_artist_equity: ({entry_id}: {entry_id: string}, options?: {
+  get_total_artist_equity: ({ entry_id }: { entry_id: string }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -962,7 +986,7 @@ export interface Client {
    * Note: We cannot iterate all stakers (no index), so admin must provide the list.
    * Use off-chain indexing or events to track stakers.
    */
-  merge_entries: ({from_id, into_id, stakers}: {from_id: string, into_id: string, stakers: Array<string>}, options?: {
+  merge_entries: ({ from_id, into_id, stakers }: { from_id: string, into_id: string, stakers: Array<string> }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -995,7 +1019,7 @@ export interface Client {
    * Note: We cannot iterate all stakers (no index), so admin must provide the list.
    * Use off-chain indexing or events to track stakers.
    */
-  remove_entry: ({entry_id, stakers}: {entry_id: string, stakers: Array<string>}, options?: {
+  remove_entry: ({ entry_id, stakers }: { entry_id: string, stakers: Array<string> }, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -1030,7 +1054,7 @@ export class Client extends ContractClient {
   }
   constructor(public readonly options: ContractClientOptions) {
     super(
-      new ContractSpec([ "AAAAAgAAAAAAAAAAAAAAB0RhdGFLZXkAAAAAFgAAAAAAAAAAAAAABUFkbWluAAAAAAAAAAAAAAAAAAAIVHJlYXN1cnkAAAAAAAAAAAAAAAlIaXR6VG9rZW4AAAAAAAAAAAAAAAAAAAhYbG1Ub2tlbgAAAAAAAAAAAAAAB0Jhc2VGZWUAAAAAAAAAAAAAAAAPRW1pc3Npb25TdGFydFRzAAAAAAAAAAAAAAAAE0VtaXNzaW9uSW50ZXJ2YWxTZWMAAAAAAAAAAAAAAAAYRW1pc3Npb25FcG9jaDBVbml0UmV3YXJkAAAAAAAAAAAAAAALT3JhY2xlUHJpY2UAAAAAAAAAAAAAAAAQT3JhY2xlTGFzdFVwZGF0ZQAAAAEAAAAAAAAABUVudHJ5AAAAAAAAAQAAABAAAAABAAAAAAAAAAVTdGFrZQAAAAAAAAEAAAPtAAAAAgAAABAAAAATAAAAAQAAAAAAAAAKU3Rha2VUb3RhbAAAAAAAAQAAABAAAAABAAAAAAAAAApSZXdhcmRQb29sAAAAAAABAAAAEAAAAAEAAAAAAAAAB0NsYWltZWQAAAAAAQAAA+0AAAACAAAAEAAAABMAAAABAAAAAAAAAAdFbnRyeUF0AAAAAAEAAAAEAAAAAAAAAAAAAAAKRW50cnlDb3VudAAAAAAAAAAAAAAAAAALVG90YWxNaW50ZWQAAAAAAAAAAAAAAAAUQmF0Y2hEaXN0VG90YWxFc2Nyb3cAAAAAAAAAAAAAABNCYXRjaERpc3RIaXR6QW1vdW50AAAAAAEAAAAAAAAADEFydGlzdEVxdWl0eQAAAAEAAAPtAAAAAgAAABAAAAATAAAAAQAAAAAAAAARQXJ0aXN0RXF1aXR5VG90YWwAAAAAAAABAAAAEA==",
+      new ContractSpec(["AAAAAgAAAAAAAAAAAAAAB0RhdGFLZXkAAAAAFgAAAAAAAAAAAAAABUFkbWluAAAAAAAAAAAAAAAAAAAIVHJlYXN1cnkAAAAAAAAAAAAAAAlIaXR6VG9rZW4AAAAAAAAAAAAAAAAAAAhYbG1Ub2tlbgAAAAAAAAAAAAAAB0Jhc2VGZWUAAAAAAAAAAAAAAAAPRW1pc3Npb25TdGFydFRzAAAAAAAAAAAAAAAAE0VtaXNzaW9uSW50ZXJ2YWxTZWMAAAAAAAAAAAAAAAAYRW1pc3Npb25FcG9jaDBVbml0UmV3YXJkAAAAAAAAAAAAAAALT3JhY2xlUHJpY2UAAAAAAAAAAAAAAAAQT3JhY2xlTGFzdFVwZGF0ZQAAAAEAAAAAAAAABUVudHJ5AAAAAAAAAQAAABAAAAABAAAAAAAAAAVTdGFrZQAAAAAAAAEAAAPtAAAAAgAAABAAAAATAAAAAQAAAAAAAAAKU3Rha2VUb3RhbAAAAAAAAQAAABAAAAABAAAAAAAAAApSZXdhcmRQb29sAAAAAAABAAAAEAAAAAEAAAAAAAAAB0NsYWltZWQAAAAAAQAAA+0AAAACAAAAEAAAABMAAAABAAAAAAAAAAdFbnRyeUF0AAAAAAEAAAAEAAAAAAAAAAAAAAAKRW50cnlDb3VudAAAAAAAAAAAAAAAAAALVG90YWxNaW50ZWQAAAAAAAAAAAAAAAAUQmF0Y2hEaXN0VG90YWxFc2Nyb3cAAAAAAAAAAAAAABNCYXRjaERpc3RIaXR6QW1vdW50AAAAAAEAAAAAAAAADEFydGlzdEVxdWl0eQAAAAEAAAPtAAAAAgAAABAAAAATAAAAAQAAAAAAAAARQXJ0aXN0RXF1aXR5VG90YWwAAAAAAAABAAAAEA==",
         "AAAAAQAAAAAAAAAAAAAABUVudHJ5AAAAAAAAAwAAAAAAAAAKY3JlYXRlZF9hdAAAAAAABgAAAAAAAAAKZXNjcm93X3hsbQAAAAAACwAAAAAAAAAHdHZsX3hsbQAAAAAL",
         "AAAAAQAAAHJBcnRpc3QgZXF1aXR5IGNsYWltIGZvciBub24tZGlsdXRhYmxlIGNyZWF0b3IgcmV3YXJkcwpTdG9yZWQgcGVyIChlbnRyeV9pZCwgYXJ0aXN0KSBwYWlyIHRvIHN1cHBvcnQgY29sbGFib3JhdGlvbnMAAAAAAAAAAAARQXJ0aXN0RXF1aXR5Q2xhaW0AAAAAAAACAAAAAAAAAAdjbGFpbWVkAAAAAAsAAAAAAAAACmVxdWl0eV9icHMAAAAAAAQ=",
         "AAAAAAAAAIVVcGdyYWRlIGNvcmUgY29udHJhY3QgdG8gbmV3IFdBU00gY29kZSAoYWRtaW4tb25seSkKTm90ZTogTmFtZWQgYHVwZ3JhZGVfY29yZWAgdG8gYXZvaWQgZXhwb3J0IG5hbWUgY29sbGlzaW9uIHdpdGggdG9rZW4ncyBgdXBncmFkZWAuAAAAAAAADHVwZ3JhZGVfY29yZQAAAAEAAAAAAAAADW5ld193YXNtX2hhc2gAAAAAAAPuAAAAIAAAAAA=",
@@ -1070,48 +1094,48 @@ export class Client extends ContractClient {
         "AAAAAAAAAGpHZXQgdG90YWwgYXJ0aXN0IGVxdWl0eSBmb3IgYW4gZW50cnkgKHN1bSBvZiBhbGwgYXJ0aXN0cykKCiMgUmV0dXJucwpUb3RhbCBlcXVpdHkgaW4gYmFzaXMgcG9pbnRzICgwLTk5OTApAAAAAAAXZ2V0X3RvdGFsX2FydGlzdF9lcXVpdHkAAAAAAQAAAAAAAAAIZW50cnlfaWQAAAAQAAAAAQAAAAQ=",
         "AAAAAAAAAAAAAAAHdmVyc2lvbgAAAAAAAAAAAQAAAAQ=",
         "AAAAAAAAAe5NZXJnZSBvbmUgZW50cnkgaW50byBhbm90aGVyIChhZG1pbi1vbmx5KS4KQWxsIGVzY3JvdywgVFZMLCByZXdhcmQgcG9vbCwgYW5kIHN0YWtlcyBtb3ZlIGZyb20gYGZyb21faWRgIHRvIGBpbnRvX2lkYC4KVGhlIGBmcm9tX2lkYCBlbnRyeSBpcyByZW1vdmVkIGZyb20gc3RvcmFnZSBhbmQgaW5kZXguCgpGb3Igc3Rha2UgbWlncmF0aW9uOgotIElmIGBzdGFrZXJzYCBsaXN0IGlzIHByb3ZpZGVkOiBtaWdyYXRlcyB0aG9zZSB1c2Vycycgc3Rha2VzIGZyb20gZnJvbV9pZCB0byBpbnRvX2lkCi0gSWYgYHN0YWtlcnNgIGlzIGVtcHR5OiBvbmx5IG1vdmVzIHRvdGFscyAoYWRtaW4gbXVzdCBlbnN1cmUgbm8gb3JwaGFuZWQgc3Rha2VzKQoKTm90ZTogV2UgY2Fubm90IGl0ZXJhdGUgYWxsIHN0YWtlcnMgKG5vIGluZGV4KSwgc28gYWRtaW4gbXVzdCBwcm92aWRlIHRoZSBsaXN0LgpVc2Ugb2ZmLWNoYWluIGluZGV4aW5nIG9yIGV2ZW50cyB0byB0cmFjayBzdGFrZXJzLgAAAAAADW1lcmdlX2VudHJpZXMAAAAAAAADAAAAAAAAAAdmcm9tX2lkAAAAABAAAAAAAAAAB2ludG9faWQAAAAAEAAAAAAAAAAHc3Rha2VycwAAAAPqAAAAEwAAAAA=",
-        "AAAAAAAAAaFSZW1vdmUgYW4gZW50cnkgY29tcGxldGVseSAoYWRtaW4tb25seSkuCgpJZiBgc3Rha2Vyc2AgbGlzdCBpcyBwcm92aWRlZDoKLSBSZXR1cm5zIGFsbCBzdGFrZXMgdG8gdGhvc2UgdXNlcnMKLSBWZXJpZmllcyByZXR1cm5lZCBzdGFrZXMgbWF0Y2ggdG90YWwKLSBUaGVuIHJlbW92ZXMgZW50cnkKCklmIGBzdGFrZXJzYCBpcyBlbXB0eToKLSBSZW1vdmVzIGVudHJ5IG9ubHkgaWYgdG90YWwgc3Rha2UgaXMgMAotIE90aGVyd2lzZSBwYW5pY3MgKGFkbWluIG11c3QgcHJvdmlkZSBzdGFrZXIgbGlzdCkKCk5vdGU6IFdlIGNhbm5vdCBpdGVyYXRlIGFsbCBzdGFrZXJzIChubyBpbmRleCksIHNvIGFkbWluIG11c3QgcHJvdmlkZSB0aGUgbGlzdC4KVXNlIG9mZi1jaGFpbiBpbmRleGluZyBvciBldmVudHMgdG8gdHJhY2sgc3Rha2Vycy4AAAAAAAAMcmVtb3ZlX2VudHJ5AAAAAgAAAAAAAAAIZW50cnlfaWQAAAAQAAAAAAAAAAdzdGFrZXJzAAAAA+oAAAATAAAAAA==" ]),
+        "AAAAAAAAAaFSZW1vdmUgYW4gZW50cnkgY29tcGxldGVseSAoYWRtaW4tb25seSkuCgpJZiBgc3Rha2Vyc2AgbGlzdCBpcyBwcm92aWRlZDoKLSBSZXR1cm5zIGFsbCBzdGFrZXMgdG8gdGhvc2UgdXNlcnMKLSBWZXJpZmllcyByZXR1cm5lZCBzdGFrZXMgbWF0Y2ggdG90YWwKLSBUaGVuIHJlbW92ZXMgZW50cnkKCklmIGBzdGFrZXJzYCBpcyBlbXB0eToKLSBSZW1vdmVzIGVudHJ5IG9ubHkgaWYgdG90YWwgc3Rha2UgaXMgMAotIE90aGVyd2lzZSBwYW5pY3MgKGFkbWluIG11c3QgcHJvdmlkZSBzdGFrZXIgbGlzdCkKCk5vdGU6IFdlIGNhbm5vdCBpdGVyYXRlIGFsbCBzdGFrZXJzIChubyBpbmRleCksIHNvIGFkbWluIG11c3QgcHJvdmlkZSB0aGUgbGlzdC4KVXNlIG9mZi1jaGFpbiBpbmRleGluZyBvciBldmVudHMgdG8gdHJhY2sgc3Rha2Vycy4AAAAAAAAMcmVtb3ZlX2VudHJ5AAAAAgAAAAAAAAAIZW50cnlfaWQAAAAQAAAAAAAAAAdzdGFrZXJzAAAAA+oAAAATAAAAAA=="]),
       options
     )
   }
   public readonly fromJSON = {
     upgrade_core: this.txFromJSON<null>,
-        reset_instance: this.txFromJSON<null>,
-        reset_entries_chunk: this.txFromJSON<null>,
-        entry_count: this.txFromJSON<u32>,
-        reset_entry_by_pos: this.txFromJSON<null>,
-        init: this.txFromJSON<null>,
-        set_base_fee: this.txFromJSON<null>,
-        withdraw_xlm_to_treasury: this.txFromJSON<i128>,
-        update_oracle_price: this.txFromJSON<null>,
-        get_oracle_data: this.txFromJSON<readonly [i128, u64]>,
-        get_base_fee: this.txFromJSON<i128>,
-        get_total_supply: this.txFromJSON<i128>,
-        get_remaining_supply: this.txFromJSON<i128>,
-        create_entry: this.txFromJSON<null>,
-        record_action: this.txFromJSON<null>,
-        get_entry: this.txFromJSON<Option<Entry>>,
-        list_entries: this.txFromJSON<Array<string>>,
-        get_stake: this.txFromJSON<i128>,
-        get_stake_total: this.txFromJSON<i128>,
-        distribute_rewards: this.txFromJSON<null>,
-        calculate_total_escrow_batch: this.txFromJSON<readonly [u32, i128]>,
-        initialize_distribution: this.txFromJSON<null>,
-        distribute_rewards_batch: this.txFromJSON<u32>,
-        allocate_rewards: this.txFromJSON<null>,
-        batch_allocate_rewards: this.txFromJSON<null>,
-        claim_rewards: this.txFromJSON<i128>,
-        unstake: this.txFromJSON<i128>,
-        get_claimable_rewards: this.txFromJSON<i128>,
-        get_reward_pool: this.txFromJSON<i128>,
-        calculate_apr: this.txFromJSON<i128>,
-        get_entry_stats: this.txFromJSON<readonly [i128, i128, i128, i128, i128]>,
-        set_artist_equity: this.txFromJSON<null>,
-        claim_artist_equity: this.txFromJSON<i128>,
-        get_artist_equity: this.txFromJSON<readonly [u32, i128, i128]>,
-        get_total_artist_equity: this.txFromJSON<u32>,
-        version: this.txFromJSON<u32>,
-        merge_entries: this.txFromJSON<null>,
-        remove_entry: this.txFromJSON<null>
+    reset_instance: this.txFromJSON<null>,
+    reset_entries_chunk: this.txFromJSON<null>,
+    entry_count: this.txFromJSON<u32>,
+    reset_entry_by_pos: this.txFromJSON<null>,
+    init: this.txFromJSON<null>,
+    set_base_fee: this.txFromJSON<null>,
+    withdraw_xlm_to_treasury: this.txFromJSON<i128>,
+    update_oracle_price: this.txFromJSON<null>,
+    get_oracle_data: this.txFromJSON<readonly [i128, u64]>,
+    get_base_fee: this.txFromJSON<i128>,
+    get_total_supply: this.txFromJSON<i128>,
+    get_remaining_supply: this.txFromJSON<i128>,
+    create_entry: this.txFromJSON<null>,
+    record_action: this.txFromJSON<null>,
+    get_entry: this.txFromJSON<Option<Entry>>,
+    list_entries: this.txFromJSON<Array<string>>,
+    get_stake: this.txFromJSON<i128>,
+    get_stake_total: this.txFromJSON<i128>,
+    distribute_rewards: this.txFromJSON<null>,
+    calculate_total_escrow_batch: this.txFromJSON<readonly [u32, i128]>,
+    initialize_distribution: this.txFromJSON<null>,
+    distribute_rewards_batch: this.txFromJSON<u32>,
+    allocate_rewards: this.txFromJSON<null>,
+    batch_allocate_rewards: this.txFromJSON<null>,
+    claim_rewards: this.txFromJSON<i128>,
+    unstake: this.txFromJSON<i128>,
+    get_claimable_rewards: this.txFromJSON<i128>,
+    get_reward_pool: this.txFromJSON<i128>,
+    calculate_apr: this.txFromJSON<i128>,
+    get_entry_stats: this.txFromJSON<readonly [i128, i128, i128, i128, i128]>,
+    set_artist_equity: this.txFromJSON<null>,
+    claim_artist_equity: this.txFromJSON<i128>,
+    get_artist_equity: this.txFromJSON<readonly [u32, i128, i128]>,
+    get_total_artist_equity: this.txFromJSON<u32>,
+    version: this.txFromJSON<u32>,
+    merge_entries: this.txFromJSON<null>,
+    remove_entry: this.txFromJSON<null>
   }
 }

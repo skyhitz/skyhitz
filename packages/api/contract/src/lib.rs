@@ -1294,6 +1294,22 @@ impl SkyhitzCore {
     // Artist Equity (Non-Dilutable Creator Rewards)
     // ========================================================================
 
+    /// Set total minted amount (admin-only)
+    /// 
+    /// EMERGENCY FUNCTION: Used for protocol state restoration after exploit recovery.
+    /// Allows admin to reset the Total Minted counter if tokens are burned.
+    pub fn admin_set_total_minted(e: Env, new_amount: i128) {
+        let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
+        admin.require_auth();
+
+        if new_amount < 0 {
+            panic!("Total minted cannot be negative");
+        }
+
+        e.storage().instance().set(&DataKey::TotalMinted, &new_amount);
+        log!(&e, "Total Minted counter reset to: {}", new_amount);
+    }
+
     /// Set non-dilutable artist equity for an entry (admin-only)
     /// 
     /// Allows verified artists to receive a fixed percentage of all rewards.
