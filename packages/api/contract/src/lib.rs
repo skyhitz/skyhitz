@@ -428,10 +428,21 @@ impl SkyhitzCore {
             .get(&entry_key)
             .unwrap_or_else(|| panic!("Entry not found"));
 
-        // SECURITY FIX H2: Transfer XLM fee from caller to Treasury with verification
+        // SECURITY FIX H2: Transfer XLM fee from caller to Treasury (or Contract for staking)
         let treasury: Address = e.storage().instance().get(&DataKey::Treasury).unwrap();
         let xlm_token: Address = e.storage().instance().get(&DataKey::XlmToken).unwrap();
-        safe_transfer(&e, &xlm_token, &caller, &treasury, &fee, "XLM fee to treasury");
+        
+        let destination = if requires_stake {
+            // V2 Spec: "User -> Contract (stake)"
+            // Staking funds are held by the contract (TVL)
+            e.current_contract_address()
+        } else {
+            // V2 Spec: "User -> Treasury (fee)"
+            // Revenue funds go to Treasury for distribution
+            treasury
+        };
+        
+        safe_transfer(&e, &xlm_token, &caller, &destination, &fee, "XLM fee transfer");
 
         // SECURITY FIX H5: Attribute fee to entry using checked arithmetic
         if adds_to_tvl {
