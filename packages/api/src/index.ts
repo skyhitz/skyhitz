@@ -1,101 +1,39 @@
-import { ApolloServer } from '@apollo/server';
-import { CloudflareWorkersHandler, startServerAndCreateCloudflareWorkersHandler } from '@as-integrations/cloudflare-workers';
-import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
-import { Context } from './util/types';
+// Skyhitz API - Archived
+// All functionality has been disabled due to a security vulnerability
 
-import { resolvers } from './graphql/resolvers';
-import { Schema } from './graphql/schema';
-import { authenticateUser } from './auth/auth-context';
-import { handleWebhook } from './webhooks/stripe';
-import { handleUpload } from './upload';
-import { handleUploadComplete } from './upload-complete';
-import { runTreasuryBot } from './treasury/bot';
-import { processPendingPurchases } from './treasury/process-purchases';
-
-const server = new ApolloServer<Context>({
-	typeDefs: Schema,
-	resolvers,
-	introspection: false,
-	plugins: [ApolloServerPluginLandingPageLocalDefault({ footer: false })],
-});
-
-let handler: CloudflareWorkersHandler<Env> = startServerAndCreateCloudflareWorkersHandler<Env, Context>(server, {
-	context: authenticateUser,
-});
+const archivedResponse = {
+	message: 'Skyhitz has been archived',
+	reason: 'A vulnerability issue was exploited which compromised all of our HITZ supply.',
+	warning: 'Please avoid trading the HITZ token (HITZ-GCAETBNBFKVGLYFXKCLMKT6ZVHFXHRSDFSEW7ODIUJYC6R7H2QJ6OKGU)',
+	moreInfo: ['https://docs.skyhitz.io/', 'https://github.com/skyhitz/skyhitz'],
+};
 
 export default {
 	async fetch(request: Request, env: Env, context: ExecutionContext) {
-		if (request.method === 'POST' && new URL(request.url).pathname === '/webhook') {
-			return handleWebhook(request, env);
-		}
-		if (request.method === 'POST' && new URL(request.url).pathname === '/upload') {
-			return handleUpload(request, env, context);
-		}
-		if (request.method === 'POST' && new URL(request.url).pathname === '/upload/complete') {
-			return handleUploadComplete(request, env, context);
-		}
-		// Manual treasury bot trigger for testing/debugging
-		if (request.method === 'POST' && new URL(request.url).pathname === '/treasury-bot') {
-			try {
-				const result = await runTreasuryBot(env);
-				return new Response(JSON.stringify(result, null, 2), {
-					status: 200,
-					headers: { 'Content-Type': 'application/json' },
-				});
-			} catch (error: any) {
-				return new Response(JSON.stringify({ 
-					error: error?.message || 'Unknown error',
-					stack: error?.stack 
-				}, null, 2), {
-					status: 500,
-					headers: { 'Content-Type': 'application/json' },
-				});
-			}
-		}
-		let response = await handler(request, env, context);
-
-		response = new Response(response.body, response);
-
-		// Set CORS headers
-		response.headers.set('Access-Control-Allow-Origin', '*'); // Allow all origins
-		response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS'); // Specify allowed methods
-		response.headers.set('Access-Control-Allow-Headers', '*');
-
-		// Handle preflight requests
+		// Handle CORS preflight
 		if (request.method === 'OPTIONS') {
 			return new Response(null, {
-				headers: response.headers,
+				status: 204,
+				headers: {
+					'Access-Control-Allow-Origin': '*',
+					'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+					'Access-Control-Allow-Headers': '*',
+				},
 			});
 		}
 
-		return response;
+		// Return archived message for all requests
+		return new Response(JSON.stringify(archivedResponse, null, 2), {
+			status: 410, // Gone
+			headers: {
+				'Content-Type': 'application/json',
+				'Access-Control-Allow-Origin': '*',
+			},
+		});
 	},
 
+	// Cron jobs disabled - do nothing
 	async scheduled(controller: ScheduledController, env: Env, context: ExecutionContext) {
-		// Run daily at midnight UTC:
-		// 1. Process pending purchases (XLM → HITZ swaps)
-		// 2. Run treasury bot (distributes 1% of treasury balance per day)
-		
-		context.waitUntil(
-			(async () => {
-				// Always process pending purchases first (fast, ~1-2s per purchase)
-				try {
-					console.log('=== CRON: Processing pending purchases ===');
-					const purchaseResult = await processPendingPurchases(env);
-					console.log('Purchase processor result:', purchaseResult);
-				} catch (error) {
-					console.error('Purchase processor failed:', error);
-				}
-
-				// Then run treasury bot (distribution only - supply fully issued)
-				try {
-					console.log('=== CRON: Running treasury bot ===');
-					const treasuryResult = await runTreasuryBot(env);
-					console.log('Treasury bot result:', treasuryResult);
-				} catch (error) {
-					console.error('Treasury bot failed:', error);
-				}
-			})()
-		);
+		console.log('Cron job triggered but API is archived - skipping all operations');
 	},
 };
