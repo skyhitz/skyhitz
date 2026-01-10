@@ -72,9 +72,9 @@ export default {
 	},
 
 	async scheduled(controller: ScheduledController, env: Env, context: ExecutionContext) {
-		// Run every minute:
+		// Run daily at midnight UTC:
 		// 1. Process pending purchases (XLM → HITZ swaps)
-		// 2. Run treasury bot (oracle update rate-limited by UPDATE_INTERVAL)
+		// 2. Run treasury bot (distributes 1% of treasury balance per day)
 		
 		context.waitUntil(
 			(async () => {
@@ -87,7 +87,7 @@ export default {
 					console.error('Purchase processor failed:', error);
 				}
 
-				// Then run treasury bot (oracle has its own rate limiting)
+				// Then run treasury bot (distribution only - supply fully issued)
 				try {
 					console.log('=== CRON: Running treasury bot ===');
 					const treasuryResult = await runTreasuryBot(env);

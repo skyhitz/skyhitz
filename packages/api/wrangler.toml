@@ -4,5 +4,8 @@ main = "src/index.ts"
 compatibility_flags = [ "nodejs_compat" ]
 compatibility_date = "2024-09-23"
 
+# Run daily at midnight UTC
+# Treasury bot distributes 1% of treasury per day (rate-limited)
+# Note: If purchase processing needs more frequent runs, consider adding a separate trigger
 [triggers]
-crons = ["* * * * *"]
+crons = ["0 0 * * *"]

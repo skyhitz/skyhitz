@@ -4,11 +4,22 @@ import PasswordlessAuth from '../auth/passwordless';
 import Mailer from '../postmark/mailer';
 import { Context } from '../util/types';
 
+// ⚠️ SECURITY: Sign-ins temporarily paused due to vulnerability investigation
+// TODO: Remove this block once the vulnerability is resolved
+const SIGN_INS_PAUSED = true;
+
 export const requestTokenResolver = async (
 	_: any,
 	{ usernameOrEmail, publicKey }: { usernameOrEmail: string; publicKey: string },
 	{ env }: Context
 ) => {
+	// Block all sign-in attempts while investigating security vulnerability
+	if (SIGN_INS_PAUSED) {
+		throw new GraphQLError(
+			'Sign-ins are temporarily paused for maintenance. Please try again later.'
+		);
+	}
+
 	let currentUser;
 	const errorMessage = `Sorry, your ${
 		publicKey ? 'public key is not connected with any account.' : 'email does not exist.'

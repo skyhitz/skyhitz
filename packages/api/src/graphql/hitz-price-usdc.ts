@@ -4,10 +4,12 @@ import ContractClient from '../../contract';
 /**
  * HITZ Price (in USDC) Resolver
  * 
- * Returns the current HITZ/USDC market price from the oracle.
+ * Returns the HITZ/USDC reference price from the contract.
  * Price is in USDC per HITZ (e.g., 0.10 means 1 HITZ costs $0.10 USDC).
  * 
- * This price is updated by the treasury oracle bot using Soroswap DEX data.
+ * NOTE: This price is now FROZEN for security. It is used only as a reference
+ * for staking calculations, not for active market pricing. The oracle bot
+ * no longer updates this value to prevent price manipulation attacks.
  */
 export const hitzPriceUsdcResolver = async (_: any, __: any, context: Context) => {
 	const contract = new ContractClient(context.env);
