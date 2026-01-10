@@ -3,133 +3,45 @@ id: stellar-soroban
 title: Stellar & Soroban Contracts
 ---
 
-This page documents the on-chain Soroban contracts that power Skyhitz: the HITZ Token contract and the Skyhitz Core contract. It covers storage layout, public methods, units, and the interaction between the two contracts.
+This page documents the on-chain Soroban contract that powers Skyhitz: the Skyhitz Core contract operating in post-exhaustion distribution mode.
 
-## Dual-Contract Architecture
+## Architecture Overview
 
-Skyhitz uses two separate but interconnected Soroban smart contracts:
+Skyhitz uses a single Soroban smart contract with the HITZ token as a Stellar Asset Contract (SAC).
 
-### 1. HITZ Token Contract
+### Components
 
-**Purpose**: SEP-41 compatible fungible token with controlled emission
+**HITZ Token (SAC)**
+- Stellar Asset Contract for the HITZ token
+- Max supply: 21,000,000 HITZ (fully issued)
+- Core contract is admin (for legacy minting capability)
+- Standard SEP-41 token operations
 
-**Features**:
-- Max supply: 21,000,000 HITZ
-- No pre-mint (all tokens released through rewards)
-- Bitcoin-style halving every 4 years
-- 7 decimals precision (1 HITZ = 10,000,000 stroops)
-- Ownable, Mintable, Upgradeable
-
-### 2. Skyhitz Core Contract
-
-**Purpose**: Handles user actions, staking, and XLM fee management
-
-**Features**:
-- Records all user actions (stream, like, download, mine, invest)
-- Manages HITZ token staking for equity actions
-- Collects XLM fees to Treasury
-- Distributes HITZ rewards to entry pools
+**Skyhitz Core Contract**
+- Handles user actions, staking, and reward distribution
+- Post-exhaustion mode: no minting, distribution only
+- 1:1 staking model (fee = stake)
+- Treasury distribution at 0.05% daily rate
 
 ---
 
-## HITZ Token Contract
+## Post-Exhaustion Model
 
-### Storage
+The HITZ supply is fully issued (~20M of 21M). The contract operates in distribution-only mode:
 
-**Token Info**:
-- `name`: "Hitz"
-- `symbol`: "HITZ"
-- `decimals`: 7
-- `total_supply`: i128 (current supply in stroops)
-- `max_supply`: 210,000,000,000,000 stroops (21M HITZ)
+| Feature | Before | After |
+|---------|--------|-------|
+| Token source | Minted on action | Treasury distribution |
+| Oracle dependency | Yes (staking calc) | No (1:1 staking) |
+| Fee currency | XLM | HITZ |
+| Supply risk | Inflation | Fixed |
 
-**Emission State**:
-- `halving_start_ts`: u64 (Unix timestamp when emission started)
-- `halving_interval_sec`: u64 (126,144,000 seconds = 4 years)
-- `epoch0_unit_reward`: i128 (3,000,000 stroops = 0.3 HITZ)
-- `total_released`: i128 (tracking for max supply enforcement)
+### Key Changes
 
-**Token State** (per SEP-41):
-- `balances`: `Map<Address, i128>`
-- `allowances`: `Map<(Address, Address), i128>`
-- `admin`: Address (owner with privileged operations)
-
-### Public Methods
-
-#### Token Standard (SEP-41)
-
-```rust
-// Standard token operations
-transfer(from: Address, to: Address, amount: i128)
-transfer_from(spender: Address, from: Address, to: Address, amount: i128)
-approve(from: Address, spender: Address, amount: i128, expiration: u32)
-balance(id: Address) -> i128
-allowance(from: Address, spender: Address) -> i128
-```
-
-#### Emission & Minting
-
-```rust
-// Get current emission info
-emission_info() -> EmissionInfo {
-    current_epoch: u32,
-    unit_reward: i128,      // Current reward per unit (halves each epoch)
-    total_released: i128,   // Total HITZ minted so far
-    remaining: i128,        // Remaining supply until max
-}
-
-// Mint rewards (called by Core contract)
-mint_reward(to: Address, difficulty: i128) -> i128
-// Returns: difficulty × unit_reward (current epoch)
-// Only Core contract can call (Core is admin)
-// Enforces max supply
-
-// Admin mint (for special cases)
-mint(to: Address, amount: i128)
-// Only admin can call
-// Enforces max supply
-```
-
-#### Administrative
-
-```rust
-// Initialize token (one-time)
-__constructor(
-    owner: Address,
-    halving_start_ts: u64,
-    halving_interval_sec: u64,
-    epoch0_unit_reward: i128
-)
-
-// Upgrade contract
-upgrade(new_wasm_hash: BytesN<32>)
-// Only admin can call
-
-// Transfer ownership
-transfer_ownership(new_owner: Address)
-// Only admin can call
-```
-
-### Emission Schedule
-
-**Formula**: `unit_reward = epoch0_reward / (2^epoch_index)`
-
-**Epoch Calculation**: `epoch = (current_time - halving_start_ts) / halving_interval_sec`
-
-**Examples**:
-- Epoch 0 (Years 0-4): 0.3 HITZ per unit
-- Epoch 1 (Years 4-8): 0.15 HITZ per unit
-- Epoch 2 (Years 8-12): 0.075 HITZ per unit
-- ...continues until epoch 64
-
-### Max Supply Enforcement
-
-Every mint operation checks:
-```rust
-if total_released + amount > max_supply {
-    panic!("Max supply exceeded")
-}
-```
+1. **No minting**: `mint_reward()` removed, supply exhausted
+2. **1:1 staking**: `stake = fee` (no oracle calculation)
+3. **HITZ fees**: All fees in HITZ, not XLM
+4. **Rate-limited distribution**: 0.05% of treasury daily
 
 ---
 
@@ -137,310 +49,394 @@ if total_released + amount > max_supply {
 
 ### Storage
 
-**Global State** (`DataKey`):
-- `Admin`: Address (admin for privileged operations)
-- `Treasury`: Address (receives XLM fees, distributes HITZ)
-- `HitzToken`: Address (HITZ token contract address)
-- `XlmToken`: Address (native XLM token address)
-- `StakeUnitHitz`: i128 (HITZ required per difficulty unit, default: 50,000,000)
-- `BaseFee`: i128 (base XLM fee in stroops, default: 100,000 = 0.01 XLM)
-- `EntryIds`: `Vec<String>` (list of all entry IDs)
-
-**Entry State** (`Entry` struct):
+**Instance Storage** (Config):
 ```rust
-struct Entry {
-    id: String,
-    created_at: u64,           // Unix timestamp
-    escrow_xlm: i128,          // XLM from micro-spends (stroops)
-    tvl_xlm: i128,             // XLM from equity actions (stroops)
-    total_staked: i128,        // Total HITZ staked by all users
-    reward_pool: i128,         // HITZ allocated from Treasury distributions
-    apr: i128,                 // Annualized return rate (basis points)
-}
+DataKey::Admin         // Address: admin for privileged ops
+DataKey::Treasury      // Address: receives non-staking fees
+DataKey::HitzToken     // Address: HITZ token contract
+DataKey::BaseFee       // i128: base fee (default 0.1 HITZ)
+DataKey::OraclePrice   // i128: informational only (not used)
 ```
 
-**User State** (per entry):
-- `Stakes`: `Map<(user, entry_id), i128>` (user's HITZ stake in entry)
-- `ClaimedRewards`: `Map<(user, entry_id), i128>` (HITZ already claimed by user)
+**Persistent Storage** (Entry Data):
+```rust
+DataKey::Entry(id)           // Entry struct
+DataKey::Stake((id, user))   // User's stake in entry
+DataKey::StakeTotal(id)      // Total stake for entry
+DataKey::RewardPool(id)      // HITZ rewards allocated
+DataKey::Claimed((id, user)) // HITZ claimed by user
+DataKey::EntryAt(i)          // Index → entry_id
+DataKey::EntryCount          // Total entries
+DataKey::TotalMinted         // Historical minting (legacy)
+
+// Artist equity
+DataKey::ArtistEquity((id, artist))  // ArtistEquityClaim
+DataKey::ArtistEquityTotal(id)       // Total equity bps
+```
+
+### Entry Struct
+
+```rust
+struct Entry {
+    tvl_xlm: i128,      // Total Value Locked (stake value)
+    escrow_xlm: i128,   // Accumulated fees (distribution metric)
+    created_at: u64,    // Timestamp
+}
+```
 
 ### Action Types
 
 ```rust
-enum ActionKind {
-    Stream,    // difficulty = 1
-    Like,      // difficulty = 2
-    Download,  // difficulty = 3
-    Mine,      // difficulty = 10
-    Invest,    // difficulty = dynamic (10 per 1 XLM)
-}
-```
-
-### Public Methods
-
-#### User Actions
-
-```rust
-// Record user action (unified endpoint)
-record_action(
-    caller: Address,
-    entry_id: String,
-    kind: ActionKind,
-    amount_xlm: Option<i128>  // Only for 'invest' action
-) -> ActionResult {
-    difficulty: i128,
-    xlm_fee: i128,
-    hitz_reward: i128,
-    hitz_staked: i128,
-}
-
-// Flow:
-// 1. Calculate difficulty based on action kind
-// 2. Calculate XLM fee: difficulty × base_fee
-// 3. Transfer XLM from caller to Treasury
-// 4. Update entry (escrow_xlm or tvl_xlm)
-// 5. For mine/invest: pull HITZ stake from caller
-// 6. Request HITZ reward from token contract
-// 7. Transfer HITZ reward to caller
-// 8. Update entry stats (stakes, reward pool, APR)
-```
-
-#### Rewards & Claims
-
-```rust
-// Claim rewards from entry pool
-claim_rewards(entry_id: String, claimer: Address) -> i128
-// Returns: amount claimed (HITZ stroops)
-// Flow:
-// 1. Verify claimer has stake in entry
-// 2. Calculate ownership: user_stake / total_staked
-// 3. Calculate claimable: ownership × reward_pool - already_claimed
-// 4. Update claimed_rewards[user]
-// 5. Transfer HITZ from contract to user
-// 6. Return claimed amount
-
-// Preview claimable (read-only)
-get_claimable_rewards(entry_id: String, user: Address) -> i128
-
-// Get user's stake in entry
-get_stake(entry_id: String, owner: Address) -> i128
-
-// Get entry's total stake
-get_stake_total(entry_id: String) -> i128
-```
-
-#### Treasury Distribution
-
-```rust
-// Distribute HITZ rewards to entry pools (Treasury bot)
-distribute_rewards(caller: Address, hitz_amount: i128)
-// Auth: caller must be Treasury address
-// Flow:
-// 1. Verify caller == Treasury
-// 2. Transfer hitz_amount from Treasury to contract
-// 3. Calculate total_escrow = sum(all entry.escrow_xlm)
-// 4. For each entry with escrow > 0:
-//    entry_share = (entry.escrow_xlm / total_escrow) × hitz_amount
-//    entry.reward_pool += entry_share
-// 5. Update APRs for all entries
-
-// Allocate rewards to specific entry (Admin manual)
-allocate_rewards(entry_id: String, hitz_amount: i128)
-// Auth: Admin only
-// Use: Promotions, bonuses, special events
-
-// Batch allocate (Admin manual)
-batch_allocate_rewards(entry_ids: Vec<String>, amounts: Vec<i128>)
-// Auth: Admin only
-```
-
-#### Entry Management
-
-```rust
-// Create new entry
-create_entry(entry_id: String) -> Entry
-// Creates entry with zero values
-// Called automatically during first mine
-
-// Get entry stats
-get_entry(entry_id: String) -> Entry
-
-// Get entry statistics
-get_entry_stats(entry_id: String) -> EntryStats {
-    total_staked: i128,
-    reward_pool: i128,
-    apr: i128,
-}
-
-// Calculate APR (on-chain)
-calculate_apr(entry_id: String) -> i128
-// Formula: (reward_pool / total_staked / days) × 365 × 10000
-// Returns: basis points (10000 = 100%)
-
-// Remove entry (Admin only)
-remove_entry(entry_id: String)
-// Deletes entry from contract
-// Backend should also remove from Algolia and R2
-```
-
-#### Administrative
-
-```rust
-// Initialize contract (one-time)
-init(
-    admin: Address,
-    treasury: Address,
-    hitz_token: Address,
-    xlm_token: Address,
-    stake_unit_hitz: i128,  // e.g., 50,000,000 (5 HITZ per unit)
-    base_fee: i128,         // e.g., 100,000 (0.01 XLM)
-)
-
-// Update base fee
-set_base_fee(new_fee: i128)
-// Auth: Admin only
-// All action fees scale proportionally
-
-// Upgrade contract
-upgrade(new_wasm_hash: BytesN<32>)
-// Auth: Admin only
-
-// Get contract version
-version() -> u32
+ActionKind::Stream   // difficulty = 1,  fee = 0.1 HITZ
+ActionKind::Like     // difficulty = 2,  fee = 0.2 HITZ
+ActionKind::Download // difficulty = 3,  fee = 0.3 HITZ
+ActionKind::Mine     // difficulty = 10, fee = 1.0 HITZ, stakes
+ActionKind::Invest   // dynamic (min 3 HITZ), stakes
 ```
 
 ---
 
-## Contract Interaction Flow
+## Public Methods
 
-### Example: User Mines a Track
+### User Actions
 
+```rust
+/// Record a user action
+pub fn record_action(
+    e: Env,
+    caller: Address,      // User performing action
+    entry_id: String,     // Target entry
+    kind: Symbol,         // stream, like, download, mine, invest
+    amount: Option<i128>  // For invest: amount in stroops
+)
 ```
-1. User (Frontend) → Backend GraphQL
-   "Mine this track"
 
-2. Backend → Core Contract
-   record_action(user, entry_id, ActionKind::Mine, None)
+**Flow for non-staking actions** (stream/like/download):
+1. Calculate fee: `base_fee × difficulty`
+2. Transfer fee from user to Treasury
+3. Update `entry.escrow += fee`
 
-3. Core Contract:
-   a) Calculate difficulty = 10
-   b) Calculate XLM fee = 10 × 0.01 = 0.1 XLM
-   c) Calculate HITZ stake = 10 × 5 = 50 HITZ
+**Flow for staking actions** (mine/invest):
+1. Calculate fee (for invest: use amount, min 3 HITZ)
+2. Transfer fee from user to Contract (becomes stake)
+3. Update `stakes[user][entry] += fee`
+4. Update `entry.total_stake += fee`
+5. Update `entry.tvl += fee`
 
-4. Core Contract → XLM Token
-   transfer(user → Treasury, 0.1 XLM)
+### Reward Distribution
 
-5. Core Contract → HITZ Token
-   transfer(user → Core, 50 HITZ)  // Stake
+```rust
+/// Distribute HITZ to entry pools (Treasury-only)
+pub fn distribute_rewards(
+    e: Env,
+    caller: Address,   // Must be Treasury
+    hitz_amount: i128  // Amount to distribute
+)
+```
 
-6. Core Contract:
-   - Update entry.tvl_xlm += 0.1
-   - Update stakes[user][entry] = 50
-   - Update entry.total_staked = 50
+**Flow**:
+1. Verify caller is Treasury
+2. Transfer HITZ from Treasury to Contract
+3. Calculate `total_escrow = sum(all entry.escrow)`
+4. For each entry with escrow > 0:
+   - `share = (entry.escrow / total_escrow) × hitz_amount`
+   - `entry.reward_pool += share`
 
-7. Core Contract → HITZ Token
-   mint_reward(user, difficulty=10)
+```rust
+/// Allocate to specific entry (Admin-only)
+pub fn allocate_rewards(
+    e: Env,
+    entry_id: String,
+    hitz_amount: i128
+)
 
-8. HITZ Token:
-   - Calculate epoch (current time vs halving schedule)
-   - Calculate reward = 10 × 0.3 = 3.0 HITZ (epoch 0)
-   - Mint 3.0 HITZ
-   - Transfer to user
+/// Batch allocate (Admin-only)
+pub fn batch_allocate_rewards(
+    e: Env,
+    entry_ids: Vec<String>,
+    amounts: Vec<i128>
+)
+```
 
-9. Core Contract:
-   - Calculate APR
-   - Return success with results
+### Batched Distribution (3-Phase)
 
-10. Backend:
-    - Index entry to Algolia
-    - Update user's stakes
+For large numbers of entries, use batched distribution:
+
+```rust
+/// Phase 1: Calculate total escrow in batches
+pub fn calculate_total_escrow_batch(
+    e: Env,
+    caller: Address,   // Treasury
+    start_index: u32,
+    batch_size: u32    // max 40
+) -> (u32, i128)       // (next_index, running_total)
+
+/// Phase 2: Initialize with HITZ transfer
+pub fn initialize_distribution(
+    e: Env,
+    caller: Address,   // Treasury
+    hitz_amount: i128
+)
+
+/// Phase 3: Distribute in batches
+pub fn distribute_rewards_batch(
+    e: Env,
+    caller: Address,   // Treasury
+    start_index: u32,
+    batch_size: u32    // max 15
+) -> u32               // next_index
+```
+
+### Claiming
+
+```rust
+/// Claim staker rewards
+pub fn claim_rewards(
+    e: Env,
+    entry_id: String,
+    claimer: Address
+) -> i128  // Amount claimed
+
+/// Get claimable amount (read-only)
+pub fn get_claimable_rewards(
+    e: Env,
+    entry_id: String,
+    user: Address
+) -> i128
+```
+
+**Formula**:
+```
+staker_pool = reward_pool × (10000 - total_artist_equity_bps) / 10000
+claimable = (user_stake / total_stake) × staker_pool - already_claimed
+```
+
+### Staking
+
+```rust
+/// Get user's stake
+pub fn get_stake(e: Env, entry_id: String, owner: Address) -> i128
+
+/// Get total stake for entry
+pub fn get_stake_total(e: Env, entry_id: String) -> i128
+
+/// Unstake (withdraw stake)
+pub fn unstake(
+    e: Env,
+    entry_id: String,
+    caller: Address,
+    amount: i128
+) -> i128  // Amount unstaked
+```
+
+### Artist Equity
+
+```rust
+/// Set artist equity (Admin-only)
+pub fn set_artist_equity(
+    e: Env,
+    entry_id: String,
+    artist: Address,
+    equity_bps: u32  // 1-9990 (0.01% - 99.9%)
+)
+
+/// Claim artist equity rewards
+pub fn claim_artist_equity(
+    e: Env,
+    entry_id: String,
+    artist: Address
+) -> i128
+
+/// Get artist equity info
+pub fn get_artist_equity(
+    e: Env,
+    entry_id: String,
+    artist: Address
+) -> (u32, i128, i128)  // (equity_bps, claimed, claimable)
+
+/// Get total artist equity for entry
+pub fn get_total_artist_equity(
+    e: Env,
+    entry_id: String
+) -> u32  // Total bps (0-9990)
+```
+
+### Entry Management
+
+```rust
+/// Create new entry (Admin-only)
+pub fn create_entry(e: Env, entry_id: String)
+
+/// Get entry data
+pub fn get_entry(e: Env, entry_id: String) -> Option<Entry>
+
+/// List entries (paginated)
+pub fn list_entries(e: Env, start: u32, limit: u32) -> Vec<String>
+
+/// Get entry stats
+pub fn get_entry_stats(e: Env, entry_id: String) 
+    -> (i128, i128, i128, i128, i128)
+    // (tvl, escrow, total_stake, reward_pool, apr_bps)
+
+/// Calculate APR
+pub fn calculate_apr(e: Env, entry_id: String) -> i128  // basis points
+
+/// Get reward pool size
+pub fn get_reward_pool(e: Env, entry_id: String) -> i128
+
+/// Merge entries (Admin-only)
+pub fn merge_entries(
+    e: Env,
+    from_id: String,
+    into_id: String,
+    stakers: Vec<Address>  // List of stakers to migrate
+)
+
+/// Remove entry (Admin-only)
+pub fn remove_entry(
+    e: Env,
+    entry_id: String,
+    stakers: Vec<Address>  // Stakes returned to these users
+)
+```
+
+### Administrative
+
+```rust
+/// Initialize contract (one-time)
+pub fn init(
+    e: Env,
+    admin: Address,
+    treasury: Address,
+    hitz_token: Address,
+    base_fee: i128  // e.g., 1,000,000 = 0.1 HITZ
+)
+
+/// Update base fee
+pub fn set_base_fee(e: Env, new_base_fee: i128)
+
+/// Upgrade contract
+pub fn upgrade_core(e: Env, new_wasm_hash: BytesN<32>)
+
+/// Get contract version
+pub fn version() -> u32
+
+/// Get base fee
+pub fn get_base_fee(e: Env) -> i128
+
+/// Get total minted (legacy, historical)
+pub fn get_total_supply(e: Env) -> i128
+
+/// Get entry count
+pub fn entry_count(e: Env) -> u32
 ```
 
 ---
 
 ## Units & Precision
 
-| Asset | Decimals | Stroops per Unit | Example |
-|-------|----------|------------------|---------|
-| **XLM** | 7 | 10,000,000 | 1 XLM = 10,000,000 stroops |
-| **HITZ** | 7 | 10,000,000 | 1 HITZ = 10,000,000 stroops |
+| Asset | Decimals | Stroops per Unit |
+|-------|----------|------------------|
+| **HITZ** | 7 | 10,000,000 |
 
-**Precision Constants**:
-- `SCALE = 1_000_000` (6 decimals) for proportional math
-- All contract values use `i128` stroops
-- UI displays in XLM/HITZ with appropriate formatting
+**Examples**:
+- 1 HITZ = 10,000,000 stroops
+- 0.1 HITZ = 1,000,000 stroops (default base fee)
+- 3 HITZ = 30,000,000 stroops (minimum invest)
+
+**APR**: Returned in basis points (100 = 1%, 10000 = 100%)
 
 ---
 
 ## Security & Authorization
 
-### HITZ Token
+### Authorization Matrix
 
 | Function | Authorization |
 |----------|--------------|
-| `transfer`, `approve`, etc. | Standard SEP-41 (caller auth) |
-| `mint_reward` | Only Core contract (Core is admin) |
-| `mint`, `upgrade`, `transfer_ownership` | Only admin (initially admin, then Core) |
-
-### Skyhitz Core
-
-| Function | Authorization |
-|----------|--------------|
-| `record_action` | Caller must sign (user performing action) |
-| `claim_rewards` | Caller must sign (user claiming) |
-| `distribute_rewards` | Only Treasury address |
-| `allocate_rewards`, `batch_allocate_rewards` | Only Admin |
-| `create_entry`, `remove_entry` | Only Admin |
-| `set_base_fee`, `upgrade` | Only Admin |
+| `record_action` | Caller must sign |
+| `claim_rewards` | Claimer must sign |
+| `claim_artist_equity` | Artist must sign |
+| `unstake` | Caller must sign |
+| `distribute_rewards` | Only Treasury |
+| `allocate_rewards` | Only Admin |
+| `set_artist_equity` | Only Admin |
+| `create_entry` | Only Admin |
+| `merge_entries` | Only Admin |
+| `remove_entry` | Only Admin |
+| `set_base_fee` | Only Admin |
+| `upgrade_core` | Only Admin |
 
 ### Wallet Separation
 
-| Wallet | Purpose | Keys | Risk |
-|--------|---------|------|------|
-| **Admin** | Governance, upgrades | Cold storage | Low (offline) |
-| **Treasury** | Automated distributions | Hot wallet | Medium (online, limited powers) |
-| **Users** | Actions, claims | User-controlled | Per-user |
+| Wallet | Purpose | Risk Level |
+|--------|---------|------------|
+| **Admin** | Governance, upgrades | Low (cold storage) |
+| **Treasury** | Daily distributions | Low (rate-limited) |
+| **Users** | Actions, claims | Per-user |
 
 ---
 
-## Key Differences from Old System
+## Security Features
 
-| Aspect | Old System | New System |
-|--------|------------|------------|
-| **Contracts** | Single contract | Dual contracts (Token + Core) |
-| **Token** | XLM only | XLM (fees) + HITZ (rewards/staking) |
-| **Actions** | `invest()` for everything | `record_action()` with action types |
-| **Rewards** | None (APR only) | Instant HITZ on every action |
-| **Equity** | Shares (XLM-based) | Stakes (HITZ-based) |
-| **Claiming** | `claim_earnings()` (XLM) | `claim_rewards()` (HITZ) |
-| **APR** | Excess XLM escrow | HITZ reward pool growth |
-| **Distribution** | N/A | Treasury bot → reward pools |
-| **Selling** | `sell_shares()` available | Not available |
+### Post-Exhaustion Protections
+
+| Attack Vector | Protection |
+|--------------|------------|
+| Oracle manipulation | Eliminated (1:1 staking) |
+| Minting overflow | Eliminated (no minting) |
+| Reward inflation | Eliminated (fixed supply) |
+| Stake manipulation | Eliminated (fee = stake) |
+| Liquidity drain | Rate-limited (0.05% daily) |
+
+### Additional Security
+
+- **Safe transfers**: All transfers verified with balance checks
+- **Entry limits**: Maximum 10,000 entries
+- **Distribution limits**: Maximum 1,000 entries per distribution
+- **Fair dust**: Rounding dust stays in contract
+- **Atomic operations**: Index operations are atomic
+
+---
+
+## APR Calculation
+
+```rust
+pub fn calculate_apr(e: Env, entry_id: String) -> i128 {
+    let entry = get_entry(&e, &entry_id);
+    let total_stake = get_stake_total(&e, entry_id);
+    let reward_pool = get_reward_pool(&e, entry_id);
+    
+    if total_stake == 0 { return 0; }
+    
+    let days_elapsed = (now - entry.created_at) / 86400;
+    if days_elapsed == 0 { return 0; }
+    
+    // (pool / stake / days) × 365 × 10000
+    let daily_rate = (reward_pool * 10000) / total_stake;
+    let annual_rate = (daily_rate * 365) / days_elapsed;
+    
+    annual_rate.min(10_000_000) // Cap at 100,000%
+}
+```
 
 ---
 
 ## Contract Addresses
 
-### Testnet
-
-```
-HITZ Token: [TBD - deploy and update]
-Core Contract: [TBD - deploy and update]
-Treasury: [TBD - deploy and update]
-```
-
 ### Mainnet
 
 ```
-HITZ Token: [TBD - deploy and update]
-Core Contract: [TBD - deploy and update]
-Treasury: [TBD - deploy and update]
+Core Contract: [See deployment docs]
+HITZ Token: [Stellar Asset Contract]
+Treasury: [See deployment docs]
 ```
 
 ---
 
-## Development & Deployment
+## Development
 
-### Building Contracts
+### Building
 
 ```bash
 cd packages/api/contract
@@ -455,15 +451,14 @@ cargo test
 
 ### Deploying
 
-For detailed deployment instructions, see the [Contract README](https://github.com/skyhitz/skyhitz/tree/master/packages/api/contract) in the repository.
+See [Deployment Procedures](../operations/deploy) for detailed instructions.
 
 ---
 
 ## Further Reading
 
-- **Token Economics**: See [Tokenomics & Flows](../tokenomics/flows)
-- **APR Calculation**: See [APR Math](../tokenomics/apr-math)
-- **Rewards System**: See [Rewards Overview](../tokenomics/rewards)
+- **Token Economics**: See [Rewards Overview](../tokenomics/rewards)
+- **User Flows**: See [User Action Flows](../tokenomics/flows)
+- **APR Math**: See [APR Calculation](../tokenomics/apr-math)
+- **Treasury Bot**: See [Treasury Bot](../operations/treasury-bot)
 - **Contract Source**: `packages/api/contract/src/lib.rs`
-
-

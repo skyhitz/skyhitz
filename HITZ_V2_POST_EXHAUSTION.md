@@ -48,16 +48,11 @@ Since the supply is already issued, the V2 model fundamentally changes how the c
 
 #### 1. No More Minting
 
-```rust
-// REMOVED: All minting functions
-// - safe_mint_with_cap()
-// - compute_unit_reward()
-// - compute_epoch_index()
-```
+All minting functions have been removed. Supply is exhausted and cannot be inflated.
 
 **Why This Helps**: With no minting, there's nothing to exploit. The total supply is fixed and cannot be inflated.
 
-#### 2. Transfer-Based Staking (1:1 Ratio)
+#### 2. 1:1 Staking (No Oracle Dependency)
 
 **Before (Vulnerable)**:
 ```rust
@@ -70,7 +65,7 @@ stake = (fee × 10^7) / oracle_price
 ```rust
 // Simple 1:1 transfer
 stake = fee  // What you pay IS your stake
-safe_transfer(&e, &hitz_token, &caller, &contract_addr, &fee, "stake deposit");
+transfer(&e, &hitz_token, &caller, &contract, &fee, "stake deposit");
 ```
 
 **Why This Helps**: 
@@ -78,7 +73,19 @@ safe_transfer(&e, &hitz_token, &caller, &contract_addr, &fee, "stake deposit");
 - User's fee goes directly to contract as stake
 - What you invest is exactly what you stake
 
-#### 3. Fee Flow Redesign
+#### 3. HITZ-Only Economy
+
+All fees are now in HITZ tokens, not XLM:
+
+| Action | V1 (XLM) | V2 (HITZ) |
+|--------|----------|-----------|
+| Stream | 0.01 XLM | 0.1 HITZ |
+| Like | 0.02 XLM | 0.2 HITZ |
+| Download | 0.03 XLM | 0.3 HITZ |
+| Mine | 0.1 XLM + 50 HITZ stake | 1.0 HITZ (stake) |
+| Invest | XLM + oracle-based stake | 3+ HITZ (stake) |
+
+#### 4. Fee Flow Redesign
 
 **Staking Actions (mine/invest)**:
 ```
@@ -98,7 +105,7 @@ User → Treasury (fee)
     Treasury distributes to reward pools
 ```
 
-#### 4. Rate-Limited Distribution (Bitcoin-Like Curve)
+#### 5. Rate-Limited Distribution (Bitcoin-Like Curve)
 
 ```typescript
 // 0.05% of treasury distributed daily
@@ -160,9 +167,74 @@ This matches Bitcoin's emission curve where ~88% is issued by year 12.
 
 ---
 
+## Technical Implementation
+
+### Contract Changes
+
+```rust
+// POST-EXHAUSTION MODEL:
+// - No minting (supply exhausted)
+// - 1:1 staking (fee = stake, no oracle)
+// - Treasury distribution (0.05% daily)
+
+pub fn record_action(e: Env, caller: Address, entry_id: String, kind: Symbol, amount: Option<i128>) {
+    // For staking actions: fee goes to contract as stake
+    if requires_stake {
+        safe_transfer(&e, &hitz_token, &caller, &contract_addr, &fee, "stake deposit");
+        // stake = fee (1:1 ratio)
+    } else {
+        // For non-staking: fee goes to treasury
+        safe_transfer(&e, &hitz_token, &caller, &treasury, &fee, "HITZ fee");
+    }
+    // NOTE: No minting - supply is exhausted
+}
+```
+
+### Treasury Bot Changes
+
+```typescript
+// Bitcoin-like distribution rate: 0.05% per day
+const DAILY_DISTRIBUTION_RATE_BPS = 5;
+
+async function runTreasuryBot() {
+    // 1. Check treasury balance
+    const balance = await contract.getHitzBalance(treasury);
+    
+    // 2. Calculate 0.05% distribution
+    const amount = balance * 5n / 10000n;
+    
+    // 3. Distribute to entry pools
+    await contract.distributeRewardsBatch(treasurySecret, amount);
+    
+    // 4. Sync APRs to Algolia
+    await syncAllAPRsToAlgolia();
+}
+```
+
+---
+
+## Documentation
+
+Full documentation available in:
+
+- **Contract README**: `packages/api/contract/README.md`
+- **Tokenomics**: `packages/api/contract/TOKENOMICS_AND_FLOWS.md`
+- **Treasury Bot**: `packages/api/contract/TREASURY_BOT_FLOW.md`
+- **UI Integration**: `packages/api/contract/UI_INTEGRATION_GUIDE.md`
+- **Quick Reference**: `packages/api/contract/QUICK_REFERENCE.md`
+- **Docusaurus Docs**: `packages/docs/docs/`
+
+---
+
 ## Conclusion
 
 The V2 post-exhaustion model transforms a vulnerability into a feature. By eliminating minting entirely and using a simple 1:1 staking model, we've removed all oracle-dependent attack vectors while maintaining full functionality for users.
 
 The Bitcoin-like distribution curve ensures sustainable rewards for 12+ years, creating long-term value for the ecosystem rather than short-term inflation.
 
+**Key Takeaways**:
+- ✅ No minting = no inflation risk
+- ✅ No oracle = no manipulation risk
+- ✅ 1:1 staking = simple and predictable
+- ✅ 0.05% daily = sustainable 12-year curve
+- ✅ All features preserved

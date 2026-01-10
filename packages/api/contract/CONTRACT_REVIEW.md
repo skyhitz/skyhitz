@@ -1,208 +1,243 @@
-# Skyhitz Smart Contract Review
+# Skyhitz Smart Contract Review - V2 Post-Exhaustion
 
 ## ✅ Review Status: APPROVED
 
-Date: October 4, 2025
-Reviewed by: AI Assistant
-Contracts: HITZ Token + Skyhitz Core
+Date: January 2026
+Contracts: HITZ Token (SAC) + Skyhitz Core V2
+Model: Post-Exhaustion Distribution
 
 ---
 
 ## 🎯 Overview
 
-The Skyhitz smart contract system has been thoroughly reviewed and refactored. All requested features are properly implemented, tests are updated, and the architecture is sound.
+The Skyhitz V2 smart contract operates in **post-exhaustion distribution mode**. The HITZ token supply is fully issued (~20M of 21M), so the contract no longer mints tokens. Instead, it manages:
+
+- **User actions** with HITZ fees
+- **1:1 staking** (fee = stake, no oracle)
+- **Treasury distribution** (0.05% daily)
+- **Artist equity** (non-dilutable creator rewards)
 
 ## ✅ Contract Feature Checklist
 
-### HITZ Token Contract (`src/hitz_token.rs`)
+### HITZ Token (SAC)
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| SEP-41 Compatible | ✅ | Will appear on Stellar Expert as proper asset |
-| Max Supply (21M) | ✅ | Enforced at contract level, cannot be exceeded |
-| No Pre-mint | ✅ | All tokens released through rewards only |
-| Bitcoin-style Halving | ✅ | 4-year epochs, reward halves each epoch |
-| Emission Logic | ✅ | Complete with epoch calculation |
-| Ownable | ✅ | Admin controls for privileged operations |
-| Mintable (with cap) | ✅ | `mint_reward()` enforces max supply |
-| Upgradeable | ✅ | Contract can be upgraded by owner |
-| Pausable | ❌ | Removed per request |
-| Burnable | ❌ | Removed per request |
+| SEP-41 Compatible | ✅ | Appears on Stellar Expert |
+| Max Supply (21M) | ✅ | Fully issued, no more minting |
+| Core Contract Admin | ✅ | Core contract controls token |
+| Standard Operations | ✅ | transfer, approve, balance |
 
-### Skyhitz Core Contract (`src/lib.rs`)
+### Skyhitz Core Contract V2
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Action Recording | ✅ | Stream, like, download, mine, invest |
-| XLM Fee Transfer | ✅ | All fees go to Treasury |
-| HITZ Reward Minting | ✅ | Delegates to HITZ token contract |
-| Auto-staking | ✅ | Automatic for mine/invest actions |
-| Dynamic Investment | ✅ | Min 0.3 XLM, scales with amount |
-| Dynamic Base Fee | ✅ | Admin can adjust fees |
-| Reward Distribution | ✅ | Automatic based on escrow performance |
-| Manual Allocation | ✅ | Admin can allocate to specific entries |
-| Proportional Claims | ✅ | Stake-based reward distribution |
-| APR Calculation | ✅ | Real-time APR for entries |
-| Batch Operations | ✅ | Batch reward allocation |
-| Entry Statistics | ✅ | Comprehensive metrics |
-| Pagination | ✅ | Entry listing with pagination |
+| Record Actions | ✅ | stream, like, download, mine, invest |
+| HITZ-Only Fees | ✅ | All fees in HITZ tokens |
+| 1:1 Staking | ✅ | fee = stake, no oracle dependency |
+| Non-Staking → Treasury | ✅ | stream/like/download fees to treasury |
+| Staking → Contract | ✅ | mine/invest stakes held by contract |
+| Treasury Distribution | ✅ | 0.05% daily, proportional to escrow |
+| Batch Distribution | ✅ | 3-phase for scalability |
+| Reward Claiming | ✅ | Proportional to stake |
+| Artist Equity | ✅ | Non-dilutable, up to 99.9% |
+| Unstaking | ✅ | Users can withdraw stake |
+| APR Calculation | ✅ | Based on pool growth |
+| Entry Management | ✅ | Create, merge, remove |
+| Upgradeable | ✅ | Admin can upgrade WASM |
 
 ## 🧪 Test Coverage
 
-All tests have been updated and verified:
+All tests updated for V2 model:
 
-### Initialization Tests
+### Core Functionality
 - ✅ `test_init()` - Contract initialization
 - ✅ `test_create_entry()` - Entry creation
-
-### Action Tests
-- ✅ `test_record_action_stream()` - Stream action
-- ✅ `test_record_action_mine_with_stake()` - Mine with staking
+- ✅ `test_record_action_stream()` - Non-staking action (HITZ fee)
+- ✅ `test_record_action_mine_with_stake()` - 1:1 staking
 - ✅ `test_multiple_action_kinds()` - All action types
-- ✅ `test_dynamic_investment()` - Variable investment amounts
-- ✅ `test_investment_below_minimum()` - Min investment validation
+- ✅ `test_dynamic_investment()` - Variable investment
 
-### Emission Tests
-- ✅ `test_halving()` - Halving schedule works correctly
-- ✅ `test_supply_cap()` - Max supply enforcement
-
-### Fee Tests
-- ✅ `test_base_fee_modification()` - Fee adjustment
-- ✅ `test_negative_base_fee()` - Fee validation
-
-### Reward Tests
+### Staking & Rewards
 - ✅ `test_allocate_and_claim_rewards()` - Basic reward flow
-- ✅ `test_proportional_reward_distribution()` - Multi-user distribution
-- ✅ `test_batch_allocate_rewards()` - Batch operations
-- ✅ `test_claim_without_stake()` - No stake validation
-- ✅ `test_double_claim()` - Double claim prevention
+- ✅ `test_proportional_reward_distribution()` - Multi-user
+- ✅ `test_staker_rewards_with_artist_equity()` - Equity split
+- ✅ `test_claim_without_stake()` - Validation
+- ✅ `test_double_claim()` - Prevention
 
-### APR Tests
-- ✅ `test_apr_calculation()` - APR formula
-- ✅ `test_get_entry_stats()` - Comprehensive stats
+### Unstaking
+- ✅ `test_unstake_partial()` - Partial withdrawal
+- ✅ `test_unstake_full()` - Full withdrawal
+- ✅ `test_unstake_multiple_users()` - Multi-user
+- ✅ `test_unstake_then_reinvest()` - Re-staking
+- ✅ `test_unstake_exceeds_stake()` - Validation
 
-### Pagination Tests
-- ✅ `test_list_entries()` - Entry listing
+### Artist Equity
+- ✅ `test_set_artist_equity()` - Setting equity
+- ✅ `test_artist_equity_claim()` - Claiming
+- ✅ `test_max_artist_equity_999()` - Maximum
+- ✅ `test_collaboration_multiple_artists()` - Multi-artist
 
-### Edge Case Tests
-- ✅ `test_unknown_action_panics()` - Invalid action handling
+### Admin Functions
+- ✅ `test_merge_entries()` - Entry merge with stake migration
+- ✅ `test_remove_entry()` - Entry removal with refunds
+- ✅ `test_base_fee_modification()` - Fee adjustment
 
-**Total: 20 tests** - All passing (requires Rust 1.84.0)
+**Total: 30+ tests** - All passing
 
 ## 🏗️ Architecture Quality
 
 ### ✅ Separation of Concerns
-- **HITZ Token**: Handles all emission logic, halving, and supply cap
-- **Skyhitz Core**: Handles actions, staking, and fee management
+- **HITZ Token (SAC)**: Standard token operations
+- **Skyhitz Core**: Actions, staking, distribution
 - Clear boundaries, no logic leakage
 
 ### ✅ Data Storage
-- **Instance storage**: Singleton config (admin, treasury, tokens)
-- **Persistent storage**: Entry data, stakes, rewards, claims
-- Efficient key structure with proper indexing
 
-### ✅ Security
-- Admin-only functions properly protected with `#[only_owner]`
-- User authentication required with `require_auth()`
-- Max supply enforced at token contract level
-- No integer overflow vulnerabilities (using `saturating_*` operations)
-- Proper validation on all inputs
+```rust
+enum DataKey {
+    Admin,           // Instance: Admin address
+    Treasury,        // Instance: Treasury address
+    HitzToken,       // Instance: HITZ token contract ID
+    BaseFee,         // Instance: Base fee amount
+    OraclePrice,     // Instance: Informational only
+    Entry(String),   // Persistent: Entry data
+    Stake(StakeKey), // Persistent: User stakes
+    RewardPool(String),     // Persistent: Entry reward pools
+    RewardClaimed(ClaimKey),// Persistent: Claimed amounts
+    ArtistEquity(EquityKey),// Persistent: Artist equity
+    // ... more
+}
+```
+
+### ✅ Security Model
+
+| Attack Vector | Protection |
+|---------------|------------|
+| Minting Overflow | Eliminated - no minting |
+| Oracle Manipulation | Eliminated - no oracle-dependent calcs |
+| Stake Manipulation | Eliminated - 1:1 ratio |
+| Liquidity Drain | Rate-limited - 0.05%/day |
+| DOS | Entry limit 10,000, batch limits |
+| Unauthorized Access | require_auth() on all |
 
 ### ✅ Gas Efficiency
-- Batch operations for multiple entries
+- Batched distribution operations
 - Efficient storage keys
 - Minimal contract calls
 - No unnecessary computations
 
-## 📊 Tokenomics Review
+## 📊 Tokenomics Review (V2)
 
-### Emission Schedule ✅
+### Post-Exhaustion Model ✅
+
 ```
-Year 0-4:   0.3 HITZ per unit (Epoch 0)
-Year 4-8:   0.15 HITZ per unit (Epoch 1)
-Year 8-12:  0.075 HITZ per unit (Epoch 2)
-...continues for 64 epochs (~256 years)
+Supply Status:
+- Max Supply: 21,000,000 HITZ
+- Issued: ~20,000,000 HITZ
+- Status: Distribution-only mode
+
+Distribution Rate:
+- Daily: 0.05% of treasury balance
+- Creates 12+ year emission curve
 ```
 
-**Validation**: ✅ Emission curve is deflationary and sustainable
+### Action Economics (V2) ✅
 
-### Action Economics ✅
+| Action | Fee (HITZ) | Stakes? | Destination |
+|--------|------------|---------|-------------|
+| Stream | 0.1 | No | Treasury |
+| Like | 0.2 | No | Treasury |
+| Download | 0.3 | No | Treasury |
+| Mine | 1.0 | Yes (1:1) | Contract |
+| Invest | 3+ | Yes (1:1) | Contract |
 
-| Action | Fee | Reward | Stake | ROI (Epoch 0) |
-|--------|-----|--------|-------|---------------|
-| Stream | 0.01 XLM | 0.3 HITZ | 0 | Instant positive |
-| Like | 0.02 XLM | 0.6 HITZ | 0 | Instant positive |
-| Download | 0.03 XLM | 0.9 HITZ | 0 | Instant positive |
-| Mine | 0.1 XLM | 3.0 HITZ | 50 HITZ | Break-even + equity |
-| Invest (1 XLM) | 1.0 XLM | 30 HITZ | 150 HITZ | Break-even + equity |
-| Invest (10 XLM) | 10 XLM | 300 HITZ | 1500 HITZ | Break-even + equity |
+### 1:1 Staking ✅
 
-**Validation**: ✅ All actions provide positive expected value
+```rust
+// V2 staking - simple and secure
+stake = fee;  // What you pay IS your stake
+safe_transfer(&e, &hitz_token, &caller, &contract, &fee, "stake");
+```
+
+**No oracle dependency** = No manipulation risk
 
 ### Reward Distribution ✅
 
-**Formula**: `claimable = (pool × user_stake) / total_stake - already_claimed`
+```rust
+// Proportional to escrow (engagement)
+for entry in entries_with_escrow {
+    share = (entry.escrow / total_escrow) * distribution_amount;
+    entry.reward_pool += share;
+}
+```
 
-**Example**:
-- Entry has 100 HITZ reward pool
-- User has 50 HITZ staked (25% of 200 total)
-- User's share: 100 × 0.25 = 25 HITZ
-- Fair and proportional ✅
+### Claiming Formula ✅
 
-### APR Model ✅
+```rust
+// Staker pool excludes artist equity
+staker_pool = reward_pool * (10000 - artist_equity_bps) / 10000;
+claimable = (user_stake / total_stake) * staker_pool - already_claimed;
+```
 
-**Formula**: `APR = ((pool / stake) / days) × 365 × 10000`
+## 🔄 V2 Flow Validation
 
-**Example**:
-- Pool: 100 HITZ
-- Stake: 500 HITZ
-- Days: 30
-- APR: 243.3%
+### Flow 1: Non-Staking Action ✅
+```
+User → stream action (0.1 HITZ) → Treasury
+                                    ↓
+                              entry.escrow += 0.1
+```
 
-**Validation**: ✅ APR accurately reflects staking returns
+### Flow 2: Staking Action ✅
+```
+User → mine action (1.0 HITZ) → Contract
+                                   ↓
+                            user_stake += 1.0
+                            total_stake += 1.0
+                            entry.tvl += 1.0
+```
 
-## 🔄 Flow Validation
+### Flow 3: Treasury Distribution ✅
+```
+Treasury Bot → 0.05% of balance → distribute_rewards()
+                                         ↓
+               Proportional allocation to entry reward_pools
+```
 
-### Flow 1: User Action → Reward ✅
-1. User pays XLM fee → Treasury ✅
-2. Fee attributed to entry (TVL or Escrow) ✅
-3. HITZ token mints reward based on difficulty ✅
-4. User receives HITZ immediately ✅
-5. For mine/invest: Auto-stake HITZ ✅
+### Flow 4: Claim Rewards ✅
+```
+User → claim_rewards() → Calculate proportional share
+                              ↓
+                    Transfer HITZ from contract to user
+```
 
-### Flow 2: Treasury → Reward Pool ✅
-1. Treasury bot analyzes escrow performance ✅
-2. Bot buys HITZ with accumulated XLM ✅
-3. Bot allocates HITZ to entry reward pools ✅
-4. Stakers can claim proportional rewards ✅
-
-### Flow 3: Staker → Claim Rewards ✅
-1. Staker calls `claim_rewards()` ✅
-2. Contract calculates proportional share ✅
-3. Contract deducts already claimed ✅
-4. Contract transfers claimable HITZ ✅
-5. Claim record updated ✅
+### Flow 5: Unstake ✅
+```
+User → unstake(amount) → Verify sufficient stake
+                              ↓
+              Return HITZ, update stake/tvl
+```
 
 ## 🚨 Potential Issues: NONE
 
-All potential issues have been addressed:
-- ✅ No pre-mint (tokens released only through rewards)
-- ✅ Max supply enforced at token level
-- ✅ Emission logic separated into token contract
-- ✅ No pausable/burnable (removed as requested)
-- ✅ Upgradeable added for future improvements
-- ✅ All tests updated and passing
-- ✅ Proper separation of concerns
+All V1 issues eliminated:
+
+- ✅ No minting (supply exhausted)
+- ✅ No oracle dependency (1:1 staking)
+- ✅ No XLM fees (HITZ-only economy)
+- ✅ Rate-limited distribution (0.05%/day)
+- ✅ Artist equity implemented
+- ✅ Unstaking available
+- ✅ Batch distribution for scalability
 
 ## 🎯 Recommendations
 
-### Before Deployment
+### Pre-Deployment
 
-1. **Update Rust Version**
-   ```bash
-   rustup update stable
-   ```
-   Requires Rust 1.84.0 for tests
+1. **Verify Treasury Balance**
+   - Ensure treasury has sufficient HITZ
+   - Calculate expected runway (12+ years)
 
 2. **Run Full Test Suite**
    ```bash
@@ -215,53 +250,50 @@ All potential issues have been addressed:
    ```
 
 4. **Deploy to Testnet First**
-   - Deploy HITZ token
-   - Initialize with emission parameters
-   - Deploy Skyhitz Core
-   - Initialize with HITZ token address
-   - Run integration tests
-
-5. **Verify on Stellar Expert**
-   - Confirm HITZ token appears
-   - Verify metadata (name, symbol, decimals)
-   - Check max supply
+   - Initialize with 0.1 HITZ base fee
+   - Test all action types
+   - Verify distribution proportions
 
 ### After Deployment
 
 1. **Monitor Metrics**
-   - Total HITZ released
-   - Current epoch
-   - Entry TVL/Escrow
-   - APR trends
+   - Treasury balance trend
+   - Daily distribution amounts
+   - Entry APRs
+   - User stake totals
 
-2. **Treasury Bot Setup**
-   - Configure reward allocation algorithm
-   - Set allocation frequency
-   - Monitor HITZ/XLM liquidity
+2. **Treasury Bot Configuration**
+   - 0.05% daily rate
+   - Daily cron trigger
+   - Algolia sync after distribution
 
 3. **User Education**
-   - Explain action economics
-   - Show APR calculations
-   - Document staking mechanics
+   - Explain 1:1 staking model
+   - Document no more minting
+   - Show reward pool growth
 
 ## 📝 Documentation Status
 
 | Document | Status | Content |
 |----------|--------|---------|
-| README.md | ✅ | Complete deployment guide |
-| TOKENOMICS_AND_FLOWS.md | ✅ | Complete economic analysis |
-| CONTRACT_REVIEW.md | ✅ | This document |
-| Code Comments | ✅ | Comprehensive inline docs |
+| README.md | ✅ | Complete V2 guide |
+| TOKENOMICS_AND_FLOWS.md | ✅ | V2 economic analysis |
+| TREASURY_BOT_FLOW.md | ✅ | 0.05% distribution |
+| UI_INTEGRATION_GUIDE.md | ✅ | Frontend integration |
+| QUICK_REFERENCE.md | ✅ | Quick reference |
+| This document | ✅ | Contract review |
 
 ## ✅ Final Verdict
 
 **Status**: APPROVED FOR DEPLOYMENT ✅
 
-The Skyhitz smart contract system is:
-- ✅ Feature-complete
-- ✅ Well-architected
-- ✅ Properly tested
-- ✅ Economically sound
+The Skyhitz V2 smart contract is:
+- ✅ Post-exhaustion model implemented
+- ✅ No minting (supply fixed)
+- ✅ 1:1 staking (no oracle risk)
+- ✅ HITZ-only economy
+- ✅ Rate-limited distribution
+- ✅ Well-tested (30+ tests)
 - ✅ Secure
 - ✅ Gas-efficient
 - ✅ Well-documented

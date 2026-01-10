@@ -1,290 +1,234 @@
-# Treasury Separation Implementation - Changes Summary
+# V2 Post-Exhaustion Model - Changes Summary
 
 ## ✅ Implementation Complete
 
-Successfully implemented **separate Treasury wallet architecture** for improved security and operational flexibility.
+Successfully implemented **post-exhaustion distribution-only mode** with HITZ-only economy.
 
 ---
 
-## 🔧 Code Changes
+## 🔧 Major Changes
 
-### 1. `/packages/api/contract/src/lib.rs`
+### 1. No More Minting
 
-#### Function: `distribute_rewards()` (lines 286-358)
-
-**Before:**
+**Before (V1)**:
 ```rust
-pub fn distribute_rewards(e: Env, hitz_amount: i128) {
-    let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
-    admin.require_auth();  // ❌ Required admin authorization
-    
-    hitz_client.transfer(&admin, &e.current_contract_address(), &hitz_amount);
-    // ❌ Pulled HITZ from admin wallet
-}
+// Minted HITZ on every action
+let reward = compute_unit_reward(&e, epoch) * difficulty;
+hitz_client.mint(&caller, &reward);
 ```
 
-**After:**
+**After (V2)**:
 ```rust
-pub fn distribute_rewards(e: Env, caller: Address, hitz_amount: i128) {
-    caller.require_auth();  // ✅ Caller must sign the transaction
-    
-    // Verify caller is the Treasury
-    let treasury: Address = e.storage().instance().get(&DataKey::Treasury).unwrap();
-    if caller != treasury {
-        panic!("Only Treasury can distribute rewards");
-    }
-    
-    hitz_client.transfer(&caller, &e.current_contract_address(), &hitz_amount);
-    // ✅ Pulled HITZ from Treasury wallet (caller)
-}
+// No minting - supply exhausted
+// Rewards come from treasury distribution only
 ```
 
-**Key Changes:**
-1. ✅ Added `caller: Address` parameter
-2. ✅ Changed auth from `admin.require_auth()` to `caller.require_auth()`
-3. ✅ Added Treasury address verification
-4. ✅ Transfer source changed from `&admin` to `&caller`
-5. ✅ Updated function documentation
+### 2. HITZ-Only Economy
+
+**Before (V1)**:
+```rust
+// XLM fees
+xlm_client.transfer(&caller, &treasury, &xlm_fee);
+// HITZ rewards minted
+hitz_client.mint(&caller, &hitz_reward);
+```
+
+**After (V2)**:
+```rust
+// HITZ fees only
+hitz_client.transfer(&caller, &treasury, &hitz_fee);
+// No minting - rewards from treasury distribution
+```
+
+### 3. 1:1 Staking (No Oracle)
+
+**Before (V1)**:
+```rust
+// Oracle-dependent stake calculation
+let stake = (fee * 10_000_000) / oracle_price;
+// Vulnerable to oracle manipulation
+```
+
+**After (V2)**:
+```rust
+// Simple 1:1 ratio
+let stake = fee;  // What you pay IS your stake
+// No oracle dependency = no manipulation risk
+```
+
+### 4. Rate-Limited Distribution
+
+**Before (V1)**:
+```rust
+// Admin-controlled, no rate limit
+distribute_rewards(amount); // Any amount
+```
+
+**After (V2)**:
+```rust
+// Treasury-only, rate-limited
+// Bot calculates 0.05% of treasury balance
+let amount = treasury_balance * 5 / 10000;
+distribute_rewards(caller, amount);
+// Creates 12+ year emission curve
+```
+
+### 5. Treasury Separation
+
+**Before (V1)**:
+```rust
+// Admin handled everything
+admin.require_auth();
+```
+
+**After (V2)**:
+```rust
+// Separate wallets
+// Admin: cold storage, governance
+// Treasury: hot wallet, distributions
+caller.require_auth();
+if caller != treasury { panic!("Only Treasury") }
+```
+
+### 6. Artist Equity
+
+**New in V2**:
+```rust
+// Non-dilutable artist equity
+set_artist_equity(entry_id, artist, equity_bps);  // Up to 99.9%
+claim_artist_equity(entry_id, artist);
+// Artists claim before stakers
+```
+
+### 7. Unstaking
+
+**New in V2**:
+```rust
+// Users can withdraw their stake
+unstake(entry_id, caller, amount);
+// Returns HITZ to user, reduces TVL
+```
+
+### 8. 3-Phase Batch Distribution
+
+**New in V2**:
+```rust
+// For scalability with many entries
+// Phase 1: Calculate total escrow
+calculate_total_escrow_batch(start, count);
+// Phase 2: Initialize distribution
+initialize_distribution(hitz_amount);
+// Phase 3: Distribute in batches
+distribute_rewards_batch(start, count);
+```
 
 ---
 
-## 📄 Documentation Updates
+## 📊 Action Changes
 
-### 2. `/packages/api/contract/TREASURY_BOT_FLOW.md`
-
-Updated to reflect new Treasury separation:
-- ✅ Function signature includes `caller` parameter
-- ✅ Pseudocode shows Treasury keypair usage
-- ✅ Auth table updated (Treasury auth, not Admin)
-- ✅ Added wallet separation security notes
-- ✅ Updated example transactions to show Treasury signing
-
-### 3. `/packages/api/contract/README.md`
-
-- ✅ Updated `distribute_rewards()` signature to include `caller` parameter
-
-### 4. `/packages/api/contract/TREASURY_SEPARATION_IMPLEMENTED.md` (New)
-
-- ✅ Comprehensive documentation of the implementation
-- ✅ Before/after comparison
-- ✅ Security model explanation
-- ✅ Bot implementation examples
-- ✅ Testing guidelines
+| Action | V1 (XLM) | V2 (HITZ) | Stakes? |
+|--------|----------|-----------|---------|
+| Stream | 0.01 XLM | 0.1 HITZ | No |
+| Like | 0.02 XLM | 0.2 HITZ | No |
+| Download | 0.03 XLM | 0.3 HITZ | No |
+| Mine | 0.1 XLM + oracle stake | 1.0 HITZ (1:1 stake) | Yes |
+| Invest | XLM + oracle stake | 3+ HITZ (1:1 stake) | Yes |
 
 ---
 
-## 🎯 Architecture Overview
+## 🗑️ Removed Functions
 
-### Wallet Roles
-
-```
-┌─────────────────────────┐
-│   Admin Wallet (Cold)   │
-├─────────────────────────┤
-│ • Governance            │
-│ • Entry creation        │
-│ • Manual allocations    │
-│ • Contract upgrades     │
-│ • Base fee adjustments  │
-└─────────────────────────┘
-         ↓ (rare)
-┌─────────────────────────┐
-│ Skyhitz Core Contract   │
-├─────────────────────────┤
-│ • User actions          │
-│ • Reward distribution   │
-│ • Staking logic         │
-│ • Entry management      │
-└─────────────────────────┘
-         ↑ (frequent)
-┌─────────────────────────┐
-│  Treasury Wallet (Hot)  │
-├─────────────────────────┤
-│ • Receives XLM fees     │
-│ • Buys HITZ on DEX      │
-│ • Distributes rewards   │
-│ • Automated bot ops     │
-└─────────────────────────┘
-```
-
-### Security Benefits
-
-| Aspect | Before (Single Wallet) | After (Separate Wallets) |
-|--------|----------------------|-------------------------|
-| **Admin Keys** | Hot wallet (risky) | Cold storage (secure) |
-| **Bot Operations** | Uses admin keys | Uses Treasury keys |
-| **Breach Impact** | Full control lost | Limited to Treasury |
-| **Key Rotation** | Breaks everything | Easy Treasury rotation |
+- `safe_mint_with_cap()` - No more minting
+- `compute_unit_reward()` - No emission calculation
+- `compute_epoch_index()` - No halving logic
+- `update_oracle_price()` - Disabled for safety
+- `sell_shares()` - Replaced with unstake
 
 ---
 
-## 🚀 Treasury Bot Flow
+## ✅ New Functions
 
-### Implementation Example
-
-```typescript
-// Load Treasury keypair (separate from admin)
-const treasuryKeypair = Keypair.fromSecret(
-    process.env.TREASURY_SECRET_KEY
-);
-
-async function distributionCycle() {
-    // 1. Check Treasury balance
-    const xlmBalance = await stellar.getBalance(
-        treasuryKeypair.publicKey(), 
-        'XLM'
-    );
-    
-    if (xlmBalance < MIN_THRESHOLD) return;
-    
-    // 2. Buy HITZ on DEX
-    const hitzBought = await buyHitzOnDex(
-        xlmBalance, 
-        treasuryKeypair
-    );
-    
-    // 3. Distribute via Core contract
-    // ✅ Treasury signs, not admin
-    await coreContract.distribute_rewards(
-        treasuryKeypair.publicKey(),  // caller parameter
-        hitzBought,
-        { signer: treasuryKeypair }   // Treasury signature
-    );
-}
-```
-
-### Key Points
-
-- ✅ Treasury bot uses its **own keypair**, not admin keys
-- ✅ Treasury address passed as `caller` parameter
-- ✅ Treasury signs the transaction
-- ✅ Contract verifies `caller == treasury` address
-- ✅ HITZ is pulled from Treasury wallet
+| Function | Purpose |
+|----------|---------|
+| `unstake()` | Withdraw staked HITZ |
+| `set_artist_equity()` | Set non-dilutable artist share |
+| `claim_artist_equity()` | Artist claims their share |
+| `get_artist_equity()` | Query artist equity info |
+| `get_total_artist_equity()` | Total equity for entry |
+| `calculate_total_escrow_batch()` | Phase 1 of batch distribution |
+| `initialize_distribution()` | Phase 2 of batch distribution |
+| `distribute_rewards_batch()` | Phase 3 of batch distribution |
 
 ---
 
-## 🔐 Security Model
-
-### Authorization Flow
-
-```
-Treasury Bot (with Treasury keys)
-    ↓
-Signs transaction with treasuryKeypair
-    ↓
-Stellar Network validates signature
-    ↓
-Core Contract: distribute_rewards(caller, amount)
-    ↓
-1. caller.require_auth() ✓
-2. if caller != treasury → PANIC ✓
-3. Transfer HITZ from caller (Treasury) ✓
-4. Distribute proportionally ✓
-```
-
-### What Changed?
-
-**Before:**
-- Admin keys needed in hot wallet for bot
-- Single point of failure
-- High risk if bot server compromised
-
-**After:**
-- Admin keys stay in cold storage
-- Treasury keys in hot wallet (separate)
-- Limited blast radius if compromised
-- Treasury can be rotated independently
-
----
-
-## 📋 Verification Checklist
-
-### Code Changes
-- ✅ Function signature updated with `caller: Address`
-- ✅ Auth logic changed to `caller.require_auth()`
-- ✅ Treasury verification added
-- ✅ Transfer source changed to `&caller`
-- ✅ Documentation comments updated
-
-### Documentation
-- ✅ README updated with new signature
-- ✅ TREASURY_BOT_FLOW updated with examples
-- ✅ TREASURY_SEPARATION_IMPLEMENTED created
-- ✅ Security benefits documented
-- ✅ Bot implementation examples provided
-
-### Testing (Pending)
-- ⏳ Rust 1.84.0 required for compilation
-- ⏳ Test cases need updating for `caller` parameter
-- ⏳ Integration tests needed for Treasury auth
-
----
-
-## 📊 Files Changed
+## 📁 Files Changed
 
 ```
 packages/api/contract/
 ├── src/
-│   └── lib.rs                                    [MODIFIED]
-├── README.md                                      [MODIFIED]
-├── TREASURY_BOT_FLOW.md                           [MODIFIED]
-├── TREASURY_SEPARATION_IMPLEMENTED.md             [NEW]
-└── CHANGES_SUMMARY.md                             [NEW]
+│   └── lib.rs                          [MAJOR REWRITE]
+│   └── tests.rs                        [UPDATED]
+├── README.md                           [UPDATED]
+├── TOKENOMICS_AND_FLOWS.md             [UPDATED]
+├── TREASURY_BOT_FLOW.md                [UPDATED]
+├── UI_INTEGRATION_GUIDE.md             [UPDATED]
+├── QUICK_REFERENCE.md                  [UPDATED]
+├── CONTRACT_REVIEW.md                  [UPDATED]
+├── DEPLOYMENT_CHECKLIST.md             [UPDATED]
+└── CHANGES_SUMMARY.md                  [THIS FILE]
 ```
 
 ---
 
-## 🎯 Next Steps
+## 🔐 Security Improvements
 
-### 1. Build & Test (Requires Rust 1.84.0)
-```bash
-cargo build --target wasm32-unknown-unknown --release
-cargo test
-```
-
-### 2. Update TypeScript Bindings
-```bash
-bash bindings.sh
-```
-
-### 3. Update Frontend/Bot Code
-- Treasury bot to pass `caller` parameter
-- Treasury bot to use Treasury keypair (not admin)
-
-### 4. Deploy to Testnet
-- Deploy with **separate** admin and treasury addresses
-- Test distribution flow with Treasury bot
-
-### 5. Production Deployment
-- Admin keys → cold storage (hardware wallet)
-- Treasury keys → bot server (hot wallet)
+| Risk | V1 | V2 |
+|------|-----|-----|
+| Minting overflow | Possible | Eliminated |
+| Oracle manipulation | Critical | Eliminated |
+| Stake manipulation | Possible | Eliminated |
+| Liquidity drain | Possible | Rate-limited |
+| Supply inflation | Possible | Impossible |
 
 ---
 
-## 💡 Key Takeaways
+## 📈 Distribution Projections
 
-1. **Admin keys never exposed** to automated systems
-2. **Treasury wallet is separate**, reducing risk
-3. **Clear separation of concerns**: governance vs operations
-4. **Professional security model** matching industry standards
-5. **Easy key rotation** without breaking the system
+With 0.05% daily distribution from treasury:
 
----
+| Year | Distributed | Cumulative |
+|------|-------------|------------|
+| 1 | ~17% | 17% |
+| 4 | ~35% | 52% |
+| 8 | ~25% | 77% |
+| 12 | ~11% | 88% |
 
-## 🎉 Summary
-
-✅ **Treasury separation successfully implemented!**
-
-The contract now supports a professional, secure architecture where:
-- Admin controls governance from cold storage
-- Treasury handles automated operations with hot keys
-- System is more resilient to compromise
-- Keys can be rotated independently
-
-**Status**: Code complete, pending compilation and testing with Rust 1.84.0
+Creates sustainable 12+ year reward runway.
 
 ---
 
-**Last Updated**: October 4, 2025
-**Implementation**: Complete ✅
-**Testing**: Pending Rust 1.84.0 ⏳
+## ✅ Migration Notes
+
+### For Users
+- All existing stakes preserved
+- New actions pay HITZ fees (not XLM)
+- Rewards come from treasury distributions
+- Can now unstake at any time
+
+### For Frontend
+- Update fee displays: HITZ not XLM
+- Check HITZ balance before actions
+- Remove "instant reward" messaging
+- Add unstake UI
+- Add artist equity display
+
+### For Treasury Bot
+- Rate: 0.05% of balance daily
+- Call: `distribute_rewards(caller, amount)`
+- Sync APRs after distribution
+
+---
+
+**Status**: ✅ Implementation Complete
+**Version**: 2.0.0 (Post-Exhaustion)
+**Date**: January 2026

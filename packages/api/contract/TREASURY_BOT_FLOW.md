@@ -1,268 +1,231 @@
-# Treasury Bot Flow - Corrected Implementation
+# Treasury Bot V2 - Bitcoin-Like Distribution
 
-## ✅ Problem Identified and Fixed
+## ✅ Post-Exhaustion Model
 
-**Previous Issue**: Documentation suggested Treasury bot needs to analyze entry performance and calculate reward distribution.
+The HITZ supply is fully issued (~20M of 21M). The Treasury Bot now operates in **distribution-only mode** with rate limiting.
 
-**Reality**: Treasury bot only handles XLM → HITZ conversion. The Core contract knows entry performance and should handle distribution.
+## 🔄 How It Works
 
-## 🔄 Corrected Flow
-
-### Treasury Bot Responsibilities (Simple)
+### Distribution Rate
 
 ```
-1. Collect accumulated XLM fees from Treasury wallet
-2. Buy HITZ on Stellar DEX with collected XLM
-3. Send all purchased HITZ to Core contract via distribute_rewards()
+Daily Distribution = Treasury Balance × 0.05%
+                   = Treasury Balance × 5 basis points
 ```
 
-**That's it!** The bot doesn't need to:
-- ❌ Track entry performance
-- ❌ Calculate escrow amounts
-- ❌ Determine distribution percentages
-- ❌ Make multiple transactions to different entries
+**Why 0.05%?**
+- Creates a 12+ year emission curve
+- Matches Bitcoin's proven halving model
+- Prevents market flooding
+- Ensures sustainable rewards
 
-### Core Contract Responsibilities (Smart)
+### Emission Curve
 
-The Core contract handles all distribution logic:
+| Year | Treasury Distributed | Cumulative |
+|------|---------------------|------------|
+| 1 | ~17% | 17% |
+| 4 | ~35% | 52% |
+| 8 | ~25% | 77% |
+| 12 | ~11% | 88% |
+
+## 📊 Treasury Bot Responsibilities
+
+### What It Does
+
+1. ✅ Check treasury HITZ balance
+2. ✅ Calculate 0.05% distribution amount
+3. ✅ Call `distribute_rewards()` on contract
+4. ✅ Sync APRs to Algolia
+
+### What It Doesn't Do
+
+- ❌ Track entry performance (contract handles this)
+- ❌ Calculate distribution percentages (contract handles this)
+- ❌ Convert XLM to HITZ (no longer needed)
+- ❌ Update oracle price (disabled for safety)
+- ❌ Mint tokens (supply exhausted)
+
+## 🔧 Implementation
+
+### Bot Code (`packages/api/src/treasury/bot.ts`)
+
+```typescript
+// Bitcoin-like distribution rate: 0.05% of treasury balance per day
+const DAILY_DISTRIBUTION_RATE_BPS = 5; // 5 basis points = 0.05%
+
+async function runTreasuryBot(env: Env) {
+  // 1. Get treasury HITZ balance
+  const treasuryBalance = await contract.getHitzBalance(treasuryAddress);
+  
+  // 2. Calculate rate-limited amount (0.05%)
+  const amountToDistribute = treasuryBalance * 5n / 10000n;
+  
+  // 3. Skip if below minimum (1 HITZ)
+  if (amountToDistribute < 10_000_000n) {
+    console.log('Below minimum, skipping');
+    return;
+  }
+  
+  // 4. Distribute via contract (3-phase batch for scalability)
+  await contract.distributeRewardsBatch(treasuryKeys, amountToDistribute);
+  
+  // 5. Sync APRs to Algolia
+  await syncAllAPRsToAlgolia(env);
+}
+```
+
+### Contract Distribution Logic
 
 ```rust
-distribute_rewards(caller: Address, hitz_amount: i128) {
+pub fn distribute_rewards(e: Env, caller: Address, hitz_amount: i128) {
     // 1. Verify caller is Treasury
     caller.require_auth();
     if caller != treasury { panic!("Only Treasury") }
     
     // 2. Transfer HITZ from Treasury to contract
-    hitz_client.transfer(&caller, &contract, &hitz_amount)
+    hitz_client.transfer(&caller, &contract, &hitz_amount);
     
     // 3. Calculate total escrow across all entries
-    let total_escrow = sum(all_entries.escrow_xlm)
+    let total_escrow = sum(all entries.escrow);
     
     // 4. Distribute proportionally
     for each entry {
-        entry_share = (entry.escrow_xlm / total_escrow) * hitz_amount
-        entry.reward_pool += entry_share
+        if entry.escrow > 0 {
+            share = (entry.escrow / total_escrow) * hitz_amount;
+            entry.reward_pool += share;
+        }
     }
 }
 ```
 
 ## 📊 Example Distribution
 
-### Scenario:
-- Treasury bot buys 1000 HITZ
-- Entry A: 500 XLM escrow (50%)
-- Entry B: 300 XLM escrow (30%)
-- Entry C: 200 XLM escrow (20%)
+### Scenario
 
-### Single Call:
-```typescript
-// Treasury bot makes ONE call (signs with Treasury keys)
-contract.distribute_rewards(
-  treasuryAddress,  // caller parameter
-  1000_HITZ,
-  { signer: treasuryKeypair }
-)
+- Treasury balance: 15,000,000 HITZ
+- Daily distribution (0.05%): 7,500 HITZ
+- Entry A: 500 HITZ escrow (50%)
+- Entry B: 300 HITZ escrow (30%)
+- Entry C: 200 HITZ escrow (20%)
 
-// Core contract automatically:
-// - Entry A gets 500 HITZ (50%)
-// - Entry B gets 300 HITZ (30%)
-// - Entry C gets 200 HITZ (20%)
+### Distribution
+
+```
+Entry A: (500 / 1000) × 7,500 = 3,750 HITZ
+Entry B: (300 / 1000) × 7,500 = 2,250 HITZ  
+Entry C: (200 / 1000) × 7,500 = 1,500 HITZ
 ```
 
-## 🔧 Available Functions
+### Result
 
-### 1. `distribute_rewards()` - Automatic (Treasury Bot)
-```rust
-pub fn distribute_rewards(e: Env, caller: Address, hitz_amount: i128)
-```
+Entries with more engagement (escrow) receive more rewards.
+Stakers in each entry can then claim proportionally.
 
-**Who calls it**: Treasury bot (automated, scheduled)
+## 🔐 Security
 
-**What it does**:
-- Verifies caller is the Treasury address
-- Accepts total HITZ amount from Treasury wallet
-- Calculates total escrow across all entries
-- Distributes proportionally based on escrow_xlm
-- Updates all reward pools automatically
+### Rate Limiting
 
-**Use case**: Normal operations, automated distribution
+- Only 0.05% per day prevents liquidity drain
+- Even if compromised, attacker can only distribute normally
 
-**Security**: Treasury signs with its own keys (separate from admin)
+### No Oracle Updates
 
-### 2. `allocate_rewards()` - Manual (Admin)
-```rust
-pub fn allocate_rewards(e: Env, entry_id: String, hitz_amount: i128)
-```
-
-**Who calls it**: Admin (manual intervention)
-
-**What it does**:
-- Allocates specific amount to specific entry
-- Bypasses automatic distribution logic
-
-**Use cases**:
-- Promotions
-- Bonuses
-- Contests
-- Special events
-- Corrections
-
-### 3. `batch_allocate_rewards()` - Manual Batch (Admin)
-```rust
-pub fn batch_allocate_rewards(e: Env, entry_ids: Vec<String>, amounts: Vec<i128>)
-```
-
-**Who calls it**: Admin (manual intervention)
-
-**What it does**:
-- Allocates specific amounts to multiple entries at once
-- More efficient than multiple single calls
-
-**Use cases**:
-- Campaign rewards
-- Airdrops
-- Bulk bonuses
-
-## 🚀 Treasury Bot Implementation
-
-### Simplified Pseudocode
-
-```typescript
-// Load Treasury keypair (NOT admin keys!)
-const treasuryKeypair = Keypair.fromSecret(process.env.TREASURY_SECRET_KEY);
-
-async function runTreasuryBot() {
-  // 1. Check Treasury XLM balance
-  const xlmBalance = await getTreasuryBalance('XLM')
-  
-  if (xlmBalance < MIN_THRESHOLD) {
-    return // Wait for more fees to accumulate
-  }
-  
-  // 2. Buy HITZ on DEX
-  const hitzBought = await buyHitzOnDex(xlmBalance, treasuryKeypair)
-  
-  // 3. Send to Core contract (ONE call handles everything)
-  // Treasury signs with its own keys
-  await coreContract.distribute_rewards(
-    treasuryKeypair.publicKey(),  // caller
-    hitzBought,
-    { signer: treasuryKeypair }   // Treasury signs
-  )
-  
-  // Done! Core handles the rest
-}
-
-// Run every hour/day/week as needed
-schedule(runTreasuryBot, INTERVAL)
-```
-
-### What Treasury Bot Doesn't Need
-
-- ❌ Database of entries
-- ❌ Entry performance tracking
-- ❌ Escrow calculations
-- ❌ Distribution algorithms
-- ❌ Multiple contract calls
-- ❌ Complex logic
-
-### What Treasury Bot Needs
-
-- ✅ Treasury wallet keypair (separate from admin)
-- ✅ Connection to Stellar DEX
-- ✅ Connection to Core contract
-- ✅ Simple scheduling
-
-## 📈 Benefits of This Approach
-
-### 1. Simplicity
-- Treasury bot is just a converter: XLM → HITZ
-- All business logic stays in the contract
-
-### 2. Transparency
-- Distribution formula is on-chain
-- Anyone can verify the calculation
-- No off-chain oracle needed
-
-### 3. Efficiency
-- One transaction instead of N (where N = number of entries)
-- Lower gas costs
-- Faster execution
-
-### 4. Maintainability
-- Change distribution logic = update contract
-- No bot updates needed
-- Easier to audit
-
-### 5. Decentralization
-- Anyone with Treasury keys can call `distribute_rewards()`
-- Not dependent on specific bot implementation
-- Distribution logic is trustless
-
-## 🔐 Security Considerations
-
-### Auth Requirements
-
-| Function | Auth Required | Who Can Call |
-|----------|--------------|--------------|
-| `distribute_rewards()` | Treasury | Treasury bot (with Treasury key) |
-| `allocate_rewards()` | Admin | Platform admin only |
-| `batch_allocate_rewards()` | Admin | Platform admin only |
+- Oracle price frozen for safety
+- No price manipulation possible
+- Staking uses 1:1 ratio (fee = stake)
 
 ### Wallet Separation
 
-- **Admin Wallet**: Cold storage, governance operations
-- **Treasury Wallet**: Hot wallet, automated operations
-- This separation improves security (admin keys never exposed to bot)
+| Wallet | Purpose | Risk |
+|--------|---------|------|
+| Admin | Governance, upgrades | Low (cold storage) |
+| Treasury | Daily distributions | Low (rate-limited) |
 
-### Safety Checks
+## 📈 3-Phase Batch Distribution
 
-1. **Amount validation**: Must be > 0
-2. **Escrow check**: Must have entries with escrow to distribute
-3. **Transfer validation**: HITZ must be successfully transferred
-4. **Proportional math**: Uses safe saturating arithmetic
+For large numbers of entries, the bot uses batched distribution:
 
-## 📊 Distribution Formula
+### Phase 1: Calculate Total Escrow
 
-```
-For each entry with escrow_xlm > 0:
-  
-  entry_share = (entry.escrow_xlm / total_escrow) × total_hitz
-  
-Where:
-  - entry.escrow_xlm = Entry's accumulated fees from streams/likes/downloads
-  - total_escrow = Sum of all entries' escrow_xlm
-  - total_hitz = Amount Treasury bot is distributing
+```typescript
+// Calculate escrow in batches of 40
+for (start = 0; start < entryCount; start += 40) {
+  await contract.calculateTotalEscrowBatch(start, 40);
+}
 ```
 
-### Example Calculation
+### Phase 2: Initialize Distribution
 
-```
-Entry A: 1000 XLM escrow
-Entry B: 500 XLM escrow
-Entry C: 500 XLM escrow
-Total: 2000 XLM escrow
-
-Treasury distributes: 1000 HITZ
-
-Entry A gets: (1000 / 2000) × 1000 = 500 HITZ
-Entry B gets: (500 / 2000) × 1000 = 250 HITZ
-Entry C gets: (500 / 2000) × 1000 = 250 HITZ
+```typescript
+// Transfer HITZ and prepare distribution
+await contract.initializeDistribution(hitzAmount);
 ```
 
-## 🎯 Key Takeaways
+### Phase 3: Distribute in Batches
 
-1. **Treasury bot is simple**: Just buy HITZ and send it to the contract
-2. **Core contract is smart**: Handles all distribution logic automatically
-3. **One transaction**: Distributes to all entries proportionally
-4. **On-chain transparency**: Distribution formula is verifiable
-5. **Manual override available**: Admin can allocate for special cases
+```typescript
+// Distribute to entries in batches of 15
+for (start = 0; start < entryCount; start += 15) {
+  await contract.distributeRewardsBatch(start, 15);
+}
+```
 
-This design separates concerns perfectly:
-- **Bot**: Market operations (XLM → HITZ)
-- **Contract**: Business logic (distribution)
-- **Admin**: Special cases (manual allocation)
+## 📊 Monitoring
+
+### Key Metrics
+
+1. **Treasury Balance**: Track remaining HITZ
+2. **Daily Distribution**: 0.05% of balance
+3. **Entries Updated**: Count per run
+4. **APR Changes**: Track across entries
+
+### Logging
+
+```
+🏦 TREASURY BOT - BITCOIN-LIKE DISTRIBUTION
+================================================
+Timestamp: 2024-01-10T00:00:00Z
+
+ℹ️  Supply fully issued - distribution only mode
+ℹ️  No oracle updates (price fixed for safety)
+ℹ️  Distribution rate: 0.05% of treasury per day (12-year curve)
+
+📊 Checking treasury HITZ balance...
+   Treasury balance: 15,000,000 HITZ
+   Today's distribution (0.05%): 7,500 HITZ
+
+💰 Distributing 7,500 HITZ to entries...
+   (14,992,500 HITZ will remain in treasury)
+
+✅ Distribution complete!
+   Entries with escrow: 125
+   Total escrow: 50,000 HITZ
+   HITZ distributed: 7,500 HITZ
+
+📈 Syncing APRs to Algolia...
+✅ APR sync: 125 entries updated
+```
+
+## 🔄 Schedule
+
+The bot runs once per day via Cloudflare Worker scheduled trigger:
+
+```toml
+# wrangler.toml
+[triggers]
+crons = ["0 0 * * *"]  # Daily at midnight UTC
+```
+
+## ✅ Summary
+
+The V2 Treasury Bot:
+
+1. **Simple**: Just distributes 0.05% of treasury daily
+2. **Safe**: Rate-limited, no oracle, no minting
+3. **Sustainable**: 12+ year emission curve
+4. **Automatic**: Contract handles all distribution logic
+5. **Scalable**: Batched operations for many entries
 
 ---
 
-**Status**: Implemented and ready for testing ✅
+**Status**: Implemented and running ✅

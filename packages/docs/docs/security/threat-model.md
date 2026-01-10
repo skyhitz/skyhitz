@@ -42,11 +42,12 @@ Skyhitz is a decentralized music streaming and investment platform built on the 
 - **Claim rewards** from entry reward pools based on stake ownership
 - **Purchase credits** using traditional payment methods (Stripe)
 
-The system uses a dual-contract architecture with Bitcoin-style tokenomics:
-- **21 million HITZ max supply** with 4-year halving schedule
-- **Dual token economy** (XLM for fees, HITZ for rewards/staking)
-- **Automated treasury bot** for reward distribution
-- **SEP-41 compliant token** standard
+The system uses a **post-exhaustion distribution model**:
+- **21 million HITZ max supply** (fully issued ~20M)
+- **HITZ-only economy** (all fees and staking in HITZ)
+- **1:1 staking** (fee = stake, no oracle dependency)
+- **Rate-limited distribution** (0.05% of treasury daily)
+- **12-year emission curve** (Bitcoin-like sustainability)
 
 ### Technology Stack
 
@@ -65,9 +66,10 @@ The system uses a dual-contract architecture with Bitcoin-style tokenomics:
 **Blockchain Layer:**
 - Stellar Network (Mainnet/Testnet)
 - Soroban Smart Contracts (Rust)
-  - HITZ Token Contract (SEP-41 compatible)
+  - HITZ Token (Stellar Asset Contract / SAC)
   - Skyhitz Core Contract (actions, staking, rewards)
 - Stellar RPC (Gateway RPC recommended)
+- **Post-Exhaustion Mode**: No minting, distribution only
 
 **Data Storage:**
 - Algolia (user data, entry metadata, search index)
@@ -102,23 +104,23 @@ The system uses a dual-contract architecture with Bitcoin-style tokenomics:
          │            │ RPC Calls                  ▼
          │            │                   ┌─────────────────┐
          │            ▼                   │ Kraken Exchange │
-         │   ┌─────────────────────┐     │ - Buy XLM       │
-         │   │ Stellar Soroban     │     │ - Withdraw XLM  │
-         │   │ Smart Contracts     │     └─────────────────┘
-         │   │                     │
-         │   │ ┌─────────────────┐ │     ┌─────────────────┐
-         │   │ │ HITZ Token      │◄──────┤ Treasury Bot    │
-         │   │ │ - Mint/Burn     │ │     │ - Cold Storage  │
-         │   │ │ - Supply Cap    │ │     │ - Swap XLM→HITZ │
-         │   │ │ - Emission      │ │     │ - Distribute    │
-         │   │ └─────────────────┘ │     └─────────────────┘
+         │   ┌─────────────────────┐     
+         │   │ Stellar Soroban     │     ┌─────────────────┐
+         │   │ Smart Contracts     │     │ Treasury Bot    │
+         │   │                     │     │ (Rate-Limited)  │
+         │   │ ┌─────────────────┐ │     │ - 0.05%/day     │
+         │   │ │ HITZ Token      │◄──────┤ - No swapping   │
+         │   │ │ (SAC)           │ │     │ - Distribution  │
+         │   │ │ - Fixed Supply  │ │     └─────────────────┘
+         │   │ │ - No Minting    │ │     
+         │   │ └─────────────────┘ │     
          │   │                     │
          │   │ ┌─────────────────┐ │
          │   │ │ Skyhitz Core    │ │
          │   │ │ - recordAction  │ │
-         │   │ │ - Staking       │ │
+         │   │ │ - 1:1 Staking   │ │
          │   │ │ - Rewards       │ │
-         │   │ │ - Treasury XLM  │ │
+         │   │ │ - Artist Equity │ │
          │   │ └─────────────────┘ │
          │   └─────────────────────┘
          │
@@ -146,22 +148,28 @@ User → Email/Username → API (createUserWithEmail) → Generate Managed Walle
 → User Clicks Link → API (signInWithToken) → Generate JWT → Return to Client
 ```
 
-#### 2. Investment Flow
+#### 2. Investment Flow (V2 Post-Exhaustion)
 ```
 User → investEntry(id, amount) → API Validates → Contract recordAction(invest)
-→ Transfer XLM to Treasury → Calculate Stake Amount (XLM/HITZ_price)
-→ Mint HITZ Rewards → Stake HITZ in Contract → Update Entry TVL
-→ Return Success → Update Algolia Shares
+→ Transfer HITZ to Contract (1:1 stake) → Record User Stake
+→ Update Entry TVL → Return Success → Update Algolia Shares
+
+Note: No minting - user's HITZ fee IS their stake (1:1 ratio)
+No oracle dependency - stake = fee paid
 ```
 
-#### 3. Treasury Bot Flow (Automated)
+#### 3. Treasury Bot Flow (V2 - Rate-Limited Distribution)
 ```
-Cron Trigger → Treasury Bot → Read Entry Escrow Values from Contract
-→ Transfer XLM Fees from Contract to Hot Wallet
-→ Create DEX Order (XLM → HITZ) → Execute Swap
-→ Calculate Entry Reward Shares (proportional to escrow)
-→ Contract.distributeRewards(entryIds[], amounts[])
-→ Update Entry Reward Pools → Log Transaction Hashes
+Cron Trigger (Daily) → Treasury Bot → Check Treasury HITZ Balance
+→ Calculate 0.05% of Balance (Bitcoin-like rate limiting)
+→ Call Contract.distribute_rewards_batch() (3-phase)
+  Phase 1: Calculate total escrow
+  Phase 2: Transfer HITZ to contract
+  Phase 3: Distribute proportionally by escrow
+→ Sync APRs to Algolia → Log Results
+
+Note: No XLM→HITZ swaps needed - treasury holds HITZ directly
+Rate-limited to 0.05% daily for 12-year sustainability
 ```
 
 ---
@@ -223,7 +231,7 @@ Cron Trigger → Treasury Bot → Read Entry Escrow Values from Contract
 
 ### Elevation of Privilege Threats (7 identified)
 - Admin account compromise
-- Token supply manipulation
+- Token supply manipulation ✅ *Eliminated (supply exhausted, no minting)*
 - Algolia admin key compromise
 - ISSUER_SEED exposure ✅ *Secured in Workers Secrets & Cold Storage*
 - Entry merge exploitation
@@ -684,8 +692,8 @@ Cron Trigger → Treasury Bot → Read Entry Escrow Values from Contract
 - Unusual admin activity (contract upgrade attempts, large transfers)
 - Multiple failed authentication attempts (>10 per minute)
 - Unexpected smart contract events (emergency admin actions)
-- Treasury balance drops >20% unexpectedly
-- Token supply increases >1% per hour
+- Treasury balance drops >20% unexpectedly (beyond 0.05% daily rate)
+- Unexpected staking or unstaking patterns
 
 ### High Priority Alerts (1-hour response)
 
@@ -756,8 +764,14 @@ Cron Trigger → Treasury Bot → Read Entry Escrow Values from Contract
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2025-10-15 | Initial STRIDE threat model |
+| 2.0 | 2026-01-10 | Updated for V2 post-exhaustion model |
 
-**Next Review Date:** January 15, 2026  
+**Key V2 Security Improvements:**
+- Token supply manipulation eliminated (no minting)
+- Oracle manipulation eliminated (1:1 staking)
+- Rate-limited distribution (0.05% daily)
+
+**Next Review Date:** April 10, 2026  
 **Review Frequency:** Quarterly (or after major changes)  
 **Document Owner:** Security Team
 

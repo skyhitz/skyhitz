@@ -3,7 +3,7 @@ id: flows
 title: User Action Flows
 ---
 
-This page documents the complete flows for all user actions in the Skyhitz platform, showing how the dual-contract system (HITZ Token + Core Contract) work together.
+This page documents the complete flows for all user actions in the Skyhitz platform, showing how the post-exhaustion distribution model works.
 
 ## Action Flow Overview
 
@@ -11,23 +11,19 @@ All user actions follow this general pattern:
 
 1. **User initiates action** (stream, like, download, mine, invest)
 2. **Backend validates** user authentication and action parameters
-3. **Core contract called** via `record_action(caller, entry_id, kind, amount_xlm?)`
+3. **Core contract called** via `record_action(caller, entry_id, kind, amount?)`
 4. **Core contract**:
-   - Validates action and calculates difficulty
-   - Transfers XLM fee from user to Treasury
-   - Updates entry stats (escrow_xlm or tvl_xlm)
-   - Requests HITZ reward from token contract
-   - For mine/invest: locks user's HITZ stake
-5. **HITZ token contract**:
-   - Calculates current epoch and unit reward
-   - Mints HITZ reward (difficulty × unit_reward)
-   - Transfers HITZ to user
-6. **Backend updates** Algolia index with new entry stats
-7. **User receives** instant HITZ reward (and equity stake if mine/invest)
+   - Validates action and calculates fee
+   - For non-staking: Transfers fee to Treasury, updates escrow
+   - For staking: Transfers fee to Contract, records stake
+5. **Backend updates** Algolia index with new entry stats
+6. **User completes** action (no instant minting - rewards come from treasury)
 
-## Micro-spend Actions (Escrow)
+**Key Difference from V1**: No instant HITZ rewards. Users pay fees, and rewards accumulate through treasury distribution.
 
-These actions increase the entry's `escrow_xlm` without granting equity stakes. They earn instant HITZ rewards.
+## Non-Staking Actions (Escrow)
+
+These actions increase the entry's `escrow` without granting equity stakes.
 
 ### Stream Action Flow
 
@@ -43,69 +39,61 @@ These actions increase the entry's `escrow_xlm` without granting equity stakes. 
 │ recordAction    │
 └──────┬──────────┘
        │
-       │ 2. Validate user session
+       │ 2. Validate user session & HITZ balance
        │ 3. Call Core contract
        ▼
 ┌──────────────────────────┐
 │  Skyhitz Core Contract   │
 │  record_action()         │
-└─┬───────┬────────┬───────┘
-  │       │        │
-  │       │        │ 4. Transfer 0.01 XLM to Treasury
-  │       │        ▼
-  │       │   ┌──────────┐
-  │       │   │ Treasury │
-  │       │   │  Wallet  │
-  │       │   └──────────┘
-  │       │
-  │       │ 5. Update entry.escrow_xlm += 0.01
-  │       │
-  │       │ 6. Request reward (difficulty = 1)
-  │       ▼
-  │   ┌─────────────────┐
-  │   │ HITZ Token      │
-  │   │ mint_reward()   │ 7. Calculate: 1 × 0.3 = 0.3 HITZ
-  │   └────────┬────────┘
-  │            │
-  │            │ 8. Mint and transfer to user
-  │            ▼
-  │        ┌────────┐
-  │        │  User  │ Receives 0.3 HITZ
-  │        └────────┘
+│  (kind = 'stream')       │
+└─┬───────────────────────┘
   │
-  │ 9. Return success
+  │ 4. Calculate fee: 0.1 HITZ (base_fee × 1)
+  │
+  │ 5. Transfer 0.1 HITZ from user to Treasury
+  ▼
+┌──────────┐
+│ Treasury │ Collects fee
+│  Wallet  │
+└──────────┘
+  │
+  │ 6. Update entry.escrow += 0.1 HITZ
+  │
+  │ NOTE: No minting - supply exhausted
   ▼
 ┌─────────────────┐
-│ Backend GraphQL │ 10. Update Algolia entry.escrow
+│ Backend GraphQL │ 7. Update Algolia entry.escrow
 └─────────────────┘
 ```
 
-**Result**: User earns 0.3 HITZ instantly; entry's escrow increases by 0.01 XLM; no equity stake granted.
+**Result**: 
+- User pays 0.1 HITZ
+- Entry's escrow increases by 0.1 HITZ
+- Entry gets larger share of future treasury distributions
+- No instant reward (rewards come from treasury distribution)
 
 ### Like Action Flow
 
 Similar to Stream, but:
-- **Fee**: 0.02 XLM (2× base fee)
+- **Fee**: 0.2 HITZ (base_fee × 2)
 - **Difficulty**: 2
-- **Reward**: 0.6 HITZ (epoch 0)
-- **Effect**: entry.escrow_xlm += 0.02
+- **Effect**: entry.escrow += 0.2 HITZ
 
 ### Download Action Flow
 
 Similar to Stream/Like, but:
-- **Fee**: 0.03 XLM (3× base fee)
+- **Fee**: 0.3 HITZ (base_fee × 3)
 - **Difficulty**: 3
-- **Reward**: 0.9 HITZ (epoch 0)
-- **Effect**: entry.escrow_xlm += 0.03
+- **Effect**: entry.escrow += 0.3 HITZ
 - **Additional**: Backend authorizes download of audio file from R2
 
-## Equity Actions (TVL)
+## Staking Actions (TVL)
 
-These actions increase the entry's `tvl_xlm` and require staking HITZ tokens, granting proportional equity.
+These actions increase the entry's `tvl` and stake HITZ tokens, granting proportional equity.
 
 ### Mine External Entry Flow
 
-Mining brings external music (Audius, Sound.xyz) into Skyhitz and stakes the miner as the initial owner.
+Mining brings external music (Audius, etc.) into Skyhitz and stakes the miner as the initial owner.
 
 ```
 ┌─────────────┐
@@ -119,7 +107,7 @@ Mining brings external music (Audius, Sound.xyz) into Skyhitz and stakes the min
 │ mineExternal    │
 └──────┬──────────┘
        │
-       │ 2. Validate user has 50+ HITZ balance
+       │ 2. Validate user has 1+ HITZ balance
        │ 3. Fetch external metadata (title, artist, etc.)
        │ 4. Resolve audio stream URL
        │ 5. Pin audio file to R2 storage → audioCid
@@ -133,58 +121,40 @@ Mining brings external music (Audius, Sound.xyz) into Skyhitz and stakes the min
 │  Skyhitz Core Contract   │
 │  record_action()         │
 │  (kind = 'mine')         │
-└─┬───────┬────────┬───────┘
-  │       │        │
-  │       │        │ 10. Transfer 0.1 XLM to Treasury
-  │       │        ▼
-  │       │   ┌──────────┐
-  │       │   │ Treasury │
-  │       │   │  Wallet  │
-  │       │   └──────────┘
-  │       │
-  │       │ 11. Update entry.tvl_xlm += 0.1
-  │       │ 12. Create entry if doesn't exist
-  │       │
-  │       │ 13. Pull 50 HITZ from user
-  │       ▼
-  │   ┌─────────────────┐
-  │   │ HITZ Token      │
-  │   │ transfer()      │ 14. Transfer 50 HITZ from user to contract
-  │   └────────┬────────┘
-  │            │
-  │            │ 15. Record user stake: stakes[user][entry] = 50
-  │            │     entry.total_staked = 50
-  │            │
-  │            │ 16. Request reward (difficulty = 10)
-  │            ▼
-  │        ┌─────────────────┐
-  │        │ HITZ Token      │
-  │        │ mint_reward()   │ 17. Calculate: 10 × 0.3 = 3.0 HITZ
-  │        └────────┬────────┘
-  │                 │
-  │                 │ 18. Mint and transfer to user
-  │                 ▼
-  │             ┌────────┐
-  │             │  User  │ Receives 3.0 HITZ
-  │             └────────┘
+└─┬───────────────────────┘
   │
-  │ 19. Return success
+  │ 10. Calculate fee: 1.0 HITZ (base_fee × 10)
+  │
+  │ 11. Transfer 1 HITZ from user to Contract
+  │     (fee becomes stake - 1:1 ratio)
   ▼
 ┌─────────────────┐
-│ Backend GraphQL │ 20. Index to Algolia:
+│ Skyhitz Core    │
+│ (stake storage) │
+└─────────────────┘
+  │
+  │ 12. Record stake:
+  │     stakes[user][entry] = 1 HITZ
+  │     entry.total_stake = 1 HITZ
+  │     entry.tvl = 1 HITZ
+  │
+  │ NOTE: No minting - stake IS the fee
+  ▼
+┌─────────────────┐
+│ Backend GraphQL │ 13. Index to Algolia:
 │                 │     - Entry metadata
-│                 │     - tvl_xlm = 0.1
-│                 │     - total_staked = 50 HITZ
-│                 │ 21. Update user's stakes in Algolia
+│                 │     - tvl = 1 HITZ
+│                 │     - total_staked = 1 HITZ
+│                 │ 14. Update user's stakes
 └─────────────────┘
 ```
 
 **Result**: 
-- User pays 0.1 XLM + stakes 50 HITZ
-- User earns 3.0 HITZ instantly (net cost: 47 HITZ)
-- Entry created with tvl = 0.1 XLM, total_staked = 50 HITZ
-- User owns 100% of entry (50 / 50)
+- User pays 1 HITZ as stake
+- Entry created with tvl = 1 HITZ, total_stake = 1 HITZ
+- User owns 100% of entry (1 / 1)
 - User can claim future rewards proportionally
+- No instant reward
 
 ### Invest on Existing Entry Flow
 
@@ -192,10 +162,10 @@ Investing increases your stake in an existing entry.
 
 ```
 ┌─────────────┐
-│    User     │ Views entry, clicks "Invest 1 XLM"
+│    User     │ Views entry, clicks "Invest 10 HITZ"
 └──────┬──────┘
        │
-       │ 1. Frontend validates: user has 1 XLM + 50 HITZ
+       │ 1. Frontend validates: user has 10+ HITZ
        ▼
 ┌─────────────────┐
 │ Backend GraphQL │
@@ -203,69 +173,110 @@ Investing increases your stake in an existing entry.
 └──────┬──────────┘
        │
        │ 2. Validate user session
-       │ 3. Calculate difficulty: 1 XLM = 10 difficulty
-       │ 4. Required stake: 10 × 5 = 50 HITZ
+       │ 3. Validate amount >= 3 HITZ minimum
        │
-       │ 5. Call Core contract record_action
+       │ 4. Call Core contract record_action
        ▼
 ┌──────────────────────────┐
 │  Skyhitz Core Contract   │
 │  record_action()         │
 │  (kind = 'invest',       │
-│   amount_xlm = 1.0)      │
-└─┬───────┬────────┬───────┘
-  │       │        │
-  │       │        │ 6. Transfer 1.0 XLM to Treasury
-  │       │        ▼
-  │       │   ┌──────────┐
-  │       │   │ Treasury │
-  │       │   │  Wallet  │
-  │       │   └──────────┘
-  │       │
-  │       │ 7. Update entry.tvl_xlm += 1.0
-  │       │
-  │       │ 8. Pull 50 HITZ from user
-  │       ▼
-  │   ┌─────────────────┐
-  │   │ HITZ Token      │
-  │   │ transfer()      │ 9. Transfer 50 HITZ from user to contract
-  │   └────────┬────────┘
-  │            │
-  │            │ 10. Update stakes:
-  │            │     stakes[user][entry] += 50
-  │            │     entry.total_staked += 50
-  │            │
-  │            │ 11. Request reward (difficulty = 10)
-  │            ▼
-  │        ┌─────────────────┐
-  │        │ HITZ Token      │
-  │        │ mint_reward()   │ 12. Calculate: 10 × 0.3 = 3.0 HITZ
-  │        └────────┬────────┘
-  │                 │
-  │                 │ 13. Mint and transfer to user
-  │                 ▼
-  │             ┌────────┐
-  │             │  User  │ Receives 3.0 HITZ
-  │             └────────┘
+│   amount = 10 HITZ)      │
+└─┬───────────────────────┘
   │
-  │ 14. Return success
+  │ 5. Validate: amount >= 3 HITZ (minimum)
+  │
+  │ 6. Transfer 10 HITZ from user to Contract
+  │    (fee = stake, 1:1 ratio)
   ▼
 ┌─────────────────┐
-│ Backend GraphQL │ 15. Fetch updated entry stats
-│                 │ 16. Update Algolia:
-│                 │     - entry.tvl_xlm
-│                 │     - entry.total_staked
-│                 │ 17. Update user's stake
+│ Skyhitz Core    │
+│ (stake storage) │
+└─────────────────┘
+  │
+  │ 7. Update stakes:
+  │    stakes[user][entry] += 10 HITZ
+  │    entry.total_stake += 10 HITZ
+  │    entry.tvl += 10 HITZ
+  │
+  │ NOTE: No minting - stake IS the fee
+  ▼
+┌─────────────────┐
+│ Backend GraphQL │ 8. Update Algolia:
+│                 │    - entry.tvl
+│                 │    - entry.total_staked
+│                 │ 9. Update user's stake
 └─────────────────┘
 ```
 
 **Result**:
-- User pays 1 XLM + stakes 50 HITZ
-- User earns 3.0 HITZ instantly (net cost: 47 HITZ)
-- Entry's tvl increases by 1 XLM
-- Entry's total_staked increases by 50 HITZ
-- User's ownership percentage: `user_stake / total_staked`
+- User pays 10 HITZ as stake
+- Entry's tvl increases by 10 HITZ
+- Entry's total_stake increases by 10 HITZ
+- User's ownership percentage: `user_stake / total_stake`
 - User can claim proportional rewards
+
+## Treasury Distribution Flow
+
+The Treasury bot distributes HITZ to entry reward pools daily.
+
+```
+┌──────────────────┐
+│  Treasury Bot    │ Runs daily (0.05% rate)
+│  (Automated)     │
+└────────┬─────────┘
+         │
+         │ 1. Check Treasury HITZ balance
+         │    (e.g., 15,000,000 HITZ)
+         │
+         │ 2. Calculate daily distribution:
+         │    15,000,000 × 0.05% = 7,500 HITZ
+         │
+         │ 3. Call Core contract (3-phase batch)
+         ▼
+┌──────────────────────────┐
+│  Skyhitz Core Contract   │
+│  distribute_rewards()    │
+│  (caller = Treasury)     │
+└─┬────────────────────────┘
+  │
+  │ Phase 1: Calculate total escrow
+  │   for each entry batch (40 at a time):
+  │     total_escrow += entry.escrow
+  │
+  │ Phase 2: Initialize distribution
+  │   Transfer 7,500 HITZ from Treasury to Contract
+  │
+  │ Phase 3: Distribute to entries
+  │   for each entry batch (15 at a time):
+  │     if entry.escrow > 0:
+  │       share = (entry.escrow / total_escrow) × 7,500
+  │       entry.reward_pool += share
+  │
+  ▼        ▼        ▼
+Entry A  Entry B  Entry C
++3,750   +2,250   +1,500
+HITZ     HITZ     HITZ
+(50%)    (30%)    (20%)
+```
+
+**Example Distribution**:
+```
+Total HITZ to distribute: 7,500
+Total escrow: 1,000 HITZ
+
+Entry A: 500 HITZ escrow (50%) → gets 3,750 HITZ
+Entry B: 300 HITZ escrow (30%) → gets 2,250 HITZ
+Entry C: 200 HITZ escrow (20%) → gets 1,500 HITZ
+
+Stakers in each entry can then claim proportionally.
+```
+
+**Key Points**:
+- Only 0.05% of treasury distributed per day
+- Distribution proportional to escrow (engagement)
+- Entries with more activity get more rewards
+- Creates sustainable 12+ year emission curve
 
 ## Claiming Rewards Flow
 
@@ -280,8 +291,9 @@ Users with stakes can claim accumulated HITZ rewards from entry pools.
        ▼
 ┌─────────────────┐
 │ Backend GraphQL │
-│ getClaimable    │ 2. Read-only: calculate claimable
-└──────┬──────────┘     = (user_stake/total) × pool - claimed
+│ getClaimable    │ 2. Read-only calculation:
+└──────┬──────────┘     staker_pool = pool × (1 - artist_equity)
+       │                claimable = (stake/total) × staker_pool - claimed
        │
        │ 3. If claimable > 0, enable "Claim" button
        │ 4. User clicks "Claim"
@@ -299,21 +311,22 @@ Users with stakes can claim accumulated HITZ rewards from entry pools.
 └─┬────────────────────────┘
   │
   │ 6. Verify user has stake in entry
-  │ 7. Calculate ownership: user_stake / total_staked
-  │ 8. Calculate claimable:
-  │    share = ownership × reward_pool
-  │    claimable = share - claimed_rewards[user]
+  │ 7. Calculate staker pool (exclude artist equity)
+  │ 8. Calculate ownership: user_stake / total_stake
+  │ 9. Calculate claimable:
+  │    share = ownership × staker_pool
+  │    claimable = share - claimed[user]
   │
-  │ 9. Update claimed_rewards[user] += claimable
+  │ 10. Update claimed[user] += claimable
   │
-  │ 10. Transfer HITZ from contract to user
+  │ 11. Transfer HITZ from contract to user
   ▼
 ┌─────────────────┐
 │ HITZ Token      │
-│ transfer()      │ 11. Transfer claimable HITZ to user
+│ transfer()      │ 12. Transfer claimable HITZ to user
 └────────┬────────┘
          │
-         │ 12. Return claimed amount
+         │ 13. Return claimed amount
          ▼
      ┌────────┐
      │  User  │ Receives claimed HITZ
@@ -378,83 +391,59 @@ Verified artists with non-dilutable equity can claim their share of rewards.
      └────────┘
 ```
 
-**Result**:
-- Artist receives their non-dilutable share of rewards
-- Artist's claimed record updated
-- Staker rewards are unaffected (calculated separately)
-- Artist can claim again when pool grows
-
 **Key Difference from Staker Claims**:
 - Artist equity is calculated BEFORE staker pool
 - Artist share = `reward_pool × artist_equity_bps / 10000`
 - Staker pool = `reward_pool × (10000 - total_artist_equity_bps) / 10000`
 - Artist claim doesn't depend on stake, only on equity percentage
 
-## Treasury Bot Flow
+## Unstaking Flow
 
-The Treasury bot automates conversion of XLM fees to HITZ rewards and distribution.
+Users can withdraw their staked HITZ at any time.
 
 ```
-┌──────────────────┐
-│  Treasury Bot    │ Runs on schedule (hourly/daily)
-│  (Automated)     │
-└────────┬─────────┘
-         │
-         │ 1. Check Treasury wallet XLM balance
-         │ 2. If balance > threshold, proceed
-         │
-         │ 3. Buy HITZ on Stellar DEX
-         ▼
-┌────────────────────┐
-│   Stellar DEX      │
-│   (XLM/HITZ pair)  │ 4. Convert accumulated XLM → HITZ
-└────────┬───────────┘
-         │
-         │ 5. Treasury now has HITZ tokens
-         │ 6. Call Core contract distribute_rewards
-         ▼
+┌─────────────┐
+│    User     │ Wants to unstake 50 HITZ
+└──────┬──────┘
+       │
+       │ 1. Frontend calls unstake API
+       ▼
+┌─────────────────┐
+│ Backend GraphQL │
+│ unstakeEntry    │
+└──────┬──────────┘
+       │
+       │ 2. Call Core contract unstake
+       ▼
 ┌──────────────────────────┐
 │  Skyhitz Core Contract   │
-│  distribute_rewards()    │
-│  (caller = Treasury)     │
+│  unstake()               │
 └─┬────────────────────────┘
   │
-  │ 7. Verify caller is Treasury address
-  │ 8. Transfer HITZ from Treasury to contract
+  │ 3. Verify user has enough stake
   │
-  │ 9. Calculate total escrow across all entries
-  │    total_escrow = sum(all entry.escrow_xlm)
+  │ 4. Update stakes:
+  │    stakes[user][entry] -= 50 HITZ
+  │    entry.total_stake -= 50 HITZ
   │
-  │ 10. For each entry with escrow > 0:
-  │     entry_share = (entry.escrow_xlm / total_escrow) × hitz_amount
-  │     entry.reward_pool += entry_share
-  │
-  │ 11. All reward pools updated proportionally
-  │
-  │ 12. Return success
+  │ 5. Transfer 50 HITZ back to user
   ▼
-┌──────────────────┐
-│  Treasury Bot    │ 13. Log distribution results
-└──────────────────┘
+┌─────────────────┐
+│ HITZ Token      │
+│ transfer()      │ 6. Transfer 50 HITZ to user
+└────────┬────────┘
+         │
+         ▼
+     ┌────────┐
+     │  User  │ Receives 50 HITZ
+     └────────┘
 ```
 
-**Key Points**:
-- Bot only handles XLM → HITZ conversion
-- Contract handles all distribution logic
-- Distribution is proportional to escrow performance
-- Entries with more stream/like/download activity get more rewards
-- This benefits stakers proportionally
-
-**Example Distribution**:
-```
-Total HITZ to distribute: 1000
-
-Entry A: 500 XLM escrow (50%) → gets 500 HITZ
-Entry B: 300 XLM escrow (30%) → gets 300 HITZ
-Entry C: 200 XLM escrow (20%) → gets 200 HITZ
-
-Stakers in each entry can then claim proportionally.
-```
+**Result**:
+- User receives their staked HITZ back
+- User's stake in entry decreases
+- User's ownership percentage decreases
+- User keeps any already-claimed rewards
 
 ## Admin Operations
 
@@ -463,30 +452,43 @@ Stakers in each entry can then claim proportionally.
 Admin can remove entries when necessary (takedowns, violations, etc.):
 
 ```
-1. Admin calls remove_entry(entry_id) on Core contract
-2. Contract marks entry as removed
-3. Backend detects removal
-4. Backend deletes from Algolia index
-5. Backend deletes from R2 storage (metadata, audio, image)
+1. Admin calls remove_entry(entry_id, stakers) on Core contract
+2. Contract returns stakes to all stakers
+3. Contract removes entry data
+4. Backend detects removal
+5. Backend deletes from Algolia index
+6. Backend deletes from R2 storage (metadata, audio, image)
 ```
 
-**Note**: In the current implementation, stakes are not automatically returned. Future versions may implement pro-rata returns.
+**Note**: Stakes are automatically returned to users via the stakers list.
 
-## Key Flow Differences from Old System
+### Merge Entry Flow
 
-| Aspect | Old System | New System |
-|--------|------------|------------|
-| **Contract Calls** | `invest(user, id, amount)` | `record_action(caller, id, kind, amount?)` |
-| **Rewards** | None (only earned via APR) | Instant HITZ on every action |
-| **Equity** | Shares granted if amount > 0.3 XLM | Stakes granted for mine/invest only |
-| **Claiming** | `claim_earnings()` (XLM escrow) | `claim_rewards()` (HITZ from pool) |
-| **APR Source** | Excess XLM escrow | HITZ reward pool growth |
-| **Selling** | `sell_shares()` available | Not available (stake to earn only) |
+Admin can merge duplicate entries:
+
+```
+1. Admin calls merge_entries(from_id, into_id, stakers) on Core contract
+2. Contract migrates stakes from from_id to into_id
+3. Contract migrates escrow, tvl, reward_pool
+4. Contract removes from_id entry
+5. Backend updates Algolia index
+```
+
+## Key Differences: V1 vs V2
+
+| Aspect | V1 (Minting) | V2 (Distribution) |
+|--------|------------|-------------------|
+| **Rewards** | Instant HITZ mint on action | No instant reward |
+| **Fee currency** | XLM | HITZ |
+| **Staking** | Oracle-dependent calculation | 1:1 (fee = stake) |
+| **Reward source** | Minting | Treasury distribution |
+| **Distribution** | Per-action | Daily batch (0.05%) |
+| **Supply risk** | Inflation possible | Fixed supply |
 
 ## Flow Summary
 
-1. **Micro-spends** (stream/like/download): Pay small XLM fee → earn instant HITZ → increase entry escrow
-2. **Equity** (mine/invest): Pay XLM + stake HITZ → earn instant HITZ → gain ownership → earn ongoing rewards
-3. **Treasury**: Collects XLM → buys HITZ → distributes to entry pools based on escrow
-4. **Claiming**: Stakers claim proportional rewards from entry pools
-5. **Result**: Sustainable economy where engagement (escrow) drives reward distribution to investors (stakers)
+1. **Non-staking** (stream/like/download): Pay HITZ fee → treasury → entry escrow increases → future distribution share
+2. **Staking** (mine/invest): Pay HITZ as stake → contract → ownership → claim rewards
+3. **Treasury**: 0.05% daily → proportional to escrow → entry reward pools
+4. **Claiming**: Stakers claim proportional share; artists claim equity share
+5. **Unstaking**: Withdraw stake anytime → lose future ownership
