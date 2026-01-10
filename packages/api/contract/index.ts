@@ -1,3 +1,12 @@
+/**
+ * Skyhitz Contract Client
+ * 
+ * POST-EXHAUSTION MODEL (V2):
+ * - HITZ supply is fully issued (~20M of 21M max)
+ * - No new minting - rewards come from treasury distribution
+ * - Staking uses 1:1 ratio (stake = fee), no oracle dependency
+ * - Treasury bot distributes 0.05% daily (Bitcoin-like 12-year curve)
+ */
 import { Horizon, Keypair, Transaction, hash, scValToNative, xdr, Asset, TransactionBuilder, Operation, BASE_FEE } from '@stellar/stellar-sdk';
 import { Client, Entry } from './client';
 
@@ -579,7 +588,11 @@ class ContractClient {
 
 	/**
 	 * Update oracle price (treasury-only)
-	 * Updates the HITZ/USDC market price used for staking calculations
+	 * 
+	 * NOTE: POST-EXHAUSTION - Oracle price is no longer used for staking calculations.
+	 * Staking now uses 1:1 ratio (stake = fee). This function is kept for admin use
+	 * but is not called by the treasury bot.
+	 * 
 	 * @param treasurySecret - Treasury account secret key
 	 * @param newPriceStroops - New HITZ/USDC price in stroops (e.g., 1,000,000 = $0.10 USDC per HITZ)
 	 */

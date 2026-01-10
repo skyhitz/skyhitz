@@ -1,40 +1,47 @@
 #![no_std]
 
-//! Skyhitz Core V1 - Soroban Smart Contract (Security Hardened)
+//! Skyhitz Core V2 - Soroban Smart Contract (Post-Exhaustion Model)
 //!
-//! Purpose: Record user actions for music entries, reward users with HITZ tokens,
-//! attribute HITZ fees to entries, and manage HITZ staking for invest/mine actions.
+//! Purpose: Record user actions for music entries, manage HITZ staking,
+//! and distribute rewards from treasury to entry reward pools.
+//!
+//! POST-EXHAUSTION MODEL:
+//! The HITZ supply is fully issued (~20M of 21M max). This contract now operates
+//! in distribution-only mode with NO NEW MINTING. All rewards come from treasury
+//! distribution funded by recovered funds and accumulated fees.
 //!
 //! HITZ Token:
-//! - OpenZeppelin SEP-41 compatible fungible token with fixed cap: 21,000,000 HITZ
-//! - Token handles its own emission logic with Bitcoin-style halving schedule
-//! - This contract requests rewards from the token based on action difficulty
-//! - Supply cap enforced: Minting stops at 21M HITZ total supply
+//! - SEP-41 compatible fungible token with fixed cap: 21,000,000 HITZ
+//! - Supply fully issued - no more minting possible
+//! - Rewards distributed from treasury, not minted
 //!
-//! HITZ Fees:
-//! - All HITZ fees are transferred to Treasury address (for reward distribution)
-//! - Users pay in HITZ, eliminating need for dual-token economy
+//! Action Flow (Post-Exhaustion):
+//! - STAKING ACTIONS (mine/invest): Fee transferred to contract as stake (1:1 ratio)
+//! - NON-STAKING ACTIONS (stream/like/download): Fee transferred to treasury
+//! - NO REWARDS MINTED - users pay fees only, earn via staking
 //!
 //! Action Kinds & Parameters (fees calculated as base_fee * difficulty):
-//! - stream:   difficulty 1,  fee = base_fee × 1  (default 0.1 HITZ), adds to escrow
-//! - like:     difficulty 2,  fee = base_fee × 2  (default 0.2 HITZ), adds to escrow
-//! - download: difficulty 3,  fee = base_fee × 3  (default 0.3 HITZ), adds to escrow
-//! - mine:     difficulty 10, fee = base_fee × 10 (default 1 HITZ), adds to TVL, auto-stakes
-//! - invest:   DYNAMIC fee (min 3 HITZ), proportional difficulty (10 per 1 HITZ), adds to TVL, auto-stakes
+//! - stream:   difficulty 1,  fee = base_fee × 1  (default 0.1 HITZ), goes to treasury
+//! - like:     difficulty 2,  fee = base_fee × 2  (default 0.2 HITZ), goes to treasury
+//! - download: difficulty 3,  fee = base_fee × 3  (default 0.3 HITZ), goes to treasury
+//! - mine:     difficulty 10, fee = base_fee × 10 (default 1 HITZ), becomes stake
+//! - invest:   DYNAMIC fee (min 3 HITZ), becomes stake (1:1 ratio)
 //!
-//! Base Fee:
-//! - Default: 0.1 HITZ (1,000,000 stroops)
-//! - Admin can update via set_base_fee() to adjust all action fees proportionally
+//! Staking Model (Post-Exhaustion):
+//! - stake_amount = fee (simple 1:1 ratio, no oracle dependency)
+//! - No minting - user's fee IS their stake
+//! - Stake stored in contract, returned on unstake
+//! - Eliminates oracle manipulation risk
 //!
-//! Auto-stake (invest/mine only):
-//! - stake_amount = (HITZ_invested × 10^7) / (USDC_price_per_HITZ_in_stroops)
-//! - Stake is calculated based on the USDC value of the HITZ investment
-//! - Prevents arbitrage: unstaking and selling returns approximately the same USDC value
-//! - Minted directly to contract (locked), updates per-user and total stake for entry
-//! - Example: Invest 100 HITZ at 1,000,000 stroops ($0.10 USDC/HITZ) → 1,000 HITZ staked
+//! Reward Distribution:
+//! - Treasury bot distributes 0.05% of treasury daily (Bitcoin-like 12-year curve)
+//! - Distribution proportional to entry escrow
+//! - Stakers claim rewards proportional to their stake
+//! - Artists claim equity rewards based on set equity_bps
 //!
 //! Security Features:
-//! - Supply cap enforcement on all mints
+//! - No minting (supply exhausted)
+//! - No oracle-dependent calculations (fixed 1:1 staking)
 //! - Fair dust distribution in reward allocations
 //! - Atomic index operations
 //! - Entry merge blocked when stakes exist
@@ -72,12 +79,12 @@ pub enum DataKey {
     Treasury,
     HitzToken,
     BaseFee,                            // Base fee per difficulty unit (default 0.1 HITZ)
-    // Emission schedule (moved into core)
-    EmissionStartTs,                    // u64: halving start timestamp
-    EmissionIntervalSec,                // u64: seconds per halving epoch (default 126,144,000)
-    EmissionEpoch0UnitReward,           // i128: initial unit reward in stroops (default 3,000,000 = 0.3 HITZ)
-    // Oracle price for dynamic emission
-    OraclePrice,                        // i128: Current HITZ/USDC market price in stroops (e.g., 1_000_000 = $0.10 USDC per HITZ)
+    // Legacy emission schedule (no longer used post-exhaustion, kept for storage compatibility)
+    EmissionStartTs,                    // LEGACY: u64 halving start timestamp
+    EmissionIntervalSec,                // LEGACY: u64 seconds per halving epoch
+    EmissionEpoch0UnitReward,           // LEGACY: i128 initial unit reward in stroops
+    // Oracle price (informational only post-exhaustion, not used for staking calculations)
+    OraclePrice,                        // i128: HITZ/USDC price in stroops (informational)
     OracleLastUpdate,                   // u64: Last oracle price update timestamp
     
     // Persistent storage
@@ -322,8 +329,9 @@ impl SkyhitzCore {
         e.storage().instance().get(&DataKey::BaseFee).unwrap_or(1_000_000) // Default: 0.1 HITZ
     }
 
-    /// Get total HITZ supply minted so far
-    /// Returns the total amount of HITZ tokens minted by this contract in stroops
+    /// Get total HITZ supply minted (historical)
+    /// NOTE: Supply is fully issued (~20M). This is informational only.
+    /// Returns the total amount of HITZ tokens previously minted in stroops
     pub fn get_total_supply(e: Env) -> i128 {
         e.storage()
             .persistent()
@@ -331,8 +339,9 @@ impl SkyhitzCore {
             .unwrap_or(0)
     }
 
-    /// Get remaining HITZ tokens that can be minted
-    /// Returns the amount of HITZ remaining before hitting the 21M cap, in stroops
+    /// Get remaining mintable HITZ (informational)
+    /// NOTE: Supply is exhausted. Minting is disabled. This shows theoretical remaining.
+    /// Returns the amount of HITZ that would remain before 21M cap, in stroops
     pub fn get_remaining_supply(e: Env) -> i128 {
         let minted: i128 = e.storage()
             .persistent()
@@ -374,13 +383,16 @@ impl SkyhitzCore {
 
     /// Record a user action (main entrypoint)
     ///
-    /// Handles fee transfer, reward calculation, and optional auto-staking
-    /// For invest action, amount specifies the investment in HITZ stroops (min 3 HITZ = 30,000,000 stroops), ignored for other actions
+    /// POST-EXHAUSTION MODEL: Supply is fully issued, no more minting.
+    /// - Staking actions (mine/invest): Fee goes to contract as stake (1:1 ratio)
+    /// - Non-staking actions (stream/like/download): Fee goes to treasury for distribution
+    ///
+    /// For invest action, amount specifies the investment in HITZ stroops (min 3 HITZ = 30,000,000 stroops)
     pub fn record_action(e: Env, caller: Address, entry_id: String, kind: Symbol, amount: Option<i128>) {
         caller.require_auth();
 
         // Get action parameters
-        let (fee, difficulty, adds_to_tvl, requires_stake) = get_action_params(&e, &kind, amount);
+        let (fee, _difficulty, _adds_to_tvl, requires_stake) = get_action_params(&e, &kind, amount);
 
         // Load entry
         let entry_key = DataKey::Entry(entry_id.clone());
@@ -390,115 +402,69 @@ impl SkyhitzCore {
             .get(&entry_key)
             .unwrap_or_else(|| panic!("Entry not found"));
 
-        // SECURITY FIX H2: Transfer HITZ fee from caller to Treasury with verification
-        let treasury: Address = e.storage().instance().get(&DataKey::Treasury).unwrap();
         let hitz_token: Address = e.storage().instance().get(&DataKey::HitzToken).unwrap();
-        safe_transfer(&e, &hitz_token, &caller, &treasury, &fee, "HITZ fee to treasury");
+        let contract_addr = e.current_contract_address();
 
-        // SECURITY FIX H5: Attribute fee to entry using checked arithmetic
-        if adds_to_tvl {
+        if requires_stake {
+            // STAKING ACTIONS (mine/invest): Fee goes to contract as stake
+            // No minting - user's fee IS their stake (1:1 ratio, no oracle dependency)
+            safe_transfer(&e, &hitz_token, &caller, &contract_addr, &fee, "stake deposit");
+
+            // Record stake (stake = fee, simple 1:1)
+            let stake_key = DataKey::Stake((entry_id.clone(), caller.clone()));
+            let current_stake: i128 = e.storage().persistent().get(&stake_key).unwrap_or(0);
+            let new_stake = current_stake
+                .checked_add(fee)
+                .unwrap_or_else(|| panic!("User stake overflow for entry"));
+            e.storage().persistent().set(&stake_key, &new_stake);
+            e.storage().persistent().extend_ttl(&stake_key, STORAGE_LIFETIME_THRESHOLD, STORAGE_BUMP_AMOUNT);
+
+            let total_key = DataKey::StakeTotal(entry_id.clone());
+            let current_total: i128 = e.storage().persistent().get(&total_key).unwrap_or(0);
+            let new_total = current_total
+                .checked_add(fee)
+                .unwrap_or_else(|| panic!("Total stake overflow for entry"));
+            e.storage().persistent().set(&total_key, &new_total);
+            e.storage().persistent().extend_ttl(&total_key, STORAGE_LIFETIME_THRESHOLD, STORAGE_BUMP_AMOUNT);
+
+            // Record in TVL (staking actions add to TVL)
             entry.tvl_xlm = entry.tvl_xlm
                 .checked_add(fee)
                 .unwrap_or_else(|| panic!("TVL overflow for entry"));
+
+            log!(
+                &e,
+                "Stake deposit: {} HITZ staked on entry {} (user total: {}, entry total: {})",
+                fee,
+                entry_id,
+                new_stake,
+                new_total
+            );
         } else {
+            // NON-STAKING ACTIONS (stream/like/download): Fee goes to treasury
+            let treasury: Address = e.storage().instance().get(&DataKey::Treasury).unwrap();
+            safe_transfer(&e, &hitz_token, &caller, &treasury, &fee, "HITZ fee");
+
+            // Record in escrow (non-staking actions add to escrow for distribution)
             entry.escrow_xlm = entry.escrow_xlm
                 .checked_add(fee)
                 .unwrap_or_else(|| panic!("Escrow overflow for entry"));
-        }
 
-        // Compute HITZ reward using core-managed emission schedule and mint via SAC (core is admin)
-        let hitz_token: Address = e.storage().instance().get(&DataKey::HitzToken).unwrap();
-        let unit_reward = compute_unit_reward(&e);
-        
-        // SECURITY FIX H5: Use checked arithmetic instead of saturating
-        let reward: i128 = unit_reward
-            .checked_mul(difficulty)
-            .unwrap_or_else(|| panic!("Reward calculation overflow: {} * {}", unit_reward, difficulty));
-        
-        // SECURITY FIX C1: Enforce supply cap and verify admin rights before minting
-        let reward = if reward > 0 {
-            safe_mint_with_cap(&e, &hitz_token, &caller, &reward)
-        } else {
-            0
-        };
-
-        // ECONOMIC MODEL: Market-based staking (prevents arbitrage)
-        // Users invest HITZ directly, and stake is calculated based on HITZ market price
-        // Stake amount = (HITZ invested × 10^7) / (USDC price per HITZ in stroops)
-        // This gives users stake proportional to the USDC value of their HITZ investment
-        // Examples at different prices:
-        //   - Invest 100 HITZ at 1,000,000 stroops ($0.10 USDC/HITZ) → 1,000 HITZ stake
-        //   - Invest 100 HITZ at 500,000 stroops ($0.05 USDC/HITZ) → 2,000 HITZ stake
-        //   - Invest 100 HITZ at 2,000,000 stroops ($0.20 USDC/HITZ) → 500 HITZ stake
-        // When they unstake and sell, they get approximately their USDC value back (no arbitrage)
-        if requires_stake {
-            // Get current HITZ market price from oracle (in USDC stroops per HITZ)
-            // Example: 1,000,000 stroops = $0.10 USDC per 1 HITZ
-            let hitz_price_usdc: i128 = e
-                .storage()
-                .instance()
-                .get(&DataKey::OraclePrice)
-                .unwrap_or(1_000_000); // Default: $0.10 USDC per HITZ (1,000,000 stroops)
-            
-            if hitz_price_usdc <= 0 {
-                panic!("Invalid oracle price: must be positive");
-            }
-            
-            // Calculate stake: (HITZ invested in stroops × 10^7) / (USDC price per HITZ in stroops)
-            // Formula: stake_hitz_stroops = (fee_hitz_stroops × 10^7) / (price_usdc_stroops_per_hitz)
-            // This converts HITZ investment to equivalent USDC value, then calculates stake
-            // Both USDC and HITZ use 7 decimals, so we multiply by 10^7 for precision
-            let stake_amt = fee
-                .checked_mul(10_000_000)
-                .and_then(|v| v.checked_div(hitz_price_usdc))
-                .unwrap_or_else(|| panic!("Stake calculation overflow or division error"));
-
-            if stake_amt > 0 {
-                // Mint stake HITZ directly to contract (locked, not to user first)
-                let contract_addr = e.current_contract_address();
-                let staked_hitz = safe_mint_with_cap(&e, &hitz_token, &contract_addr, &stake_amt);
-                
-                if staked_hitz > 0 {
-                    // SECURITY FIX H5: Update stake maps using checked arithmetic
-                    let stake_key = DataKey::Stake((entry_id.clone(), caller.clone()));
-                    let current_stake: i128 = e.storage().persistent().get(&stake_key).unwrap_or(0);
-                    let new_stake = current_stake
-                        .checked_add(staked_hitz)
-                        .unwrap_or_else(|| panic!("User stake overflow for entry"));
-                    e.storage().persistent().set(&stake_key, &new_stake);
-
-                    let total_key = DataKey::StakeTotal(entry_id.clone());
-                    let current_total: i128 = e.storage().persistent().get(&total_key).unwrap_or(0);
-                    let new_total = current_total
-                        .checked_add(staked_hitz)
-                        .unwrap_or_else(|| panic!("Total stake overflow for entry"));
-                    e.storage().persistent().set(&total_key, &new_total);
-
-                    log!(
-                        &e,
-                        "Market-based stake: {} HITZ at {} stroops/HITZ (${} USDC/HITZ) → {} HITZ staked for entry {} (user total: {})",
-                        fee,
-                        hitz_price_usdc,
-                        hitz_price_usdc / 10_000_000 * 100, // Convert to cents for display (1 USDC = 10,000,000 stroops, 1 cent = 100,000 stroops)
-                        staked_hitz,
-                        entry_id,
-                        new_stake
-                    );
-                }
-            }
+            log!(
+                &e,
+                "Action fee: {} HITZ from {} on entry {} (escrow: {})",
+                fee,
+                caller,
+                entry_id,
+                entry.escrow_xlm
+            );
         }
 
         // Save entry
         e.storage().persistent().set(&entry_key, &entry);
+        e.storage().persistent().extend_ttl(&entry_key, STORAGE_LIFETIME_THRESHOLD, STORAGE_BUMP_AMOUNT);
 
-        log!(
-            &e,
-            "Action: {} - {} - fee: {} XLM, reward: {} HITZ",
-            kind,
-            entry_id,
-            fee,
-            reward
-        );
+        // NOTE: No minting - supply is exhausted. Rewards come from treasury distribution.
     }
 
     // ========================================================================
@@ -1637,137 +1603,6 @@ fn safe_transfer(e: &Env, token: &Address, from: &Address, to: &Address, amount:
             panic!("Transfer verification failed ({}): to balance mismatch", description);
         }
     }
-}
-
-/// SECURITY FIX C1: Safe mint with supply cap enforcement
-/// Mints HITZ tokens while respecting the 21M supply cap
-/// Returns actual amount minted (may be less than requested if cap reached)
-fn safe_mint_with_cap(e: &Env, hitz_token: &Address, to: &Address, amount: &i128) -> i128 {
-    if *amount <= 0 {
-        return 0;
-    }
-    
-    // Get current total minted from storage
-    let total_minted: i128 = e.storage()
-        .persistent()
-        .get(&DataKey::TotalMinted)
-        .unwrap_or(0);
-    
-    // Check if we've already hit the cap
-    if total_minted >= MAX_HITZ_SUPPLY {
-        log!(e, "HITZ supply cap reached: {} / {} stroops", total_minted, MAX_HITZ_SUPPLY);
-        return 0;
-    }
-    
-    // Calculate how much we can actually mint (cap remaining supply)
-    let remaining = MAX_HITZ_SUPPLY - total_minted;
-    let to_mint = if *amount > remaining { 
-        log!(e, "Capping mint: requested {} but only {} remaining", amount, remaining);
-        remaining 
-    } else { 
-        *amount 
-    };
-    
-    if to_mint <= 0 {
-        return 0;
-    }
-    
-    // Verify core contract still has admin rights (prevents brick if admin changed)
-    let sac_admin = token::StellarAssetClient::new(e, hitz_token);
-    let current_admin = sac_admin.admin();
-    if current_admin != e.current_contract_address() {
-        panic!("Core contract is not HITZ token admin. Cannot mint rewards.");
-    }
-    
-    // Mint the tokens via SAC
-    sac_admin.mint(to, &to_mint);
-    
-    // Update total minted counter (CRITICAL: must happen after successful mint)
-    let new_total = total_minted + to_mint;
-    e.storage().persistent().set(&DataKey::TotalMinted, &new_total);
-    
-    // Extend TTL for the counter
-    e.storage().persistent().extend_ttl(&DataKey::TotalMinted, STORAGE_LIFETIME_THRESHOLD, STORAGE_BUMP_AMOUNT);
-    
-    log!(e, "Minted {} HITZ. Total supply: {} / {} stroops", to_mint, new_total, MAX_HITZ_SUPPLY);
-    
-    to_mint
-}
-
-// ============================================================================
-// Emission helpers (moved from token into core for SAC-based HITZ)
-// ============================================================================
-
-fn compute_epoch_index(e: &Env) -> u64 {
-    let start_ts: u64 = e.storage().instance().get(&DataKey::EmissionStartTs).unwrap_or(0);
-    let interval: u64 = e
-        .storage()
-        .instance()
-        .get(&DataKey::EmissionIntervalSec)
-        .unwrap_or(126_144_000);
-    let now = e.ledger().timestamp();
-    if now < start_ts || interval == 0 { return 0; }
-    (now - start_ts) / interval
-}
-
-fn compute_unit_reward(e: &Env) -> i128 {
-    let epoch = compute_epoch_index(e);
-    let epoch0_reward: i128 = e
-        .storage()
-        .instance()
-        .get(&DataKey::EmissionEpoch0UnitReward)
-        .unwrap_or(3_000_000);
-    if epoch >= 64 { return 0; }
-    
-    // Apply halving to base reward
-    let base_reward = epoch0_reward >> epoch;
-    
-    // Get current market price from oracle (USDC stroops per HITZ)
-    let hitz_price_usdc: i128 = e
-        .storage()
-        .instance()
-        .get(&DataKey::OraclePrice)
-        .unwrap_or(1_000_000); // Default: $0.10 USDC per HITZ
-    
-    // Get base fee (HITZ cost per difficulty unit)
-    let base_fee: i128 = e
-        .storage()
-        .instance()
-        .get(&DataKey::BaseFee)
-        .unwrap_or(1_000_000); // Default: 0.1 HITZ
-    
-    // Calculate value-adjusted reward
-    // Goal: Maintain value parity between fee paid and reward received
-    // If user pays 0.1 HITZ and HITZ = $0.10 USDC, they should get appropriate reward
-    // Formula: reward = (fee_paid × 10^7) / hitz_price_usdc
-    // Multiply by 10^7 to convert to stroops precision
-    // SECURITY FIX: Use checked arithmetic to prevent overflow
-    let value_adjusted_reward = if hitz_price_usdc > 0 {
-        base_fee
-            .checked_mul(10_000_000)
-            .and_then(|v| v.checked_div(hitz_price_usdc))
-            .unwrap_or_else(|| {
-                log!(e, "Oracle reward calculation overflow: base_fee={}, price={}", base_fee, hitz_price_usdc);
-                base_reward // Fallback to base reward on overflow
-            })
-    } else {
-        log!(e, "Oracle price is zero, using base_reward");
-        base_reward // Fallback if price is zero
-    };
-    
-    // Take the minimum of:
-    // 1. Base halving schedule reward (prevents over-emission during bear markets)
-    // 2. Value-adjusted reward (prevents arbitrage during bull markets)
-    let final_reward = if value_adjusted_reward < base_reward {
-        value_adjusted_reward
-    } else {
-        base_reward
-    };
-    
-    log!(e, "Dynamic reward: base={}, value_adj={}, final={}, oracle_price={}", 
-         base_reward, value_adjusted_reward, final_reward, hitz_price_usdc);
-    
-    final_reward
 }
 
 // ============================================================================

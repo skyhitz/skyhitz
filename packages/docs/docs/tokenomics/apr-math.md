@@ -3,18 +3,17 @@ id: apr-math
 title: APR Calculation & Math
 ---
 
-This page explains how APR (Annual Percentage Rate) is calculated in the new HITZ token system and how it differs from the old system.
+This page explains how APR (Annual Percentage Rate) is calculated in the post-exhaustion HITZ token system.
 
 ## Units
 
-- **XLM**: 1 XLM = 10,000,000 stroops
 - **HITZ**: 1 HITZ = 10,000,000 stroops (7 decimals)
 - Contract values use `i128` stroops for precision
-- Proportional math uses `SCALE = 1_000_000` (6 decimals) to reduce rounding errors
+- APR returned in basis points (100 = 1%, 10000 = 100%)
 
-## New APR System (HITZ Rewards)
+## APR System
 
-In the new system, APR represents the annualized return rate for stakers based on HITZ reward pool growth.
+In the post-exhaustion model, APR represents the annualized return rate for stakers based on HITZ reward pool growth from treasury distributions.
 
 ### APR Formula
 
@@ -28,7 +27,7 @@ APR = ((reward_pool / total_staked) / days_since_creation) × 365 × 10000
 
 | Component | Description | Units |
 |-----------|-------------|-------|
-| `reward_pool` | Total HITZ allocated to entry from Treasury distributions | HITZ (stroops) |
+| `reward_pool` | Total HITZ allocated to entry from treasury distributions | HITZ (stroops) |
 | `total_staked` | Sum of all users' HITZ stakes in this entry | HITZ (stroops) |
 | `days_since_creation` | Days elapsed since entry was created | Days |
 | `365` | Days in a year for annualization | Days |
@@ -50,28 +49,28 @@ APR = ((reward_pool / total_staked) / days_since_creation) × 365 × 10000
 
 4. **Basis Points**: `annual_rate × 10000`
    - Converts percentage to basis points for storage
-   - Example: 243.3% × 100 = 24,330 basis points
+   - Example: 2.433 × 10000 = 24,330 basis points
 
-### APR Example Scenarios
+## APR Examples
 
-#### Scenario 1: New Entry with Early Rewards
+### Example 1: New Entry with Early Rewards
 
 ```
 Entry Stats:
 - Created: 30 days ago
 - Total Staked: 500 HITZ
-- Reward Pool: 100 HITZ (from Treasury distributions)
+- Reward Pool: 100 HITZ
 
 Calculation:
 - Daily return: 100 / 500 = 0.2 = 20%
 - Daily rate: 20% / 30 = 0.667% per day
 - Annual rate: 0.667% × 365 = 243.3%
-- APR: 24,330 basis points (243.3%)
+- APR: 24,330 basis points
 ```
 
-**Interpretation**: Stakers can expect ~243% annual returns if reward accumulation continues at this rate.
+**Interpretation**: If reward accumulation continues at this rate, stakers could expect ~243% annual returns.
 
-#### Scenario 2: Mature Entry with Stable Rewards
+### Example 2: Mature Entry with Stable Rewards
 
 ```
 Entry Stats:
@@ -83,10 +82,10 @@ Calculation:
 - Daily return: 500 / 2000 = 0.25 = 25%
 - Daily rate: 25% / 90 = 0.278% per day
 - Annual rate: 0.278% × 365 = 101.4%
-- APR: 10,140 basis points (101.4%)
+- APR: 10,140 basis points
 ```
 
-#### Scenario 3: Highly Staked Entry
+### Example 3: Highly Staked Entry
 
 ```
 Entry Stats:
@@ -98,10 +97,10 @@ Calculation:
 - Daily return: 1000 / 5000 = 0.2 = 20%
 - Daily rate: 20% / 60 = 0.333% per day
 - Annual rate: 0.333% × 365 = 121.7%
-- APR: 12,170 basis points (121.7%)
+- APR: 12,170 basis points
 ```
 
-#### Scenario 4: New Entry, Low Activity
+### Example 4: New Entry, Low Activity
 
 ```
 Entry Stats:
@@ -113,112 +112,164 @@ Calculation:
 - Daily return: 50 / 1000 = 0.05 = 5%
 - Daily rate: 5% / 7 = 0.714% per day
 - Annual rate: 0.714% × 365 = 260.7%
-- APR: 26,070 basis points (260.7%)
+- APR: 26,070 basis points
 ```
 
 ### APR Comparison Table
 
-| Pool Size | Total Stake | Days Elapsed | Daily Return | Daily Rate | APR (%) | APR (basis points) |
-|-----------|-------------|--------------|--------------|------------|---------|-------------------|
-| 100 HITZ | 500 HITZ | 30 | 20% | 0.667% | 243.3% | 24,330 |
-| 500 HITZ | 2000 HITZ | 60 | 25% | 0.417% | 152.1% | 15,210 |
-| 1000 HITZ | 5000 HITZ | 90 | 20% | 0.222% | 81.1% | 8,110 |
-| 50 HITZ | 1000 HITZ | 7 | 5% | 0.714% | 260.7% | 26,070 |
-| 2000 HITZ | 10000 HITZ | 120 | 20% | 0.167% | 60.8% | 6,080 |
+| Pool Size | Total Stake | Days Elapsed | Daily Return | APR (%) | APR (bps) |
+|-----------|-------------|--------------|--------------|---------|-----------|
+| 100 HITZ | 500 HITZ | 30 | 20% | 243% | 24,330 |
+| 500 HITZ | 2000 HITZ | 60 | 25% | 152% | 15,210 |
+| 1000 HITZ | 5000 HITZ | 90 | 20% | 81% | 8,110 |
+| 50 HITZ | 1000 HITZ | 7 | 5% | 261% | 26,070 |
+| 2000 HITZ | 10000 HITZ | 120 | 20% | 61% | 6,080 |
 
-### Factors Affecting APR
+## Factors Affecting APR
 
-1. **Treasury Bot Activity**
-   - More frequent distributions → faster reward pool growth
-   - Higher HITZ purchases → larger distributions
+### 1. Treasury Distribution Rate
 
-2. **Entry Performance (Escrow)**
-   - More streams/likes/downloads → higher escrow
-   - Higher escrow → larger share of Treasury distributions
-   - Larger distributions → higher APR
+The treasury distributes 0.05% of its balance daily:
+- Larger treasury = more HITZ distributed
+- More entries with escrow = more dilution
+- Entry's escrow share determines allocation
 
-3. **Staking Competition**
-   - More stakers → higher total_staked
-   - Higher total_staked → lower APR (diluted)
-   - First movers get advantage
+### 2. Entry Engagement (Escrow)
 
-4. **Time Factor**
-   - Newer entries show higher APR (less time to average)
-   - Mature entries show more stable APR
-   - APR normalizes over time
+Entries with more engagement get more treasury distributions:
+- More streams → higher escrow → larger distribution share
+- More likes → higher escrow → larger distribution share
+- Higher escrow → faster reward pool growth → higher APR
 
-5. **Epoch Changes (Halving)**
-   - Every 4 years, HITZ emission halves
-   - Less HITZ minted → slower reward pool growth
-   - Lower reward growth → declining APRs over time
+### 3. Staking Competition
 
-### APR vs. Actual Returns
+As more users stake in an entry:
+- Total stake increases
+- Individual ownership decreases (dilution)
+- APR decreases (same rewards, more stakers)
+- First movers get advantage
+
+### 4. Time Factor
+
+APR normalizes over time:
+- New entries may show volatile APRs
+- Mature entries show more stable APRs
+- APR averages over entire entry lifetime
+
+### 5. Artist Equity
+
+If entry has artist equity:
+- Staker pool = reward_pool × (1 - artist_equity%)
+- APR calculated on staker pool, not total pool
+- Example: 20% artist equity → stakers share 80% of rewards
+
+## APR vs. Actual Returns
 
 **Important**: APR is an **annualized projection**, not a guarantee.
 
-- APR projects current rate over 365 days
-- Actual returns depend on:
-  - Future Treasury distributions
-  - Changes in total stake (dilution)
-  - Entry performance trends
-  - Epoch transitions
+### What APR Shows
+- Historical rate of reward accumulation
+- Projected return if current rate continues
+- Comparison metric between entries
 
-**Example**:
-```
-Current APR: 200%
-Your stake: 100 HITZ
-Projected annual return: 200 HITZ
+### What APR Doesn't Account For
+- Future treasury distribution changes
+- Changes in total stake (dilution)
+- Entry engagement trends
+- Artist equity claims
+- Unstaking by other users
 
-BUT actual return may vary based on:
-- If 500 more HITZ are staked → dilution → lower returns
-- If Treasury distributes more → higher returns
-- If entry loses popularity → lower distributions → lower returns
-```
-
-## Old System (For Reference)
-
-In the old system, APR was based on excess XLM escrow:
-
-### Old APR Formula
+### Example Variance
 
 ```
-if tvl == 0 or escrow <= tvl:
-  apr = 0
-else:
-  apr = ((escrow - tvl) * 100) / tvl
+Current State:
+- APR: 200% (20,000 basis points)
+- Your stake: 100 HITZ
+- Projected annual return: 200 HITZ
+
+Future Scenarios:
+
+Scenario A: More stakers join
+- 500 more HITZ staked
+- Your ownership drops
+- Actual return: 100 HITZ (lower than projected)
+
+Scenario B: Entry becomes popular
+- More streams/likes → higher escrow
+- Entry gets larger treasury share
+- Actual return: 300 HITZ (higher than projected)
+
+Scenario C: Treasury depletes
+- Distribution rate stays 0.05%
+- But 0.05% of smaller balance = less HITZ
+- Actual return: 150 HITZ (lower than projected)
 ```
 
-This calculated a simple percentage based on how much escrow exceeded TVL.
+## On-Chain Calculation
 
-### Old Mining Partition
+The APR calculation is performed on-chain in the Core contract:
 
-The old system also used "top APR" to determine mining allocation:
+```rust
+pub fn calculate_apr(e: Env, entry_id: String) -> i128 {
+    let entry = get_entry(&e, &entry_id);
+    let total_stake = get_stake_total(&e, entry_id.clone());
+    let reward_pool = get_reward_pool(&e, entry_id);
+    
+    if total_stake == 0 {
+        return 0;
+    }
+    
+    let now = e.ledger().timestamp();
+    let seconds_elapsed = now.saturating_sub(entry.created_at);
+    let days_elapsed = seconds_elapsed / 86_400;
+    
+    if days_elapsed == 0 {
+        return 0;
+    }
+    
+    // (pool / stake / days) × 365 × 10000
+    let daily_return = reward_pool
+        .checked_mul(10_000)
+        .and_then(|v| v.checked_div(total_stake))
+        .unwrap_or(i128::MAX);
+        
+    let annual_return = daily_return
+        .checked_mul(365)
+        .and_then(|v| v.checked_div(days_elapsed as i128))
+        .unwrap_or(i128::MAX);
 
-1. Fetch top APR from Algolia
-2. Calculate escrow allocation: `min(1 XLM × topAPR% / 100, 0.3 XLM)`
-3. Remaining split 50/50: issuer payment and user equity
-
-**Example**:
+    // Cap at 1,000,000% (10,000,000 basis points)
+    annual_return.min(10_000_000)
+}
 ```
-Top APR: 25%
-Escrow allocation: min(1 × 0.25, 0.3) = 0.25 XLM
-Remaining: 1 - 0.25 = 0.75 XLM
-Issuer payment: 0.375 XLM
-User equity: 0.375 XLM
+
+## APR with Artist Equity
+
+When an entry has artist equity, the APR shown is for the **staker pool**:
+
+```
+Staker Pool = Reward Pool × (10000 - artist_equity_bps) / 10000
+
+Staker APR = ((staker_pool / total_stake) / days) × 365 × 10000
 ```
 
-This approach is **no longer used** in the new system.
+### Example with 20% Artist Equity
 
-## Key Differences: Old vs. New
+```
+Entry Stats:
+- Created: 30 days ago
+- Total Staked: 500 HITZ
+- Reward Pool: 100 HITZ
+- Artist Equity: 20% (2000 bps)
 
-| Aspect | Old System | New System |
-|--------|------------|------------|
-| **APR Source** | Excess XLM escrow over TVL | HITZ reward pool growth |
-| **APR Unit** | Percentage (0-100+) | Basis points (0-100,000+) |
-| **APR Formula** | `(escrow - tvl) / tvl × 100` | `(pool / stake / days) × 365 × 10000` |
-| **Returns** | XLM from escrow | HITZ from reward pools |
-| **Time Factor** | Not considered | Annualized over days elapsed |
-| **Mining Use** | Determines escrow allocation | Not used (fixed 0.1 XLM mine cost) |
+Staker Pool: 100 × 80% = 80 HITZ
+
+APR Calculation:
+- Daily return: 80 / 500 = 0.16 = 16%
+- Daily rate: 16% / 30 = 0.533% per day
+- Annual rate: 0.533% × 365 = 194.7%
+- APR: 19,470 basis points
+```
 
 ## Practical Implications
 
@@ -229,11 +280,11 @@ This approach is **no longer used** in the new system.
    - Young entries may have inflated APRs
 
 2. **Staking Early = Higher APR**
-   - Less competition = higher returns
+   - Less competition = higher ownership
    - But also higher risk if entry doesn't perform
 
 3. **Popular Entries = More Rewards**
-   - Higher escrow = more Treasury distributions
+   - Higher escrow = more treasury distributions
    - But also attracts more stakers (dilution)
 
 4. **Long-term Strategy**
@@ -241,57 +292,27 @@ This approach is **no longer used** in the new system.
    - Diversify across multiple entries
    - Claim rewards periodically
 
-### For Platform
+### For Platform Monitoring
 
-1. **APR Drives Staking Decisions**
-   - High APR attracts stakers
-   - Must balance reward distribution fairly
+1. **APR Trends**
+   - Track APR across entries over time
+   - Identify high-performing entries
+   - Monitor for unusual APR spikes
 
-2. **Treasury Bot Frequency Matters**
-   - More frequent distributions = smoother APR
-   - Less frequent = spikier APR
+2. **Treasury Health**
+   - APR depends on treasury distributions
+   - Monitor treasury balance projections
+   - 0.05% rate ensures 12+ year runway
 
-3. **Emission Schedule Impact**
-   - Early years: abundant HITZ, high APRs
-   - Later years: scarce HITZ, lower APRs, higher token value
-
-## On-Chain Calculation
-
-The APR calculation is performed on-chain in the Core contract:
-
-```rust
-pub fn calculate_apr(e: Env, entry_id: String) -> i128 {
-    let entry = get_entry_or_panic(&e, &entry_id);
-    
-    if entry.total_staked == 0 {
-        return 0;
-    }
-    
-    let now = e.ledger().timestamp();
-    let days_elapsed = (now - entry.created_at) / 86400;
-    
-    if days_elapsed == 0 {
-        return 0;
-    }
-    
-    // reward_pool / total_staked / days × 365 × 10000
-    let daily_rate = (entry.reward_pool * SCALE) / entry.total_staked;
-    let annual_rate = (daily_rate * 365) / days_elapsed;
-    (annual_rate * 10000) / SCALE
-}
-```
-
-**Note**: This calculation is also performed automatically whenever:
-- Rewards are distributed
-- Rewards are claimed
-- Stakes are added
-
-The result is stored in `entry.apr` and synced to Algolia for search/filtering.
+3. **Engagement Correlation**
+   - High escrow entries should have higher APR
+   - Low engagement = low distributions = low APR
 
 ## Summary
 
-- **New APR**: Annualized return rate based on HITZ reward pool growth over time
-- **Formula**: `(reward_pool / total_staked / days) × 365 × 10000` (basis points)
-- **Dynamic**: Changes with Treasury distributions, staking activity, and time
-- **Projection**: Not guaranteed; actual returns may vary
-- **Purpose**: Helps users compare entry investment opportunities
+- **APR Formula**: `(pool / stake / days) × 365 × 10000`
+- **Units**: Basis points (10000 = 100%)
+- **Source**: Treasury distributions (0.05% daily)
+- **Factors**: Escrow, stake, time, artist equity
+- **Purpose**: Compare investment opportunities
+- **Limitation**: Historical projection, not guarantee

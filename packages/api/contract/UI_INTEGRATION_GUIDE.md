@@ -1,671 +1,658 @@
-# UI Integration Guide for New Skyhitz Contracts
+# UI Integration Guide - Post-Exhaustion V2
 
 ## Overview
-This guide provides a comprehensive list of all changes needed to integrate the new Skyhitz smart contracts with the UI.
 
-## Contract Changes Summary
+This guide documents the integration between the Skyhitz UI and the V2 smart contract operating in **post-exhaustion distribution mode**.
 
-### New Contract Interface
-- `record_action(caller, entry_id, kind, amount?)` - Unified action handler for stream/like/download/mine/invest
-- `claim_rewards(entry_id, claimer)` - Claims HITZ rewards from entry pool
-- `create_entry(entry_id)` - Creates new entry in contract
-- `get_stake(entry_id, owner)` - Gets user's stake in entry
-- `get_claimable_rewards(entry_id, user)` - Preview claimable rewards
-- `calculate_apr(entry_id)` - On-chain APR calculation
-- `get_entry_stats(entry_id)` - Returns {total_staked, reward_pool, apr}
+### Key V2 Changes
 
-### Artist Equity Functions (NEW)
-- `set_artist_equity(entry_id, artist, equity_bps)` - Admin sets artist's non-dilutable equity
-- `claim_artist_equity(entry_id, artist)` - Artist claims their share of rewards
-- `get_artist_equity(entry_id, artist)` - Returns (equity_bps, claimed, claimable)
-- `get_total_artist_equity(entry_id)` - Returns total artist equity in basis points
+| Aspect | V1 | V2 (Current) |
+|--------|-----|--------------|
+| Token source | Minted on actions | Treasury distribution |
+| Fee currency | XLM | HITZ |
+| Staking | Oracle-dependent | 1:1 (fee = stake) |
+| Instant rewards | Yes (minting) | No (via treasury) |
+| Distribution | Per-action | Daily batch (0.05%) |
 
-### Removed Methods
-- `sellShares()` - No longer supported
-- `mergeEntries()` - No longer supported
+## Contract Interface
 
-### Updated Data Structures
+### Core Functions
+
+```typescript
+// Record user action (main entrypoint)
+record_action(caller, entry_id, kind, amount?)
+
+// Claim staker rewards
+claim_rewards(entry_id, claimer) -> i128
+
+// Claim artist equity
+claim_artist_equity(entry_id, artist) -> i128
+
+// Unstake tokens
+unstake(entry_id, caller, amount) -> i128
+
+// Create entry (admin)
+create_entry(entry_id)
+
+// View functions
+get_stake(entry_id, owner) -> i128
+get_stake_total(entry_id) -> i128
+get_claimable_rewards(entry_id, user) -> i128
+get_reward_pool(entry_id) -> i128
+calculate_apr(entry_id) -> i128
+get_entry_stats(entry_id) -> (tvl, escrow, stake, pool, apr)
+get_entry(entry_id) -> Entry
+
+// Artist equity
+set_artist_equity(entry_id, artist, equity_bps)
+get_artist_equity(entry_id, artist) -> (bps, claimed, claimable)
+get_total_artist_equity(entry_id) -> u32
+```
+
+### Action Types
+
+| Action | Kind Symbol | Fee (HITZ) | Stakes? |
+|--------|-------------|------------|---------|
+| Stream | `stream` | 0.1 HITZ | No |
+| Like | `like` | 0.2 HITZ | No |
+| Download | `download` | 0.3 HITZ | No |
+| Mine | `mine` | 1.0 HITZ | Yes (1:1) |
+| Invest | `invest` | 3+ HITZ | Yes (1:1) |
+
+### Entry Data Structure
+
 ```typescript
 interface Entry {
-  created_at: u64;
-  escrow: i128;  // Escrow for non-staking actions (in HITZ stroops)
-  tvl: i128;     // Total Value Locked (staking actions) (in HITZ stroops)
+  tvl_xlm: i128;      // Total Value Locked (staked HITZ)
+  escrow_xlm: i128;   // Accumulated fees (distribution metric)
+  created_at: u64;    // Timestamp
 }
 ```
 
 ---
 
-## Implementation Checklist
+## Backend Integration
 
-### ✅ Phase 1: Contract Client (COMPLETED)
+### GraphQL Resolvers
 
-#### packages/api/contract/index.ts
-- [x] Added `createEntry(entryId: string)`
-- [x] Added `recordAction(secret, entryId, kind, amount?)`
-- [x] Added `getStake(entryId, owner)`
-- [x] Added `getStakeTotal(entryId)`
-- [x] Added `getClaimableRewards(entryId, user)`
-- [x] Added `claimRewards(secret, entryId)`
-- [x] Added `calculateApr(entryId)`
-- [x] Added `getEntryStats(entryId)`
-- [ ] Update `getEntry()` to handle new Entry interface
-- [ ] Remove/deprecate old methods (sellShares, mergeEntries)
+#### Record Action (All Action Types)
 
----
-
-### Phase 2: Backend GraphQL Resolvers
-
-#### packages/api/src/graphql/invest-entry.ts
 ```typescript
-// OLD:
-const res = await contract.invest(await encryption.decrypt(user.seed), id, amount);
+// packages/api/src/graphql/record-action.ts
 
-// NEW:
-const res = await contract.recordAction(
+import ContractClient from '../../contract';
+
+export async function recordActionResolver(
+  _: any,
+  { id, kind, amount }: { id: string; kind: string; amount?: number },
+  context: Context
+) {
+  const user = requireAuth(context);
+  const contract = new ContractClient(context.env);
+  
+  // Convert amount to stroops if provided (for invest)
+  const amountStroops = amount ? BigInt(Math.floor(amount * 10_000_000)) : undefined;
+  
+  // Call contract
+  await contract.recordAction(
   await encryption.decrypt(user.seed),
   id,
-  'invest',
-  amount
+    kind,  // 'stream' | 'like' | 'download' | 'mine' | 'invest'
+    amountStroops
 );
 
-// Update Algolia sync:
-const sorobanEntry = await contract.getEntry(id);
+  // Update Algolia
+  const entry = await contract.getEntry(id);
 const stats = await contract.getEntryStats(id);
 
 await algolia.partialUpdateEntry({
-    tvl: sorobanEntry.tvl,
-    escrow: sorobanEntry.escrow,
-  apr: stats.apr,
   objectID: id,
+    tvl: Number(entry.tvl_xlm) / 10_000_000,
+    escrow: Number(entry.escrow_xlm) / 10_000_000,
+    apr: Number(stats[4]) / 100,  // basis points to percentage
 });
 
-// Update shares -> stakes:
+  // For staking actions, update user shares
+  if (kind === 'mine' || kind === 'invest') {
 const userStake = await contract.getStake(id, user.publicKey);
 await algolia.updateShares(id, user.id, Number(userStake));
+  }
+  
+  return { success: true };
+}
 ```
 
-#### packages/api/src/graphql/mine-external-entry.ts
+#### Claim Rewards
+
 ```typescript
-// Replace all invest() calls with recordAction():
+// packages/api/src/graphql/claim-rewards.ts
 
-// OLD:
-await contract.invest(userSeed, metaCid, toStroops(investEscrow));
-await contract.invest(userSeed, metaCid, toStroops(half));
-
-// NEW:
-await contract.recordAction(userSeed, metaCid, 'invest', toStroops(investEscrow));
-await contract.recordAction(userSeed, metaCid, 'invest', toStroops(half));
-```
-
-#### packages/api/src/graphql/claim-earnings.ts
-```typescript
-// OLD:
-const result = await contract.claimEarnings(user.publicKey, entryId, await encryption.decrypt(user.seed));
-
-// NEW:
-const result = await contract.claimRewards(await encryption.decrypt(user.seed), entryId);
-
-// Update response:
+export async function claimRewardsResolver(
+  _: any,
+  { entryId }: { entryId: string },
+  context: Context
+) {
+  const user = requireAuth(context);
+  const contract = new ContractClient(context.env);
+  
+  // Check claimable first
+  const claimable = await contract.getClaimableRewards(entryId, user.publicKey);
+  
+  if (claimable <= 0n) {
+    return {
+      success: false,
+      message: 'No rewards to claim',
+      claimedAmount: 0,
+    };
+  }
+  
+  // Claim rewards
+  const claimed = await contract.claimRewards(
+    await encryption.decrypt(user.seed),
+    entryId
+  );
+  
 return {
   success: true,
-  totalClaimedAmount: result.claimedAmount / 10_000_000, // Convert stroops to XLM
-  claimedEntries: [{
-    entryId,
-    amount: result.claimedAmount / 10_000_000
-  }],
-  message: `Successfully claimed ${(result.claimedAmount / 10_000_000).toFixed(2)} HITZ`,
-  lastClaimTime: new Date().toISOString(),
-};
+    claimedAmount: Number(claimed) / 10_000_000,
+    message: `Claimed ${(Number(claimed) / 10_000_000).toFixed(2)} HITZ`,
+  };
+}
 ```
 
-#### packages/api/src/graphql/sell-shares.ts
-**ACTION: DELETE THIS FILE** - Sell shares is no longer supported. Users can only invest/stake.
+#### Unstake
 
-#### packages/api/src/graphql/user-credits.ts
-Add HITZ balance support:
 ```typescript
-export const userHitzBalanceResolver = async (_: any, __: any, context: Context) => {
+// packages/api/src/graphql/unstake-entry.ts
+
+export async function unstakeEntryResolver(
+  _: any,
+  { entryId, amount }: { entryId: string; amount: number },
+  context: Context
+) {
   const user = requireAuth(context);
-  const { env } = context;
-  const contract = new ContractClient(env);
+  const contract = new ContractClient(context.env);
   
-  // Get HITZ token balance
-  // TODO: Add hitzTokenClient.balance() method to contract client
-  return 0; // Placeholder
-};
+  const amountStroops = BigInt(Math.floor(amount * 10_000_000));
+  
+  // Unstake
+  const unstaked = await contract.unstake(
+    await encryption.decrypt(user.seed),
+    entryId,
+    amountStroops
+  );
+  
+  // Update Algolia
+  const stats = await contract.getEntryStats(entryId);
+  await algolia.partialUpdateEntry({
+    objectID: entryId,
+    tvl: Number(stats[0]) / 10_000_000,
+  });
+  
+  const userStake = await contract.getStake(entryId, user.publicKey);
+  await algolia.updateShares(entryId, user.id, Number(userStake));
+  
+  return {
+    success: true,
+    unstakedAmount: Number(unstaked) / 10_000_000,
+  };
+}
 ```
 
-#### packages/api/src/graphql/resolvers.ts
-```typescript
-const Query = {
-  // ... existing queries
-  userHitzBalance: userHitzBalanceResolver,
-};
+### GraphQL Schema
 
-const Mutation = {
-  // ... existing mutations
-  // REMOVE: sellShares: sellSharesResolver,
-};
-```
-
-#### packages/api/src/graphql/schema.ts
-```typescript
+```graphql
 type Query {
-  // ... existing queries
+  # Existing queries...
+  
+  # HITZ balance
   userHitzBalance: Float!
+  
+  # Claimable rewards for an entry
+  getClaimableRewards(entryId: String!): Float!
+  
+  # User's stake in an entry
+  getStake(entryId: String!): Float!
+  
+  # Artist equity info
+  getArtistEquity(entryId: String!): ArtistEquityInfo
 }
 
 type Mutation {
-  // ... existing mutations
-  # REMOVE: sellShares(id: String!, amount: Float!): Boolean!
+  # Record any action (stream/like/download/mine/invest)
+  recordAction(id: String!, kind: String!, amount: Float): ActionResult!
+  
+  # Claim staker rewards
+  claimRewards(entryId: String!): ClaimResult!
+  
+  # Claim artist equity
+  claimArtistEquity(entryId: String!): ClaimResult!
+  
+  # Unstake from entry
+  unstakeEntry(entryId: String!, amount: Float!): UnstakeResult!
 }
 
-type EntryDetails {
-  imageUrl: String!
-  videoUrl: String!
-  description: String
-  title: String!
+type ActionResult {
+  success: Boolean!
+  message: String
+}
+
+type ClaimResult {
+  success: Boolean!
+  claimedAmount: Float
+  message: String
+}
+
+type UnstakeResult {
+  success: Boolean!
+  unstakedAmount: Float
+}
+
+type ArtistEquityInfo {
+  equityBps: Int!
+  claimed: Float!
+  claimable: Float!
+}
+
+type Entry {
   id: String!
+  title: String!
   artist: String!
-  holders: [EntryHolder!]
-  history: [EntryActivity!]
   tvl: Float
+  escrow: Float
   apr: Float
-  escrow: Float  # ADD THIS
+  rewardPool: Float
+  totalStake: Float
+  artistEquity: Int  # basis points
 }
 ```
 
 ---
 
-### Phase 3: Frontend GraphQL Operations
+## Frontend Integration
 
-#### packages/solito/packages/app/api/graphql/operations.ts
+### Action Hooks
+
+#### Stream Action (on playback complete)
+
 ```typescript
-// Add new operations:
-export const RECORD_ACTION = gql`
-  mutation RecordAction($id: String!, $kind: String!, $amount: Float) {
-    recordAction(id: $id, kind: $kind, amount: $amount) {
-      success
-      message
-    }
-  }
-`
+// packages/solito/packages/app/hooks/usePlayback.ts
 
-export const USER_HITZ_BALANCE = gql`
-  query UserHitzBalance {
-    userHitzBalance
-  }
-`
-
-export const GET_CLAIMABLE_REWARDS = gql`
-  query GetClaimableRewards($id: String!) {
-    getClaimableRewards(id: $id)
-  }
-`
-
-// Update INVEST_ENTRY to match new interface (already exists, just verify)
-export const INVEST_ENTRY = gql`
-  mutation InvestEntry($id: String!, $amount: Float!) {
-    investEntry(id: $id, amount: $amount) {
-      success
-      message
-    }
-  }
-`
-```
-
----
-
-### Phase 4: UI Components - Actions
-
-#### packages/solito/packages/app/hooks/usePlayback.ts
-Add stream tracking:
-```typescript
-import { useMutation } from '@apollo/client'
-import { RECORD_ACTION } from 'app/api/graphql/operations'
+import { useMutation } from '@apollo/client';
+import { RECORD_ACTION } from 'app/api/graphql/operations';
 
 export function usePlayback() {
-  const [recordAction] = useMutation(RECORD_ACTION)
+  const [recordAction] = useMutation(RECORD_ACTION);
   
-  // Add in the playback logic where song starts playing:
-  const handlePlay = async (entry: Entry) => {
-    // ... existing play logic
-    
-    // Record stream action
+  const handlePlayComplete = async (entryId: string) => {
     try {
       await recordAction({
         variables: {
-          id: entry.id,
+          id: entryId,
           kind: 'stream',
         }
-      })
+      });
     } catch (e) {
-      console.error('Failed to record stream action', e)
+      console.error('Failed to record stream:', e);
+      // Non-blocking - don't interrupt playback
     }
-  }
+  };
   
   // ... rest of hook
 }
 ```
 
-#### packages/solito/packages/app/ui/buttons/likeButton.tsx
+#### Like Action
+
 ```typescript
-// REMOVE the invest() workaround (lines 66-97)
-// Replace with:
+// packages/solito/packages/app/ui/buttons/likeButton.tsx
+
+const handleLike = async () => {
 try {
-  const { data } = await recordAction({
+    await recordAction({
     variables: {
       id: entry.id,
       kind: 'like',
-    },
-  })
-  
-  if (data?.recordAction?.success) {
-    toast.show('Liked!', { type: 'success' })
+      }
+    });
+    toast.show('Liked!', { type: 'success' });
+  } catch (e) {
+    toast.show('Failed to like', { type: 'error' });
   }
-} catch (error) {
-  // Revert cache on error
-  isLiked ? addLikeToCache(entry) : removeLikeFromCache(entry)
-  toast.show('Failed to like entry', { type: 'danger' })
-}
+};
 ```
 
-#### packages/solito/packages/app/ui/buttons/download/web.tsx
+#### Invest Action
+
 ```typescript
-// Replace invest() call with recordAction():
-const { data } = await recordAction({
+// packages/solito/packages/app/features/entry/InvestModal.tsx
+
+const handleInvest = async (amount: number) => {
+  // Minimum 3 HITZ
+  if (amount < 3) {
+    toast.show('Minimum investment is 3 HITZ');
+    return;
+  }
+  
+  try {
+    await recordAction({
   variables: {
     id: entry.id,
-    kind: 'download',
+        kind: 'invest',
+        amount: amount,  // HITZ amount
+      }
+    });
+    
+    toast.show(`Invested ${amount} HITZ!`);
+    refetchEntry();
+  } catch (e) {
+    toast.show('Investment failed', { type: 'error' });
   }
-})
-
-const ok = !!data?.recordAction?.success
+};
 ```
 
-#### packages/solito/packages/app/features/search/.../combinedSearchResultList.tsx
-```typescript
-// Update mine button:
-const res = await mineExternal({ variables: { input }, errorPolicy: 'none' as any })
-// The backend mine resolver will handle calling recordAction('mine')
-```
+### Claim Rewards UI
 
----
+```tsx
+// packages/solito/packages/app/features/entry/ClaimSection.tsx
 
-### Phase 5: Asset Management (HITZ Support)
+import { useQuery, useMutation } from '@apollo/client';
+import { GET_CLAIMABLE_REWARDS, CLAIM_REWARDS } from 'app/api/graphql/operations';
 
-#### 1. Create State Management
-
-**packages/solito/packages/app/state/asset.ts** (NEW FILE)
-```typescript
-import { create } from 'zustand'
-import { persist, createJSONStorage } from 'zustand/middleware'
-
-export type AssetType = 'XLM' | 'HITZ'
-
-interface AssetState {
-  selectedAsset: AssetType
-  setSelectedAsset: (asset: AssetType) => void
-  xlmBalance: number
-  hitzBalance: number
-  setXlmBalance: (balance: number) => void
-  setHitzBalance: (balance: number) => void
-}
-
-export const useAssetStore = create<AssetState>()(
-  persist(
-    (set) => ({
-      selectedAsset: 'XLM',
-      xlmBalance: 0,
-      hitzBalance: 0,
-      setSelectedAsset: (asset) => set({ selectedAsset: asset }),
-      setXlmBalance: (balance) => set({ xlmBalance: balance }),
-      setHitzBalance: (balance) => set({ hitzBalance: balance }),
-    }),
-    {
-      name: 'asset-storage',
-      storage: createJSONStorage(() => localStorage),
-    }
-  )
-)
-```
-
-#### 2. Create HITZ Icon Component
-
-**packages/solito/packages/app/ui/icons/hitz.tsx** (NEW FILE)
-```typescript
-import * as React from 'react'
-import Svg, { Path } from 'react-native-svg'
-
-interface Props {
-  size?: number
-  fill?: string
-  className?: string
-}
-
-function Hitz({ size = 24, fill = 'currentColor', className }: Props) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
-      {/* TODO: Add your HITZ logo SVG path here */}
-      <Path
-        d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"
-        fill={fill}
-      />
-    </Svg>
-  )
-}
-
-export default Hitz
-```
-
-#### 3. Update Profile Screen
-
-**packages/solito/packages/app/features/profile/index.tsx**
-```typescript
-import { useAssetStore } from 'app/state/asset'
-import Hitz from 'app/ui/icons/hitz'
-import { useQuery } from '@apollo/client'
-import { USER_HITZ_BALANCE } from 'app/api/graphql/operations'
-
-export function ProfileScreen({ user }: { user: User }) {
-  const { selectedAsset, setSelectedAsset } = useAssetStore()
-  const { data: xlmCredits } = useQuery(USER_CREDITS, { fetchPolicy: 'network-only' })
-  const { data: hitzData } = useQuery(USER_HITZ_BALANCE, { fetchPolicy: 'network-only' })
+export function ClaimSection({ entryId }: { entryId: string }) {
+  const { data: claimableData, refetch } = useQuery(GET_CLAIMABLE_REWARDS, {
+    variables: { entryId },
+    pollInterval: 60000,  // Refresh every minute
+  });
   
-  const displayBalance = selectedAsset === 'XLM' 
-    ? xlmCredits?.userCredits || 0
-    : hitzData?.userHitzBalance || 0
+  const [claimRewards, { loading }] = useMutation(CLAIM_REWARDS);
   
-  const AssetIcon = selectedAsset === 'XLM' ? Stellar : Hitz
+  const claimable = claimableData?.getClaimableRewards || 0;
   
-  return (
-    <SafeAreaView className="bg-[--bg-color]">
-      {/* ... */}
-      
-      <View className="mt-8 w-full items-center justify-center px-4">
-        <View className="mb-0.5 flex w-full flex-row items-center justify-between">
-          <View className="ml-2 flex flex-row items-center gap-2">
-            {/* Asset Selector Dropdown */}
-            <select
-              value={selectedAsset}
-              onChange={(e) => setSelectedAsset(e.target.value as AssetType)}
-              className="bg-transparent border-none text-[--text-color] font-unbounded"
-            >
-              <option value="XLM">XLM</option>
-              <option value="HITZ">HITZ</option>
-            </select>
-            
-            <P className="flex flex-row items-center font-bold font-unbounded text-[--text-color] gap-2">
-              <AssetIcon size={18} />
-              {`${displayBalance.toFixed(2)} ${selectedAsset}`}
-            </P>
-          </View>
-          
-          {/* ... rest of component */}
-        </View>
-      </View>
-    </SafeAreaView>
-  )
-}
-```
-
-#### 4. Update InvestSection
-
-**packages/solito/packages/app/features/entry/InvestSection.tsx**
-```typescript
-// Add stake info:
-const { data: stakeData } = useQuery(GET_STAKE, {
-  variables: { id: entry.id, owner: user?.publicKey },
-  skip: !user
-})
-
-const userStake = stakeData?.getStake || 0
-const stakePercentage = entry.tvl ? (userStake / Number(entry.tvl)) * 100 : 0
-
-// Display:
-<View className="flex-row">
-  <P className="text-[--text-secondary-color] mr-1 font-unbounded text-xs">
-    Your Stake:{' '}
-  </P>
-  <P className="text-[--text-color] font-unbounded text-xs">
-    {`${stroopsToLumens(userStake)} XLM (${stakePercentage.toFixed(2)}%)`}
-  </P>
-</View>
-```
-
----
-
-### Phase 6: Algolia Sync
-
-#### packages/api/src/algolia/algolia.ts
-```typescript
-export interface EntryAlgoliaObject {
-  objectID: string
-  title: string
-  artist: string
-  description?: string
-  imageUrl: string
-  videoUrl: string
-  tvl?: number
-  apr?: number
-  escrow?: number  // ADD THIS
-}
-
-export class AlgoliaClient {
-  // Update partialUpdateEntry to handle new fields:
-  async partialUpdateEntry(entry: Partial<EntryAlgoliaObject> & { objectID: string }) {
+  const handleClaim = async () => {
     try {
-      await this.entriesIndex.partialUpdateObject(entry)
+      const { data } = await claimRewards({
+        variables: { entryId }
+      });
+      
+      if (data?.claimRewards?.success) {
+        toast.show(`Claimed ${data.claimRewards.claimedAmount} HITZ!`);
+        refetch();
+      }
     } catch (e) {
-      console.error('Failed to update entry in Algolia', e)
-      throw e
+      toast.show('Claim failed', { type: 'error' });
     }
-  }
+  };
   
-  // Update updateShares to work with stakes:
-  async updateShares(entryId: string, userId: string, stakeAmount: number) {
-    // Implementation depends on your Algolia schema for tracking user stakes
-    // You might need a separate index or nested object structure
-  }
+  if (claimable <= 0) return null;
+  
+  return (
+    <View className="...">
+      <P>Claimable: {claimable.toFixed(4)} HITZ</P>
+      <Button onPress={handleClaim} disabled={loading}>
+        Claim Rewards
+      </Button>
+          </View>
+  );
 }
 ```
+
+### Unstake UI
+
+```tsx
+// packages/solito/packages/app/features/entry/UnstakeModal.tsx
+
+export function UnstakeModal({ entryId, userStake, onClose }) {
+  const [amount, setAmount] = useState('');
+  const [unstake, { loading }] = useMutation(UNSTAKE_ENTRY);
+  
+  const handleUnstake = async () => {
+    const amountNum = parseFloat(amount);
+    if (amountNum <= 0 || amountNum > userStake) {
+      toast.show('Invalid amount');
+      return;
+    }
+    
+    try {
+      const { data } = await unstake({
+        variables: { entryId, amount: amountNum }
+      });
+      
+      if (data?.unstakeEntry?.success) {
+        toast.show(`Unstaked ${data.unstakeEntry.unstakedAmount} HITZ`);
+        onClose();
+      }
+    } catch (e) {
+      toast.show('Unstake failed', { type: 'error' });
+    }
+  };
+  
+  return (
+    <Modal onClose={onClose}>
+      <P>Your stake: {userStake.toFixed(4)} HITZ</P>
+      <TextInput
+        value={amount}
+        onChangeText={setAmount}
+        placeholder="Amount to unstake"
+        keyboardType="numeric"
+      />
+      <Button onPress={handleUnstake} disabled={loading}>
+        Unstake
+      </Button>
+      <P className="text-sm text-gray-500">
+        Warning: Unstaking reduces your ownership and future rewards.
+      </P>
+    </Modal>
+  );
+}
+```
+
+### Entry Stats Display
+
+```tsx
+// packages/solito/packages/app/features/entry/EntryStats.tsx
+
+export function EntryStats({ entry }) {
+  return (
+    <View className="...">
+      <StatItem
+        label="TVL"
+        value={`${entry.tvl?.toFixed(2) || 0} HITZ`}
+        tooltip="Total Value Locked - sum of all stakes"
+      />
+      <StatItem
+        label="Escrow"
+        value={`${entry.escrow?.toFixed(2) || 0} HITZ`}
+        tooltip="Accumulated fees from streams/likes/downloads"
+      />
+      <StatItem
+        label="APR"
+        value={`${entry.apr?.toFixed(1) || 0}%`}
+        tooltip="Annualized return rate for stakers"
+      />
+      <StatItem
+        label="Reward Pool"
+        value={`${entry.rewardPool?.toFixed(2) || 0} HITZ`}
+        tooltip="Available rewards from treasury distributions"
+      />
+      {entry.artistEquity > 0 && (
+        <StatItem
+          label="Artist Equity"
+          value={`${(entry.artistEquity / 100).toFixed(1)}%`}
+          tooltip="Non-dilutable artist share of rewards"
+        />
+      )}
+    </View>
+  );
+}
+```
+
+---
+
+## Artist Equity Integration
+
+### Upload Screen (Verified Artists)
+
+```tsx
+// packages/solito/packages/app/features/upload/screen.tsx
+
+export function UploadScreen() {
+  const { user } = useAuth();
+  const [artistEquity, setArtistEquity] = useState(0);
+  
+  const isVerifiedArtist = user?.verifiedArtist === true;
+  
+  const handleUpload = async (file, metadata) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('metadata', JSON.stringify(metadata));
+    
+    // Add artist equity if verified
+    if (isVerifiedArtist && artistEquity > 0) {
+      formData.append('artistEquityBps', String(Math.floor(artistEquity * 100)));
+    }
+    
+    await upload(formData);
+  };
+  
+  return (
+    <View>
+      {/* ... existing upload UI */}
+      
+      {isVerifiedArtist && (
+        <View className="mt-4">
+          <P className="font-bold">Artist Equity</P>
+          <P className="text-sm text-gray-500 mb-2">
+            Set your non-dilutable share of all future rewards
+          </P>
+          
+    <Slider
+      minimumValue={0}
+      maximumValue={99.9}
+            step={0.1}
+            value={artistEquity}
+            onValueChange={setArtistEquity}
+          />
+          
+          <View className="flex-row justify-between mt-2">
+            <P>Your equity: {artistEquity.toFixed(1)}%</P>
+            <P>Fan pool: {(100 - artistEquity).toFixed(1)}%</P>
+          </View>
+  </View>
+)}
+    </View>
+  );
+}
+```
+
+### Artist Claim Section
+
+```tsx
+// packages/solito/packages/app/features/entry/ArtistClaimSection.tsx
+
+export function ArtistClaimSection({ entryId }) {
+  const { user } = useAuth();
+  
+  const { data } = useQuery(GET_ARTIST_EQUITY, {
+    variables: { entryId },
+    skip: !user?.verifiedArtist,
+  });
+  
+  const [claimArtistEquity, { loading }] = useMutation(CLAIM_ARTIST_EQUITY);
+  
+  const equity = data?.getArtistEquity;
+  
+  if (!equity || equity.equityBps === 0) return null;
+  
+  return (
+    <View className="bg-purple-50 p-4 rounded-lg">
+      <P className="font-bold">Artist Rewards</P>
+      <P>Your equity: {(equity.equityBps / 100).toFixed(1)}%</P>
+      <P>Claimed: {equity.claimed.toFixed(4)} HITZ</P>
+      <P>Claimable: {equity.claimable.toFixed(4)} HITZ</P>
+      
+      {equity.claimable > 0 && (
+        <Button
+          onPress={() => claimArtistEquity({ variables: { entryId } })}
+          disabled={loading}
+        >
+          Claim Artist Rewards
+        </Button>
+      )}
+    </View>
+  );
+}
+```
+
+---
+
+## Key Differences from V1
+
+### No Instant Rewards
+
+V1: User performs action → instantly receives HITZ (minted)
+
+V2: User performs action → pays HITZ fee → treasury distributes daily
+
+**UI Implication**: Don't show "You earned X HITZ!" after actions. Instead show "Fee paid: X HITZ" or "Staked: X HITZ".
+
+### HITZ-Only Economy
+
+V1: XLM for fees, HITZ for rewards
+
+V2: HITZ for everything
+
+**UI Implication**: Update all fee displays to show HITZ, not XLM. Check user's HITZ balance before actions.
+
+### 1:1 Staking
+
+V1: Stake calculated based on oracle price
+
+V2: Stake = fee paid (simple 1:1)
+
+**UI Implication**: When investing 10 HITZ, tell user "You will stake 10 HITZ" (not a calculated amount).
+
+### Unstaking Available
+
+V1: No unstaking
+
+V2: Users can unstake anytime
+
+**UI Implication**: Add unstake button/modal to entry detail pages.
 
 ---
 
 ## Testing Checklist
 
-### Backend
-- [ ] Test `recordAction` for each action type (stream/like/download/mine/invest)
-- [ ] Test `claimRewards` returns correct amounts
-- [ ] Test Algolia sync updates tvl, apr, escrow correctly
-- [ ] Test stake tracking per user
+### Actions
+- [ ] Stream action fires on playback complete
+- [ ] Like action deducts 0.2 HITZ and updates escrow
+- [ ] Download action deducts 0.3 HITZ and enables download
+- [ ] Mine action creates entry and stakes 1 HITZ
+- [ ] Invest action validates minimum (3 HITZ) and stakes
 
-### Frontend
-- [ ] Stream action fires when song plays
-- [ ] Like button calls correct action
-- [ ] Download button calls correct action
-- [ ] Mine button works correctly
-- [ ] Invest section shows correct staking info
-- [ ] Asset selector switches between XLM and HITZ
-- [ ] Balances update correctly
-- [ ] Claim rewards works and updates balance
+### Claims
+- [ ] Claimable preview shows correct amount
+- [ ] Claim transfers HITZ to user wallet
+- [ ] Claimed record updates (no double claims)
+- [ ] Artist equity claim works separately
 
-### Integration
-- [ ] Full user flow: mine → invest → earn rewards → claim
-- [ ] APR calculations display correctly
-- [ ] TVL and escrow tracked separately
-- [ ] Error handling for all actions
+### Staking
+- [ ] User stake displayed correctly
+- [ ] Ownership percentage calculated right
+- [ ] Unstake returns HITZ to wallet
+- [ ] Stake decreases after unstake
 
----
-
-## Migration Notes
-
-### Database/Algolia
-- Entry schema needs `escrow` field added
-- Consider migrating existing `tvl` data (all goes to `tvl_xlm`, `escrow_xlm` starts at 0)
-
-### User Communication
-- Announce new features: HITZ token, staking rewards, APR
-- Explain difference between escrow (stream/like/download) and staking (mine/invest)
-- Provide migration guide for existing users
-
----
-
-## Deployment Strategy
-
-1. **Deploy Contract** (Testnet first)
-2. **Update Backend** (GraphQL resolvers, Algolia sync)
-3. **Test Backend** (Postman/Playground)
-4. **Update Frontend** (Actions, then Asset management)
-5. **Test Frontend** (Manual QA)
-6. **Deploy to Production** (Gradual rollout)
-
----
-
-## Known Issues / TODOs
-
-- [ ] HITZ token client methods need to be added to contract client
-- [ ] Asset selector needs proper mobile UI (not just `<select>`)
-- [ ] HITZ logo SVG needs to be created
-- [ ] Error messages need to be user-friendly
-- [ ] Loading states for all async operations
-- [ ] Optimistic UI updates for better UX
-
----
-
-## Phase 7: Artist Equity Integration (NEW)
-
-### Backend Changes (COMPLETED)
-
-#### packages/api/src/util/types.ts
-```typescript
-// User type - added verifiedArtist field
-export type User = {
-  // ... existing fields
-  verifiedArtist?: boolean;  // NEW: Whether user can set artist equity
-}
-
-// PendingUpload type - added artist equity fields
-export interface PendingUpload {
-  // ... existing fields
-  isVerifiedArtist?: boolean;   // NEW: Was uploader verified at upload time
-  artistEquityBps?: number;      // NEW: Artist's equity in basis points (0-9990)
-}
-```
-
-#### packages/api/src/graphql/schema.ts
-```graphql
-type User {
-  # ... existing fields
-  verifiedArtist: Boolean  # NEW
-}
-
-type PendingUpload {
-  # ... existing fields
-  isVerifiedArtist: Boolean  # NEW
-  artistEquityBps: Int        # NEW
-}
-```
-
-#### packages/api/src/upload-complete.ts
-- Parses `artistEquityBps` from upload form data
-- Validates range (0-9990 basis points)
-- Stores `isVerifiedArtist` and `artistEquityBps` in pending upload
-
-#### packages/api/src/graphql/pending-uploads.ts
-- After entry approval, calls `contract.setArtistEquity()` if upload has equity
-
-#### packages/api/contract/index.ts
-```typescript
-// New methods added:
-setArtistEquity(entryId, artistAddress, equityBps)
-getArtistEquity(entryId, artistAddress) -> { equityBps, claimed, claimable }
-getTotalArtistEquity(entryId) -> number
-claimArtistEquity(secret, entryId) -> { claimedAmount }
-```
-
-### Frontend Changes (COMPLETED)
-
-#### Upload Screen (packages/solito/.../features/upload/screen.tsx)
-- Added equity slider (0-99.9%) for verified artists only
-- Shows equity split preview (artist vs fan pool)
-- Sends `artistEquityBps` to backend when uploading
-
-```tsx
-// Only visible if user.verifiedArtist === true
-{isVerifiedArtist && (
-  <View className="...">
-    <P>Artist Equity</P>
-    <Slider
-      minimumValue={0}
-      maximumValue={99.9}
-      value={artistEquityPercent}
-      onValueChange={setArtistEquityPercent}
-    />
-    <P>Your equity: {artistEquityPercent.toFixed(1)}%</P>
-    <P>Fan pool: {(100 - artistEquityPercent).toFixed(1)}%</P>
-  </View>
-)}
-```
-
-#### Pending Upload Entry (packages/solito/.../pending-uploads/PendingUploadEntry.tsx)
-- Shows "✓ Artist" badge for verified artist uploads
-- Displays equity percentage in track info
-
-#### Approval Modal (packages/solito/.../pending-uploads/ApprovalModal.tsx)
-- Shows artist equity breakdown when reviewing uploads
-- Displays artist vs fan pool percentages
-
-### GraphQL Operations (packages/solito/.../api/graphql/operations.ts)
-```typescript
-// Updated SIGN_IN_WITH_TOKEN to include verifiedArtist
-export const SIGN_IN_WITH_TOKEN = gql`
-  mutation SignInWithToken($uid: String!, $token: String!) {
-    signInWithToken(uid: $uid, token: $token) {
-      # ... existing fields
-      verifiedArtist  # NEW
-    }
-  }
-`
-
-// Updated PENDING_UPLOADS to include artist equity fields
-export const PENDING_UPLOADS = gql`
-  query PendingUploads {
-    pendingUploads {
-      # ... existing fields
-      isVerifiedArtist  # NEW
-      artistEquityBps   # NEW
-    }
-  }
-`
-```
-
-### Testing Checklist (Artist Equity)
-
-#### Backend
-- [x] `setArtistEquity` sets equity correctly
-- [x] `getArtistEquity` returns correct values
-- [x] `getTotalArtistEquity` sums all artists
-- [x] `claimArtistEquity` transfers correct amount
-- [x] Staker rewards exclude artist equity portion
-- [x] Multiple artists (collaboration) works correctly
-- [x] Max equity (99.9%) enforced
-- [x] Error cases handled (duplicate, overflow, etc.)
-
-#### Frontend
-- [x] Equity slider only visible for verified artists
-- [x] Slider range 0-99.9%
-- [x] Fan pool percentage updates in real-time
-- [x] Equity sent with upload form data
-- [x] Curator sees equity info in pending uploads
-- [x] Approval modal shows equity breakdown
+### Stats
+- [ ] TVL, escrow, APR display correctly
+- [ ] Artist equity shown if present
+- [ ] Reward pool updates after distributions
 
 ---
 
 ## Support
 
-For questions or issues during integration, refer to:
-- Contract documentation: `packages/api/contract/README.md`
+- Contract docs: `packages/api/contract/README.md`
 - Tokenomics: `packages/api/contract/TOKENOMICS_AND_FLOWS.md`
-- Contract review: `packages/api/contract/CONTRACT_REVIEW.md`
-
+- Treasury bot: `packages/api/contract/TREASURY_BOT_FLOW.md`
+- Security audit: `HITZ_SECURITY_AUDIT_REPORT.md`
