@@ -15,7 +15,7 @@ import { processPendingPurchases } from './treasury/process-purchases';
 const server = new ApolloServer<Context>({
 	typeDefs: Schema,
 	resolvers,
-	introspection: true,
+	introspection: false,
 	plugins: [ApolloServerPluginLandingPageLocalDefault({ footer: false })],
 });
 

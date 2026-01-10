@@ -1,84 +1,44 @@
 import 'app/design/global.css'
 import { inter, raleway, unbounded } from './fonts'
-import { Provider } from 'app/provider/index'
-import { ThemeProvider } from 'app/provider/theme'
-import { MainLayout } from 'app/ui/shared-layouts/MainLayout'
 import type { Metadata } from 'next'
 import { Config } from 'app/config'
-import { siteTitle, socialDesc, keywords, orgName } from 'app/constants/content'
 
 export const metadata: Metadata = {
   metadataBase: new URL(Config.APP_URL),
-  title: {
-    default: siteTitle,
-    template: '%s | Skyhitz',
-  },
-  description: socialDesc,
-  keywords: keywords.split(',').map((k) => k.trim()),
-  applicationName: orgName,
-  authors: [{ name: 'Skyhitz' }],
-  creator: 'Skyhitz',
-  publisher: orgName,
-  category: 'Music',
-  classification: 'Music DeFi Protocol',
-  openGraph: {
-    type: 'website',
-    url: Config.APP_URL,
-    siteName: 'Skyhitz',
-    title: siteTitle,
-    description: socialDesc,
-    locale: 'en_US',
-    images: [
-      {
-        url: `${Config.APP_URL}/icon-128.png`,
-        width: 128,
-        height: 128,
-        alt: 'Skyhitz',
-      },
-    ],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    site: '@skyhitz',
-    creator: '@skyhitz',
-    title: siteTitle,
-    description: socialDesc,
-    images: [
-      {
-        url: `${Config.APP_URL}/icon-128.png`,
-        alt: 'Skyhitz',
-      },
-    ],
-  },
-  alternates: {
-    canonical: Config.APP_URL,
-    languages: {
-      'en-US': Config.APP_URL,
-    },
-  },
+  title: 'Skyhitz - Archived',
+  description: 'Skyhitz has been archived due to a security vulnerability.',
   robots: {
-    index: true,
-    follow: true,
-    'max-image-preview': 'large',
-    'max-snippet': -1,
-    'max-video-preview': -1,
+    index: false,
+    follow: false,
   },
   icons: {
     icon: '/icon.png',
     shortcut: '/icon.png',
     apple: '/icon.png',
   },
-  other: {
-    // AI and LLM discovery
-    'llms-txt': `${Config.APP_URL}/llms.txt`,
-    'ai-info': `${Config.APP_URL}/.well-known/ai.txt`,
-    'llm-manifest': `${Config.APP_URL}/.well-known/llm-manifest.json`,
-    'ai-plugin': `${Config.APP_URL}/.well-known/ai-plugin.json`,
-    // Additional semantic info
-    'theme-color': '#000000',
-    'color-scheme': 'dark light',
-  },
 }
+
+// Hardcoded dark theme CSS variables for static rendering
+const darkThemeStyles = {
+  '--bg-color': '#161616',
+  '--surface-color': '#000000',
+  '--text-color': 'rgb(179, 186, 197)',
+  '--text-secondary-color': 'rgb(217, 220, 226)',
+  '--primary-color': '#19aafe',
+  '--secondary-color': '#6B7280',
+  '--accent-color': '#19aafe',
+  '--border-color': '#1A1A1A',
+  '--card-bg-color': '#000000',
+  '--button-bg-color': '#19aafe',
+  '--button-text-color': '#FFFFFF',
+  '--invest-button-bg-color': '#19aafe',
+  '--invest-button-text-color': '#FFFFFF',
+  '--description-bg-color': '#000000',
+  '--bg-secondary-color': '#1A1A1A',
+  '--success-bg-color': '#5ce67e',
+  '--error-bg-color': '#ff444a',
+  '--logo-color': '#e5e7eb',
+} as React.CSSProperties
 
 export default function RootLayout({
   children,
@@ -89,24 +49,10 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${inter.variable} ${raleway.variable} ${unbounded.variable} font-sans`}
-      style={{ visibility: 'visible' }}
-      suppressHydrationWarning
+      data-theme="dark"
     >
-      <head>
-        {/* AI Discovery Links */}
-        <link rel="alternate" type="text/plain" href="/llms.txt" title="LLMs Info" />
-        <link rel="alternate" type="text/plain" href="/.well-known/ai.txt" title="AI Info" />
-        <link rel="manifest" href="/.well-known/llm-manifest.json" />
-        {/* API Documentation */}
-        <link rel="alternate" type="application/x-yaml" href="/openapi.yaml" title="OpenAPI Spec" />
-        <link rel="help" href="https://docs.skyhitz.io" title="Documentation" />
-      </head>
-      <body>
-        <ThemeProvider>
-          <Provider>
-            <MainLayout>{children}</MainLayout>
-          </Provider>
-        </ThemeProvider>
+      <body style={darkThemeStyles}>
+        {children}
       </body>
     </html>
   )
