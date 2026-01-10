@@ -117,6 +117,15 @@ pub struct ArtistEquityClaim {
     pub claimed: i128,      // HITZ already claimed by this artist
 }
 
+/// User stake data with 24-hour timelock to prevent arbitrage
+/// Timelock resets on each deposit to prevent flash-loan style exploits
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct UserStake {
+    pub amount: i128,       // Staked amount in stroops
+    pub unlock_time: u64,   // Timestamp when stake can be withdrawn
+}
+
 #[contract]
 pub struct SkyhitzCore;
 
@@ -491,12 +500,25 @@ impl SkyhitzCore {
                 
                 if staked_hitz > 0 {
                     // SECURITY FIX H5: Update stake maps using checked arithmetic
+                    // SECURITY FIX: 24-hour timelock to prevent arbitrage attacks
                     let stake_key = DataKey::Stake((entry_id.clone(), caller.clone()));
-                    let current_stake: i128 = e.storage().persistent().get(&stake_key).unwrap_or(0);
-                    let new_stake = current_stake
+                    
+                    // Load or initialize UserStake struct
+                    let mut user_stake = e.storage().persistent()
+                        .get::<DataKey, UserStake>(&stake_key)
+                        .unwrap_or(UserStake { amount: 0, unlock_time: 0 });
+                    
+                    let new_stake = user_stake.amount
                         .checked_add(staked_hitz)
                         .unwrap_or_else(|| panic!("User stake overflow for entry"));
-                    e.storage().persistent().set(&stake_key, &new_stake);
+                    
+                    // TIMELOCK: Reset unlock time to 24 hours from now on every deposit
+                    // This prevents flash-loan style arbitrage by ensuring intentionality
+                    let now = e.ledger().timestamp();
+                    user_stake.amount = new_stake;
+                    user_stake.unlock_time = now.saturating_add(86_400); // 24 hours in seconds
+                    
+                    e.storage().persistent().set(&stake_key, &user_stake);
 
                     let total_key = DataKey::StakeTotal(entry_id.clone());
                     let current_total: i128 = e.storage().persistent().get(&total_key).unwrap_or(0);
@@ -507,12 +529,13 @@ impl SkyhitzCore {
 
                     log!(
                         &e,
-                        "Market-based stake: {} XLM at {} stroops/HITZ → {} HITZ staked for entry {} (user total: {})",
+                        "Market-based stake: {} XLM at {} stroops/HITZ → {} HITZ staked for entry {} (user total: {}, locked until: {})",
                         fee,
                         hitz_price_xlm,
                         staked_hitz,
                         entry_id,
-                        new_stake
+                        user_stake.amount,
+                        user_stake.unlock_time
                     );
                 }
             }
@@ -559,7 +582,20 @@ impl SkyhitzCore {
     /// Get user's stake for an entry
     pub fn get_stake(e: Env, entry_id: String, owner: Address) -> i128 {
         let key = DataKey::Stake((entry_id, owner));
-        e.storage().persistent().get(&key).unwrap_or(0)
+        let user_stake = e.storage().persistent()
+            .get::<DataKey, UserStake>(&key)
+            .unwrap_or(UserStake { amount: 0, unlock_time: 0 });
+        user_stake.amount
+    }
+
+    /// Get user's stake unlock time for an entry
+    /// Returns 0 if no stake exists
+    pub fn get_stake_unlock_time(e: Env, entry_id: String, owner: Address) -> u64 {
+        let key = DataKey::Stake((entry_id, owner));
+        let user_stake = e.storage().persistent()
+            .get::<DataKey, UserStake>(&key)
+            .unwrap_or(UserStake { amount: 0, unlock_time: 0 });
+        user_stake.unlock_time
     }
 
     /// Get total stake for an entry
@@ -983,11 +1019,13 @@ impl SkyhitzCore {
     pub fn claim_rewards(e: Env, entry_id: String, claimer: Address) -> i128 {
         claimer.require_auth();
 
-        // Get user's stake
+        // Get user's stake (now a UserStake struct)
         let stake_key = DataKey::Stake((entry_id.clone(), claimer.clone()));
-        let user_stake: i128 = e.storage().persistent().get(&stake_key).unwrap_or(0);
+        let user_stake_data: UserStake = e.storage().persistent()
+            .get::<DataKey, UserStake>(&stake_key)
+            .unwrap_or(UserStake { amount: 0, unlock_time: 0 });
 
-        if user_stake == 0 {
+        if user_stake_data.amount == 0 {
             panic!("No stake in this entry");
         }
 
@@ -1020,7 +1058,7 @@ impl SkyhitzCore {
 
         // Calculate total claimable: (staker_pool × user_stake) / total_stake
         let total_claimable = (staker_pool
-            .saturating_mul(user_stake))
+            .saturating_mul(user_stake_data.amount))
             .checked_div(total_stake)
             .unwrap_or(0);
 
@@ -1071,6 +1109,7 @@ impl SkyhitzCore {
     /// - If user has no stake
     /// - If amount exceeds user's stake
     /// - If amount <= 0
+    /// - If stake is still timelocked (24-hour lock after deposit)
     pub fn unstake(e: Env, entry_id: String, caller: Address, amount: i128) -> i128 {
         caller.require_auth();
         
@@ -1079,27 +1118,41 @@ impl SkyhitzCore {
             panic!("Amount must be positive");
         }
         
-        // Get user's current stake
+        // Get user's current stake (now a UserStake struct with timelock)
         let stake_key = DataKey::Stake((entry_id.clone(), caller.clone()));
-        let user_stake: i128 = e.storage().persistent().get(&stake_key).unwrap_or(0);
+        let user_stake: UserStake = e.storage().persistent()
+            .get::<DataKey, UserStake>(&stake_key)
+            .unwrap_or(UserStake { amount: 0, unlock_time: 0 });
         
-        if user_stake == 0 {
+        if user_stake.amount == 0 {
             panic!("No stake in this entry");
         }
         
-        if amount > user_stake {
+        if amount > user_stake.amount {
             panic!("Amount exceeds stake");
+        }
+        
+        // SECURITY: Enforce 24-hour timelock
+        // This prevents flash-loan style arbitrage attacks
+        let now = e.ledger().timestamp();
+        if now < user_stake.unlock_time {
+            panic!("Stake locked until timestamp: {}. Current time: {}", user_stake.unlock_time, now);
         }
         
         e.storage().persistent().extend_ttl(&stake_key, STORAGE_LIFETIME_THRESHOLD, STORAGE_BUMP_AMOUNT);
         
         // Update user's stake
-        let new_user_stake = user_stake.saturating_sub(amount);
-        if new_user_stake == 0 {
+        let new_user_amount = user_stake.amount.saturating_sub(amount);
+        if new_user_amount == 0 {
             // Remove stake entry if going to zero
             e.storage().persistent().remove(&stake_key);
         } else {
-            e.storage().persistent().set(&stake_key, &new_user_stake);
+            // Preserve unlock_time (don't reset on partial unstake)
+            let updated_stake = UserStake {
+                amount: new_user_amount,
+                unlock_time: user_stake.unlock_time,
+            };
+            e.storage().persistent().set(&stake_key, &updated_stake);
         }
         
         // Update total stake
@@ -1129,9 +1182,11 @@ impl SkyhitzCore {
     /// Get claimable HITZ rewards for a staker (accounts for artist equity)
     pub fn get_claimable_rewards(e: Env, entry_id: String, user: Address) -> i128 {
         let stake_key = DataKey::Stake((entry_id.clone(), user.clone()));
-        let user_stake: i128 = e.storage().persistent().get(&stake_key).unwrap_or(0);
+        let user_stake_data: UserStake = e.storage().persistent()
+            .get::<DataKey, UserStake>(&stake_key)
+            .unwrap_or(UserStake { amount: 0, unlock_time: 0 });
 
-        if user_stake == 0 {
+        if user_stake_data.amount == 0 {
             return 0;
         }
 
@@ -1159,7 +1214,7 @@ impl SkyhitzCore {
 
         // Calculate total claimable from staker pool
         let total_claimable = (staker_pool
-            .saturating_mul(user_stake))
+            .saturating_mul(user_stake_data.amount))
             .checked_div(total_stake)
             .unwrap_or(0);
 
@@ -1433,11 +1488,20 @@ impl SkyhitzCore {
         let mut migrated_stake_total: i128 = 0;
         for user in stakers.iter() {
             let from_stake_key = DataKey::Stake((from_id.clone(), user.clone()));
-            if let Some(stake_amount) = e.storage().persistent().get::<DataKey, i128>(&from_stake_key) {
-                // Move stake to new entry
+            if let Some(from_user_stake) = e.storage().persistent().get::<DataKey, UserStake>(&from_stake_key) {
+                let stake_amount = from_user_stake.amount;
+                // Move stake to new entry, preserving timelock
                 let into_stake_key = DataKey::Stake((into_id.clone(), user.clone()));
-                let current_into_stake: i128 = e.storage().persistent().get(&into_stake_key).unwrap_or(0);
-                e.storage().persistent().set(&into_stake_key, &current_into_stake.saturating_add(stake_amount));
+                let current_into_stake = e.storage().persistent()
+                    .get::<DataKey, UserStake>(&into_stake_key)
+                    .unwrap_or(UserStake { amount: 0, unlock_time: 0 });
+                
+                // Merge stakes: add amounts, take the later unlock_time
+                let new_stake = UserStake {
+                    amount: current_into_stake.amount.saturating_add(stake_amount),
+                    unlock_time: core::cmp::max(current_into_stake.unlock_time, from_user_stake.unlock_time),
+                };
+                e.storage().persistent().set(&into_stake_key, &new_stake);
                 
                 // Also migrate claimed amounts
                 let from_claimed_key = DataKey::Claimed((from_id.clone(), user.clone()));
@@ -1566,7 +1630,8 @@ impl SkyhitzCore {
             
             for user in stakers.iter() {
                 let stake_key = DataKey::Stake((entry_id.clone(), user.clone()));
-                if let Some(stake_amount) = e.storage().persistent().get::<DataKey, i128>(&stake_key) {
+                if let Some(user_stake_data) = e.storage().persistent().get::<DataKey, UserStake>(&stake_key) {
+                    let stake_amount = user_stake_data.amount;
                     // SECURITY FIX H2: Return stake to user with verification
                     safe_transfer(&e, &hitz_token, &contract_addr, &user, &stake_amount, "stake refund");
                     returned_total = returned_total.saturating_add(stake_amount);
@@ -2622,6 +2687,9 @@ mod test {
 
         let user_balance_before = hitz_balance_client.balance(&user);
 
+        // Advance ledger time past 24-hour timelock (86400 seconds)
+        e.ledger().with_mut(|li| li.timestamp = 86_401);
+
         // Unstake 400M stroops (40 HITZ, which is 40% of 100 HITZ stake)
         let unstaked = client.unstake(&entry_id, &user, &400_000_000i128);
         assert_eq!(unstaked, 400_000_000);
@@ -2667,6 +2735,9 @@ mod test {
         let user_stake_before = client.get_stake(&entry_id, &user);
         // Market-based: 1 XLM / 0.01 = 100 HITZ = 1B stroops
         assert_eq!(user_stake_before, 1_000_000_000);
+
+        // Advance ledger time past 24-hour timelock (86400 seconds)
+        e.ledger().with_mut(|li| li.timestamp = 86_401);
 
         // Unstake ALL HITZ
         let unstaked = client.unstake(&entry_id, &user, &1_000_000_000i128);
@@ -2771,6 +2842,97 @@ mod test {
     }
 
     #[test]
+    #[should_panic(expected = "Stake locked until timestamp:")]
+    fn test_timelock_prevents_early_unstake() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        let hitz_admin = token::StellarAssetClient::new(&e, &hitz_addr);
+        hitz_admin.mint(&contract_id, &10_000_000_000i128);
+        hitz_admin.mint(&user, &10_000_000_000i128);
+
+        let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
+        xlm_admin.mint(&user, &100_000_000i128);
+
+        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+
+        let entry_id = String::from_str(&e, "song123");
+        client.create_entry(&entry_id);
+
+        // User stakes via invest at time 0
+        client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(10_000_000i128));
+        
+        // Try to unstake at time 100 (before 86400) - should panic
+        e.ledger().with_mut(|li| li.timestamp = 100);
+        client.unstake(&entry_id, &user, &500_000_000i128);
+    }
+
+    #[test]
+    fn test_timelock_allows_unstake_after_24h() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        let hitz_admin = token::StellarAssetClient::new(&e, &hitz_addr);
+        hitz_admin.mint(&contract_id, &10_000_000_000i128);
+        hitz_admin.mint(&user, &10_000_000_000i128);
+
+        let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
+        xlm_admin.mint(&user, &100_000_000i128);
+
+        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+
+        let entry_id = String::from_str(&e, "song123");
+        client.create_entry(&entry_id);
+
+        // Stake at time 0
+        client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(10_000_000i128));
+        let stake = client.get_stake(&entry_id, &user);
+        
+        // Verify unlock time is set to 86400
+        let unlock_time = client.get_stake_unlock_time(&entry_id, &user);
+        assert_eq!(unlock_time, 86_400);
+        
+        // Advance to exactly 86400 - should work
+        e.ledger().with_mut(|li| li.timestamp = 86_400);
+        let unstaked = client.unstake(&entry_id, &user, &stake);
+        assert_eq!(unstaked, stake);
+    }
+
+    #[test]
+    fn test_timelock_reset_on_topup() {
+        let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
+
+        let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+        let hitz_admin = token::StellarAssetClient::new(&e, &hitz_addr);
+        hitz_admin.mint(&contract_id, &10_000_000_000i128);
+        hitz_admin.mint(&user, &10_000_000_000i128);
+
+        let xlm_admin = token::StellarAssetClient::new(&e, &xlm_addr);
+        xlm_admin.mint(&user, &200_000_000i128);
+
+        client.init(&admin, &treasury, &hitz_addr, &xlm_addr, &100_000i128);
+
+        let entry_id = String::from_str(&e, "song123");
+        client.create_entry(&entry_id);
+
+        // First stake at time 0, unlock at 86400
+        client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(10_000_000i128));
+        let unlock1 = client.get_stake_unlock_time(&entry_id, &user);
+        assert_eq!(unlock1, 86_400);
+        
+        // Advance time to 50000 (still locked)
+        e.ledger().with_mut(|li| li.timestamp = 50_000);
+        
+        // Top up stake - this should reset unlock to 50000 + 86400 = 136400
+        client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(10_000_000i128));
+        let unlock2 = client.get_stake_unlock_time(&entry_id, &user);
+        assert_eq!(unlock2, 136_400); // 50000 + 86400
+    }
+
+    #[test]
     fn test_unstake_multiple_users() {
         let (e, admin, treasury, user, hitz_addr, xlm_addr, contract_id) = setup_test_with_contract();
         let user2 = Address::generate(&e);
@@ -2800,6 +2962,9 @@ mod test {
         // Total stake = 2M + 4M = 6M stroops
         let total_stake_before = client.get_stake_total(&entry_id);
         assert_eq!(total_stake_before, 6_000_000);
+
+        // Advance ledger time past 24-hour timelock (86400 seconds)
+        e.ledger().with_mut(|li| li.timestamp = 86_401);
 
         // User1 unstakes half of their stake (1M stroops = 0.1 HITZ)
         client.unstake(&entry_id, &user, &1_000_000i128);
@@ -2837,6 +3002,9 @@ mod test {
         client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(10_000_000i128));
         // Market-based: 1 XLM / 5 = 0.2 HITZ = 2M stroops
         assert_eq!(client.get_stake(&entry_id, &user), 2_000_000);
+
+        // Advance ledger time past 24-hour timelock (86400 seconds)
+        e.ledger().with_mut(|li| li.timestamp = 86_401);
 
         // User unstakes all
         client.unstake(&entry_id, &user, &2_000_000i128);
