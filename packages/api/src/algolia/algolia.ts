@@ -279,17 +279,17 @@ export class AlgoliaClient {
 	 * Handles conversion from stroops to XLM and basis points to percentage
 	 * 
 	 * @param entryId - The entry ID to update
-	 * @param contractData - Data from contract (tvl_xlm, escrow_xlm in stroops, apr in basis points)
+	 * @param contractData - Data from contract (tvl, escrow in stroops, apr in basis points)
 	 */
 	async syncEntryFromContract(entryId: string, contractData: {
-		tvl_xlm: number | bigint;
-		escrow_xlm: number | bigint;
+		tvl: number | bigint;
+		escrow: number | bigint;
 		apr: number;
 	}) {
 		return this.partialUpdateEntry({
 			objectID: entryId,
-			tvl: Number(contractData.tvl_xlm) / 10_000_000,
-			escrow: Number(contractData.escrow_xlm) / 10_000_000,
+			tvl: Number(contractData.tvl) / 10_000_000,
+			escrow: Number(contractData.escrow) / 10_000_000,
 			apr: Number(contractData.apr) / 100, // basis points to percentage
 		});
 	}

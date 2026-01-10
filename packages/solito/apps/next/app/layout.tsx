@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   creator: 'Skyhitz',
   publisher: orgName,
   category: 'Music',
-  classification: 'Music NFT Marketplace',
+  classification: 'Music DeFi Protocol',
   openGraph: {
     type: 'website',
     url: Config.APP_URL,

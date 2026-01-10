@@ -10,13 +10,14 @@ interface AssetState {
 /**
  * Asset Selection Store
  * 
- * Manages which asset (XLM or HITZ) the user currently has selected.
+ * Manages which asset the user currently has selected.
+ * In the HITZ-only economy, this defaults to HITZ.
  * Persisted to localStorage/AsyncStorage so selection survives app restart.
  */
 export const useAssetStore = create<AssetState>()(
   persist(
     (set) => ({
-      selectedAsset: AssetType.XLM, // Default to XLM
+      selectedAsset: AssetType.HITZ, // Default to HITZ
       setSelectedAsset: (asset: AssetType) => set({ selectedAsset: asset }),
     }),
     {
@@ -36,4 +37,3 @@ export const useAssetStore = create<AssetState>()(
     }
   )
 )
-

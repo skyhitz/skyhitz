@@ -20,7 +20,7 @@ export function LowBalanceModal({
       <View className="flex items-center justify-center rounded-lg bg-black px-6 py-8">
         <H1 className="mb-4 text-center text-2xl font-bold text-white">Insufficient Balance</H1>
         <P className="mb-6 text-center text-white">
-          You need a minimum of {minWithdrawalAmount} XLM to withdraw funds from your account.
+          You need a minimum of {minWithdrawalAmount} HITZ to withdraw funds from your account.
         </P>
         <Button text="OK" onPress={onClose} />
       </View>

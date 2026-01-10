@@ -119,7 +119,7 @@ export default function JsonLdScript({
           '@type': 'WebApplication',
           '@id': `${Config.APP_URL}#application`,
           name: 'Skyhitz',
-          description: 'Music NFT marketplace and streaming platform',
+          description: 'Music DeFi Protocol and streaming platform',
           url: Config.APP_URL,
           applicationCategory: 'MultimediaApplication',
           applicationSubCategory: 'Music Marketplace',
@@ -130,7 +130,7 @@ export default function JsonLdScript({
             priceCurrency: 'USD',
           },
           featureList: [
-            'Music NFT Marketplace',
+            'Music DeFi Protocol',
             'Fractional Ownership',
             'Music Streaming',
             'Free Downloads',

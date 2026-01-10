@@ -1,4 +1,3 @@
-import { GraphQLError } from 'graphql';
 import { Context } from 'src/util/types';
 import ContractClient from '../../contract';
 import StellarClient from '../stellar/operations';
@@ -8,6 +7,56 @@ import Encryption from 'src/util/encryption';
 
 // 24 hours in milliseconds
 const COOLDOWN_PERIOD_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Claim Earnings Preview Resolver
+ * 
+ * Returns a preview of claimable rewards without actually claiming them.
+ * Used by the frontend to show users what they could claim.
+ */
+export const claimEarningsPreviewResolver = async (_: any, __: any, context: Context) => {
+	const algolia = new AlgoliaClient(context.env);
+	const user = await requireAuth(context);
+	const contractClient = new ContractClient(context.env);
+
+	console.log('👀 Previewing claimable earnings for user:', user.publicKey);
+
+	// Get all entries where user has invested/staked
+	const entries = await algolia.getCollection(user.id);
+	
+	let totalClaimableAmount = 0;
+	const claimableEntries = [];
+
+	for (const entry of entries) {
+		try {
+			const claimableAmount = await contractClient.getClaimableRewards(
+				entry.entryId,
+				user.publicKey
+			);
+
+			if (claimableAmount > 0) {
+				const amountInHitz = claimableAmount / 10_000_000;
+				totalClaimableAmount += amountInHitz;
+				claimableEntries.push({
+					entryId: entry.entryId,
+					amount: amountInHitz,
+				});
+			}
+		} catch (e) {
+			console.error(`Failed to check claimable for ${entry.entryId}:`, e);
+		}
+	}
+
+	return {
+		success: true,
+		totalClaimedAmount: totalClaimableAmount,
+		claimedEntries: claimableEntries,
+		message: totalClaimableAmount > 0 
+			? `You have ${totalClaimableAmount.toFixed(2)} HITZ available to claim`
+			: 'No rewards available to claim',
+		lastClaimTime: null,
+	};
+};
 
 /**
  * Claim Earnings Resolver - NEW CONTRACT INTERFACE

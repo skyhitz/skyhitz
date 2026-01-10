@@ -6,8 +6,8 @@ import { useUserStore } from 'app/state/user'
 import { useRouter } from 'solito/navigation'
 import { useMutation, useQuery } from '@apollo/client'
 import useLikeCache from 'app/hooks/useLikeCache'
-import { MICRO_SPEND_LIKE_XLM } from 'app/constants/constants'
-import { LIKE_ENTRY, RECORD_ACTION, USER_LIKES, USER_CREDITS } from 'app/api/graphql/operations'
+import { MICRO_SPEND_LIKE_HITZ } from 'app/constants/constants'
+import { LIKE_ENTRY, RECORD_ACTION, USER_LIKES, USER_HITZ_BALANCE } from 'app/api/graphql/operations'
 import { useTopUpModalStore } from 'app/state/topup'
 import { useToast } from 'app/provider/toast'
 import { trackLike } from 'app/utils/analytics'
@@ -28,7 +28,7 @@ function LikeButton({ size = 24, className, entry }: Props) {
   // Setup GraphQL operations
   const [likeEntry, { loading: likeLoading }] = useMutation(LIKE_ENTRY)
   const [recordAction] = useMutation(RECORD_ACTION)
-  const { data: creditsData } = useQuery(USER_CREDITS, { skip: !user, fetchPolicy: 'network-only' })
+  const { data: hitzBalanceData } = useQuery(USER_HITZ_BALANCE, { skip: !user, fetchPolicy: 'network-only' })
   const openTopUpModal = useTopUpModalStore((s) => s.openTopUpModal)
   const { data: userLikesData } = useQuery(USER_LIKES, { skip: !user })
   const toast = useToast()
@@ -68,9 +68,9 @@ function LikeButton({ size = 24, className, entry }: Props) {
         trackLike(entry.id, entry.title, entry.artist)
         
         // Record like action (charges fee automatically)
-        const available = Number(creditsData?.userCredits ?? 0)
-        if (!available || available < MICRO_SPEND_LIKE_XLM) {
-          openTopUpModal({ action: 'like', requiredXLM: MICRO_SPEND_LIKE_XLM, availableXLM: available })
+        const available = Number(hitzBalanceData?.userHitzBalance ?? 0)
+        if (!available || available < MICRO_SPEND_LIKE_HITZ) {
+          openTopUpModal({ action: 'like', requiredHITZ: MICRO_SPEND_LIKE_HITZ, availableHITZ: available })
           return
         }
         
@@ -84,7 +84,7 @@ function LikeButton({ size = 24, className, entry }: Props) {
           
           if (res?.data?.recordAction?.success) {
             const fee = res.data.recordAction.fee
-            toast.show(`Liked! Fee: ${fee.toFixed(4)} XLM`, { type: 'success' })
+            toast.show(`Liked! Fee: ${fee.toFixed(4)} HITZ`, { type: 'success' })
           }
         } catch (error) {
           console.error('Failed to record like action:', error)

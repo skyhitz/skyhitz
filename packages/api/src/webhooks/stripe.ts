@@ -1,10 +1,6 @@
 import { AlgoliaClient } from 'src/algolia/algolia';
-import StellarClient from 'src/stellar/operations';
 import StripeClient from 'src/stripe/client';
-import { createUserWithEmailResolver } from 'src/graphql/create-user-with-email';
-import { Context } from 'src/util/types';
 import KrakenClient from 'src/kraken/client';
-import Mailer from 'src/postmark/mailer';
 
 export async function handleWebhook(request: Request, env: Env): Promise<Response> {
 	const sig = request.headers.get('stripe-signature');
@@ -62,16 +58,19 @@ export async function handleWebhook(request: Request, env: Env): Promise<Respons
 						net: netAmount,
 					});
 
-					const xlmAmount = await buyXLMWithUSD(netAmount, userEmail, env);
-					console.log('Successfully processed payment:', {
+					const { xlmAmount, refid } = await initiateXLMPurchase(netAmount, userEmail, env);
+					console.log('Successfully initiated purchase:', {
 						paymentId: paymentIntentSucceeded.id,
 						email: userEmail,
 						grossAmount: amount,
 						stripeFee,
 						netAmount,
 						xlmAmount,
+						krakenRefId: refid,
+						status: 'pending_withdrawal',
 					});
 
+					// Return immediately - the cron job will process the swap once XLM arrives
 					return new Response(
 						JSON.stringify({
 							email: userEmail,
@@ -79,7 +78,9 @@ export async function handleWebhook(request: Request, env: Env): Promise<Respons
 							stripeFee,
 							netAmount,
 							xlmAmount,
-							price: netAmount / xlmAmount,
+							krakenRefId: refid,
+							status: 'pending_withdrawal',
+							message: 'Purchase initiated. HITZ will be delivered once XLM withdrawal completes (~1-2 minutes).',
 						}),
 						{
 							status: 200,
@@ -103,71 +104,58 @@ export async function handleWebhook(request: Request, env: Env): Promise<Respons
 	}
 }
 
-async function buyXLMWithUSD(amount: number, email: string, env: Env) {
+/**
+ * Initiate XLM purchase via Kraken (USD → XLM)
+ * 
+ * This function only buys XLM and initiates the withdrawal.
+ * The actual swap (XLM → HITZ) and delivery happens asynchronously
+ * via the cron job once the Kraken withdrawal completes (~1-2 minutes).
+ * 
+ * Flow:
+ * 1. Buy XLM from Kraken with USD
+ * 2. Initiate withdrawal to issuer account
+ * 3. Save pending withdrawal to Algolia
+ * 4. Return immediately (cron job handles the rest)
+ */
+async function initiateXLMPurchase(
+	amount: number,
+	email: string,
+	env: Env
+): Promise<{ xlmAmount: number; refid: string }> {
 	if (amount <= 0) {
 		throw new Error('Invalid amount');
 	}
+
 	const krakenClient = new KrakenClient(env);
+	const algolia = new AlgoliaClient(env);
+
 	try {
 		const usdAmount = amount / 100; // Convert cents back to dollars for Kraken
 
+		// Buy XLM from Kraken and initiate withdrawal
 		const { result, xlmAmount } = await krakenClient.buyAndWithdrawXLM(usdAmount);
+		console.log(`Kraken: Bought ${xlmAmount} XLM for $${usdAmount}`);
 
-		if (result?.refid) {
-			const algolia = new AlgoliaClient(env);
-
-			await algolia.saveWithdrawal({
-				objectID: result.refid,
-				amount: xlmAmount,
-				status: 'pending',
-				email: email,
-				timestamp: Date.now(),
-			});
+		if (!result?.refid) {
+			throw new Error('Kraken withdrawal did not return a refid');
 		}
 
-		await sendFundsToUser(email, xlmAmount, env);
+		// Save to Algolia for the cron job to process
+		await algolia.saveWithdrawal({
+			objectID: result.refid,
+			amount: xlmAmount,
+			status: 'pending',
+			email: email,
+			timestamp: Date.now(),
+		});
 
-		return xlmAmount;
+		console.log(`📝 Saved pending withdrawal ${result.refid} for ${email}`);
+		console.log(`⏳ Cron job will process swap once XLM arrives (~1-2 minutes)`);
+
+		return { xlmAmount, refid: result.refid };
+
 	} catch (error: any) {
-		console.error('Error in processing payment:', error);
-		throw new Error('Error processing payment: ' + error.message);
-	}
-}
-
-async function sendFundsToUser(email: string, amount: number, env: Env) {
-	const algolia = new AlgoliaClient(env);
-	const stellar = new StellarClient(env);
-	const user = await algolia.getUserByEmail(email);
-
-	try {
-		if (!user) {
-			// Create new user
-			const username = email.split('@')[0];
-			const ctx: Context = { env };
-
-			await createUserWithEmailResolver(null, { email, username, displayName: username }, ctx);
-			const newUser = await algolia.getUserByEmail(email);
-
-			if (newUser && newUser.publicKey) {
-				await stellar.pay(newUser.publicKey, amount);
-				await algolia.updateUserMinBalance(newUser.objectID, amount);
-			} else {
-				throw new Error(`Failed to create user account properly: ${!newUser ? 'User not found' : 'Missing public key'}`);
-			}
-		} else {
-			// Handle existing user
-			if (user && !user.publicKey) {
-				throw new Error('User exists but has no public key');
-			}
-			if (user && user.publicKey) {
-				await stellar.pay(user.publicKey, amount);
-				await algolia.updateUserMinBalance(user.objectID, amount);
-			}
-		}
-	} catch (error) {
-		console.error('Failed to process payment:', error);
-		const mailer = new Mailer(env);
-		await mailer.sendSupportEmail(email, error, amount);
-		throw new Error('Payment processing failed. Support has been notified.');
+		console.error('Error initiating XLM purchase:', error);
+		throw new Error('Error initiating purchase: ' + error.message);
 	}
 }

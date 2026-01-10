@@ -4,7 +4,7 @@
 
 The Skyhitz platform uses two main smart contracts:
 1. **HITZ Token Contract**: OpenZeppelin SEP-41 compatible fungible token with emission logic
-2. **Skyhitz Core Contract**: Handles user actions, staking, and XLM fee management
+2. **Skyhitz Core Contract**: Handles user actions, staking, and HITZ fee management
 
 ## HITZ Token Contract
 
@@ -51,7 +51,7 @@ upgrade(new_wasm_hash)
 
 - Records user actions (stream, like, download, mine, invest)
 - Manages HITZ token staking for invest/mine actions
-- Handles XLM fee transfers to Treasury
+- Handles HITZ fee transfers to Treasury
 - Allocates and distributes HITZ rewards to entry pools
 
 ### Action Types
@@ -62,11 +62,11 @@ upgrade(new_wasm_hash)
 | like | 2 | 2× | No (escrow) | No |
 | download | 3 | 3× | No (escrow) | No |
 | mine | 10 | 10× | Yes | Yes |
-| invest | Dynamic | Dynamic (min 0.3 XLM) | Yes | Yes |
+| invest | Dynamic | Dynamic (min 3 HITZ) | Yes | Yes |
 
 ### Base Fee
 
-- Default: 0.01 XLM (100,000 stroops)
+- Default: 0.1 HITZ (1,000,000 stroops)
 - Admin can update via `set_base_fee()`
 - All action fees scale proportionally
 
@@ -74,10 +74,10 @@ upgrade(new_wasm_hash)
 
 ```rust
 // Initialize contract
-init(admin, treasury, hitz_token, xlm_token, base_fee)
+init(admin, treasury, hitz_token, base_fee)
 
 // Record user action and mint rewards
-record_action(caller, entry_id, kind, amount_xlm)
+record_action(caller, entry_id, kind, amount)
 
 // Distribute rewards proportionally (Treasury bot)
 distribute_rewards(caller, hitz_amount)
@@ -129,7 +129,7 @@ Verified artists can receive non-dilutable equity on their entries:
 │  - Record actions           │
 │  - Manage stakes            │
 │  - Allocate rewards         │
-│  - Handle XLM fees          │
+│  - Handle HITZ fees          │
 │  - Calculate APR            │
 └─────────────────────────────┘
 ```

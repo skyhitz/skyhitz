@@ -2,7 +2,6 @@
 import { View } from 'react-native'
 import { Button } from 'app/design/button'
 import { Entry } from 'app/api/graphql/types'
-import Stellar from 'app/ui/icons/stellar'
 import { FormInputWithIcon } from 'app/ui/inputs/FormInputWithIcon'
 import { useCallback, useState, useEffect } from 'react'
 import { useToast } from 'app/provider/toast'
@@ -13,8 +12,8 @@ import { P } from 'app/design/typography'
 import { useMutation, useQuery } from '@apollo/client'
 import { useGetEntry } from 'app/hooks/algolia/useGetEntry'
 import { sharesIndex } from 'app/api/algolia'
-import { INVEST_ENTRY, UNSTAKE_ENTRY, USER_CREDITS, USER_HITZ_BALANCE } from 'app/api/graphql/operations'
-import { INVEST_MIN_XLM } from 'app/constants/constants'
+import { INVEST_ENTRY, UNSTAKE_ENTRY, USER_HITZ_BALANCE } from 'app/api/graphql/operations'
+import { INVEST_MIN_HITZ } from 'app/constants/constants'
 import { stroopsToToken } from 'app/types/asset'
 import { AssetType } from 'app/types/asset'
 import { SkyhitzLogo } from 'app/ui/logo'
@@ -34,8 +33,7 @@ export function InvestSection({ entry }: Props) {
 
   const [invest, { loading: investLoading }] = useMutation(INVEST_ENTRY)
   const [unstake, { loading: unstakeLoading }] = useMutation(UNSTAKE_ENTRY)
-  const { data: creditsData, refetch: refetchCredits } = useQuery(USER_CREDITS)
-  const { data: hitzBalanceData } = useQuery(USER_HITZ_BALANCE, { skip: !user })
+  const { data: hitzBalanceData, refetch: refetchHitzBalance } = useQuery(USER_HITZ_BALANCE, { skip: !user })
 
   const [equityToBuy, setEquityToBuy] = useState('')
   const [amountToUnstake, setAmountToUnstake] = useState('')
@@ -98,8 +96,8 @@ export function InvestSection({ entry }: Props) {
     setEquityToBuy(additionalPercentage.toFixed(4))
   }, [amountToInvest, entry.totalStaked, shares])
 
-  // Minimum investment in XLM (eligible for shares)
-  const MIN_INVESTMENT_XLM = INVEST_MIN_XLM
+  // Minimum investment in HITZ (eligible for shares)
+  const MIN_INVESTMENT_HITZ = INVEST_MIN_HITZ
 
   const onSubmit = useCallback(async () => {
     if (!user) return push('/sign-in')
@@ -110,8 +108,8 @@ export function InvestSection({ entry }: Props) {
     }
 
     const numAmount = parseFloat(amountToInvest)
-    if (numAmount < MIN_INVESTMENT_XLM) {
-      toast.show(`Minimum investment is ${MIN_INVESTMENT_XLM} XLM`, {
+    if (numAmount < MIN_INVESTMENT_HITZ) {
+      toast.show(`Minimum investment is ${MIN_INVESTMENT_HITZ} HITZ`, {
         type: 'error',
       })
       return
@@ -131,16 +129,16 @@ export function InvestSection({ entry }: Props) {
         trackInvest(
           entry.id,
           parseFloat(amountToInvest),
-          'XLM',
+          'HITZ',
           entry.title,
           entry.artist
         )
         
-        const credits = await refetchCredits()
-        const newBal = Number(credits?.data?.userCredits ?? 0).toFixed(2)
+        const hitzResult = await refetchHitzBalance()
+        const newBal = Number(hitzResult?.data?.userHitzBalance ?? 0).toFixed(2)
         await refetch() // Refresh entry (tvl/apr)
         await fetchShares() // Refresh your shares
-        toast.show(`Investment successful! Balance: ${newBal} XLM`, { type: 'success' })
+        toast.show(`Investment successful! Balance: ${newBal} HITZ`, { type: 'success' })
         setAmountToInvest('')
       } else {
         const errorMessage =
@@ -153,10 +151,10 @@ export function InvestSection({ entry }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [amountToInvest, entry.id, invest, refetch, refetchCredits, toast, user])
+  }, [amountToInvest, entry.id, invest, refetch, refetchHitzBalance, toast, user])
 
-  // Calculate available credits and ownership percentage
-  const userCredits = creditsData?.userCredits || 0
+  // Calculate available HITZ balance and ownership percentage
+  const hitzBalance = hitzBalanceData?.userHitzBalance || 0
   const totalStakedStroops = Number(entry.totalStaked || 0) * 10_000_000
   const ownershipPercentage = totalStakedStroops > 0 ? (shares / totalStakedStroops) * 100 : 0
 
@@ -198,18 +196,10 @@ export function InvestSection({ entry }: Props) {
           <View className="flex-col gap-2">
             <View className="flex-row">
               <P className="text-[--text-secondary-color] text-xs font-unbounded">
-                XLM balance:{' '}
-              </P>
-              <P className="text-[--text-color] text-xs font-unbounded">
-                {`${userCredits} XLM`}
-              </P>
-            </View>
-            <View className="flex-row">
-              <P className="text-[--text-secondary-color] text-xs font-unbounded">
                 HITZ balance:{' '}
               </P>
               <P className="text-[--text-color] text-xs font-unbounded">
-                {`${(hitzBalanceData?.userHitzBalance || 0).toFixed(2)} HITZ`}
+                {`${hitzBalance.toFixed(2)} HITZ`}
               </P>
             </View>
             <View className="flex-row">
@@ -224,15 +214,15 @@ export function InvestSection({ entry }: Props) {
         )}
 
         <FormInputWithIcon
-          icon={<Stellar size={18} />}
+          icon={<SkyhitzLogo size={18} id="invest-input" className="text-[--text-color]" />}
           value={amountToInvest}
           onChangeText={setAmountToInvest}
-          placeholder={`Amount to invest (min ${INVEST_MIN_XLM} XLM)`}
+          placeholder={`Amount to invest (min ${INVEST_MIN_HITZ} HITZ)`}
           keyboardType="numeric"
           className="my-4"
         />
         <P className="text-center text-xs text-[--text-secondary-color] italic mt-1 mb-3">
-          Minimum investment: {INVEST_MIN_XLM} XLM
+          Minimum investment: {INVEST_MIN_HITZ} HITZ
         </P>
       </View>
 
@@ -243,7 +233,7 @@ export function InvestSection({ entry }: Props) {
           !user ||
           !amountToInvest ||
           isNaN(parseFloat(amountToInvest)) ||
-          parseFloat(amountToInvest) < MIN_INVESTMENT_XLM ||
+          parseFloat(amountToInvest) < MIN_INVESTMENT_HITZ ||
           loading ||
           investLoading
         }

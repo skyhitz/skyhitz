@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useStripe } from '@stripe/react-stripe-js'
 import { View, Text } from 'react-native'
+import { Link } from 'solito/link'
+import { Button } from 'app/design/typography'
 
 const SuccessIcon = (
   <svg
@@ -154,11 +156,19 @@ export default function CompletePage() {
       >
         {STATUS_CONTENT_MAP[status].text}
       </Text>
+      {status === 'succeeded' && (
+        <View style={{ marginTop: 16, marginBottom: 16 }} className="mt-4 mb-4 bg-blue-50 rounded-lg p-4">
+          <Text style={{ textAlign: 'center', color: '#1e40af', fontSize: 14 }} className="text-center text-blue-800 text-sm">
+            ⏳ Your HITZ will be delivered to your wallet in 1-2 minutes.
+          </Text>
+        </View>
+      )}
+
       {intentId && (
         <View style={{ marginTop: 20 }} className="mt-5 border-t border-gray-200 pt-4">
           <View style={{ flexDirection: 'row', marginBottom: 8 }} className="flex flex-row mb-2">
             <Text style={{ fontWeight: 'bold', width: 80 }} className="font-bold w-20">ID:</Text>
-            <Text style={{ flex: 1 }} className="flex-1">{intentId}</Text>
+            <Text style={{ flex: 1, fontSize: 12 }} className="flex-1 text-xs">{intentId}</Text>
           </View>
           <View style={{ flexDirection: 'row' }} className="flex flex-row">
             <Text style={{ fontWeight: 'bold', width: 80 }} className="font-bold w-20">Status:</Text>
@@ -166,6 +176,17 @@ export default function CompletePage() {
           </View>
         </View>
       )}
+
+      <View style={{ marginTop: 24 }} className="mt-6">
+        <Link href="/profile">
+          <Button
+            wrapperClassName="w-full"
+            className="text-center bg-primary hover:bg-primary-dark"
+          >
+            Go to Profile
+          </Button>
+        </Link>
+      </View>
     </View>
   )
 }

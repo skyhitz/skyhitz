@@ -111,13 +111,15 @@ export function UploadScreen() {
       if (!file) return
       
       if (file.type.startsWith('image/')) {
-        // Check image dimensions
+        // Check image dimensions - must be square and at least 1000x1000
         const img = new Image()
         img.onload = () => {
-          if (img.width >= 1000 && img.height >= 1000) {
-            setImageFile(file)
-          } else {
+          if (img.width !== img.height) {
+            toast?.show('Image must be square (same width and height)', { type: 'danger' })
+          } else if (img.width < 1000 || img.height < 1000) {
             toast?.show('Image must be at least 1000x1000 pixels', { type: 'danger' })
+          } else {
+            setImageFile(file)
           }
         }
         img.src = URL.createObjectURL(file)
@@ -144,13 +146,15 @@ export function UploadScreen() {
       const file = files[0]
       if (!file) return
       
-      // Check image dimensions
+      // Check image dimensions - must be square and at least 1000x1000
       const img = new Image()
       img.onload = () => {
-        if (img.width >= 1000 && img.height >= 1000) {
-          setImageFile(file)
-        } else {
+        if (img.width !== img.height) {
+          toast?.show('Image must be square (same width and height)', { type: 'danger' })
+        } else if (img.width < 1000 || img.height < 1000) {
           toast?.show('Image must be at least 1000x1000 pixels', { type: 'danger' })
+        } else {
+          setImageFile(file)
         }
       }
       img.src = URL.createObjectURL(file)
@@ -260,7 +264,7 @@ export function UploadScreen() {
   return (
     <SafeAreaView className="bg-[--bg-color] w-full">
       <ScrollView>
-        <View className="mx-auto flex min-h-screen w-full max-w-2xl items-start justify-start px-4 py-8">
+        <View className="mx-auto flex min-h-screen w-full max-w-2xl items-start justify-start px-4 py-8 pb-32">
           <H1 className="text-center text-lg mb-8 w-full">Upload Music</H1>
 
           {/* Audio File Upload */}
@@ -344,7 +348,7 @@ export function UploadScreen() {
                       Drag and drop or click to select image
                     </P>
                     <P className="text-xs text-[--text-secondary-color] mt-1">
-                      Minimum 1000x1000 pixels
+                      Square image, minimum 1000x1000 pixels
                     </P>
                   </View>
                 )}

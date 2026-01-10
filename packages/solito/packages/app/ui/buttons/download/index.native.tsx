@@ -7,11 +7,12 @@ import { View, ActivityIndicator, Platform } from 'react-native'
 import { useUserStore } from 'app/state/user'
 import { useRouter } from 'solito/navigation'
 import { useMutation, useQuery } from '@apollo/client'
-import { RECORD_ACTION, USER_CREDITS } from 'app/api/graphql/operations'
+import { RECORD_ACTION, USER_HITZ_BALANCE } from 'app/api/graphql/operations'
 import { useTopUpModalStore } from 'app/state/topup'
-import { MICRO_SPEND_DOWNLOAD_XLM } from 'app/constants/constants'
+import { MICRO_SPEND_DOWNLOAD_HITZ } from 'app/constants/constants'
 import { trackDownload } from 'app/utils/analytics'
 import { isExternalPreview } from 'app/utils/external-entry'
+import { getDownloadUrl } from 'app/utils/entry'
 
 // Safely check for FileSystem support without importing it directly
 // This prevents crashes in Expo Go during component initialization
@@ -25,7 +26,7 @@ const DownloadBtn = ({
   const user = useUserStore((s) => s.user)
   const { push } = useRouter()
   const [recordAction] = useMutation(RECORD_ACTION)
-  const { data: creditsData } = useQuery(USER_CREDITS, { skip: !user, fetchPolicy: 'network-only' })
+  const { data: hitzBalanceData } = useQuery(USER_HITZ_BALANCE, { skip: !user, fetchPolicy: 'network-only' })
   const openTopUpModal = useTopUpModalStore((s) => s.openTopUpModal)
   const [downloading, setDownloading] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -48,9 +49,9 @@ const DownloadBtn = ({
     }
 
     // Check balance
-    const available = Number(creditsData?.userCredits ?? 0)
-    if (!available || available < MICRO_SPEND_DOWNLOAD_XLM) {
-      openTopUpModal({ action: 'download', requiredXLM: MICRO_SPEND_DOWNLOAD_XLM, availableXLM: available })
+    const available = Number(hitzBalanceData?.userHitzBalance ?? 0)
+    if (!available || available < MICRO_SPEND_DOWNLOAD_HITZ) {
+      openTopUpModal({ action: 'download', requiredHITZ: MICRO_SPEND_DOWNLOAD_HITZ, availableHITZ: available })
       return
     }
 
@@ -73,6 +74,9 @@ const DownloadBtn = ({
       // Track download event
       trackDownload(entry.id, entry.title, entry.artist)
 
+      // Get the correct download URL (tries MP4 first, falls back to original for audio files)
+      const { url, extension } = await getDownloadUrl(entry.videoUrl)
+
       // Expo Go compatibility check - don't use direct imports at the module level
       let isExpoGo = true
 
@@ -89,8 +93,8 @@ const DownloadBtn = ({
           setProgress(0)
 
           // Execute the actual download logic
-          await downloadWithFileSystem(FileSystemModule, entry.videoUrl)
-          toast.show(`Downloaded! Fee: ${fee.toFixed(4)} XLM`, { type: 'success' })
+          await downloadWithFileSystem(FileSystemModule, url, extension)
+          toast.show(`Downloaded! Fee: ${fee.toFixed(4)} HITZ`, { type: 'success' })
         }
       } catch (error) {
         // This will happen in Expo Go
@@ -112,11 +116,9 @@ const DownloadBtn = ({
 
   // Separate the actual download logic into its own function
   // This prevents any FileSystem code from executing during initialization
-  const downloadWithFileSystem = async (FileSystem: any, videoUrl: string) => {
+  const downloadWithFileSystem = async (FileSystem: any, downloadUrl: string, extension: string) => {
     try {
-      // Format filename: artist_title.mp4 format
-      let fileName = ''
-
+      // Format filename: artist_title.extension format
       // Format artist name (if available)
       const artistPart = entry.artist
         ? entry.artist
@@ -135,8 +137,8 @@ const DownloadBtn = ({
             .substring(0, 10) // Limit title to 10 chars
         : entry.id || 'track'
 
-      // Combine as artist_title.mp4
-      fileName = `${artistPart}_${titlePart}.mp4`
+      // Combine as artist_title.extension
+      const fileName = `${artistPart}_${titlePart}.${extension}`
       const fileUri = `${FileSystem.documentDirectory}downloads/`
       const filePath = `${fileUri}${fileName}`
 
@@ -157,7 +159,7 @@ const DownloadBtn = ({
       }
 
       const downloadResumable = FileSystem.createDownloadResumable(
-        videoUrl,
+        downloadUrl,
         filePath,
         {},
         callback

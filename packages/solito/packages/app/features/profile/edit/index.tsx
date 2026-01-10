@@ -12,7 +12,7 @@ import { Formik, FormikProps } from 'formik'
 import { LogOutBtn } from './logOutBtn'
 import { useUserStore } from 'app/state/user'
 import { FormInputWithIcon } from 'app/ui/inputs/FormInputWithIcon'
-import { useRouter, useSearchParams } from 'solito/navigation'
+import { useRouter } from 'solito/navigation'
 import { ChangeImage, EditProfileForm } from 'app/types'
 import { editProfileFormSchema } from 'app/validation'
 import useUploadFile from 'app/hooks/useUploadFile'
@@ -22,15 +22,11 @@ import { ProfileHeader } from '../ProfileHeader'
 import { ChangeImages } from './ChangeImages'
 import { Button } from 'app/design/button'
 import { SafeAreaView } from 'app/design/safe-area-view'
-import { WithdrawCredits } from './WithdrawCredits'
 import { useTheme } from 'app/state/theme/useTheme'
 import { P } from 'app/design/typography'
 
 export default function EditProfileScreen({ user }: { user: User }) {
   if (!user) return null
-
-  const searchParams = useSearchParams()
-  const showWithdraw = searchParams?.get('withdraw') === 'true'
 
   const { isDark, theme } = useTheme()
   const { setUser } = useUserStore()
@@ -104,10 +100,6 @@ export default function EditProfileScreen({ user }: { user: User }) {
       back()
     }
   }, [data, back])
-
-  if (showWithdraw) {
-    return <WithdrawCredits />
-  }
 
   return (
     <SafeAreaView className="bg-black">

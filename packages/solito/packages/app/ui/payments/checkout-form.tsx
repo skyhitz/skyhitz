@@ -19,6 +19,8 @@ import StyledTextInput from 'app/features/accounts/styledTextInput'
 import { Formik, FormikProps } from 'formik'
 import { topUpFormSchema } from 'app/validation'
 import { useCreatePaymentIntentMutation } from 'app/api/graphql/mutations'
+import { HITZ_PRICE_USDC } from 'app/api/graphql/operations'
+import { useQuery } from '@apollo/client'
 import CompletePage from './complete-page'
 import { trackTopUp } from 'app/utils/analytics'
 import { useUserStore } from 'app/state/user'
@@ -85,12 +87,17 @@ const InnerCheckoutForm = ({
   const stripe = useStripe()
   const elements = useElements()
   const user = useUserStore((s) => s.user)
+  
+  // Fetch real HITZ/USDC price from oracle
+  const { data: hitzPriceData } = useQuery(HITZ_PRICE_USDC, {
+    pollInterval: 30000, // Refresh every 30 seconds
+  })
+  const hitzPriceUsdc = Number.parseFloat((hitzPriceData?.hitzPriceUsdc as string) || '0') || 0
 
   const emailInputRef = useRef<TextInput>(null)
   const amountInputRef = useRef<TextInput>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState<string | undefined>(undefined)
-  const [xlmPrice, setXlmPrice] = useState<number | undefined>(undefined)
 
   const [createPaymentIntent, { data, loading, error }] =
     useCreatePaymentIntentMutation()
@@ -171,31 +178,17 @@ const InnerCheckoutForm = ({
     setIsLoading(false)
   }
 
-  const fetchXlmPrice = async () => {
-    try {
-      const response = await fetch(
-        'https://api.kraken.com/0/public/Ticker?pair=XLMUSD'
-      )
-      const data = await response.json()
-      const price = parseFloat(data.result.XXLMZUSD.c[0])
-      setXlmPrice(price)
-    } catch (error) {
-      console.error('Error fetching XLM price:', error)
-    }
-  }
-
-  useEffect(() => {
-    fetchXlmPrice()
-    const intervalId = setInterval(fetchXlmPrice, 5000) // Refresh every 5 seconds
-    return () => clearInterval(intervalId) // Cleanup on unmount
-  }, [])
-
   const getFee = (amount: number) => {
     return amount * 0.029 + 0.3
   }
 
-  const getTotalXLM = (amount: number) => {
-    return (amount - getFee(amount)) / (xlmPrice ? xlmPrice : 0.4)
+  // Estimate HITZ received based on USDC price from oracle
+  // Price is in USDC per HITZ (e.g., 0.10 means 1 HITZ = $0.10)
+  const getEstimatedHITZ = (amount: number): number | null => {
+    if (!hitzPriceUsdc || hitzPriceUsdc <= 0) return null
+    const netAmount = amount - getFee(amount)
+    // HITZ = USD / (USDC per HITZ)
+    return netAmount / hitzPriceUsdc
   }
 
   return (
@@ -271,7 +264,13 @@ const InnerCheckoutForm = ({
           </P>
 
           <P className="block py-2 text-sm font-medium text-gray-700">
-            Total XLM: {getTotalXLM(values.amount).toFixed(2)}
+            Estimated HITZ: {getEstimatedHITZ(values.amount) !== null 
+              ? `~${getEstimatedHITZ(values.amount)?.toFixed(0)} HITZ` 
+              : 'Loading...'}
+          </P>
+
+          <P className="block py-1 text-xs text-gray-500">
+            (USD → HITZ via Soroswap DEX)
           </P>
 
           <P className="block py-2 text-sm font-bold text-gray-700">

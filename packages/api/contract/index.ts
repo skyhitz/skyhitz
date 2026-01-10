@@ -26,7 +26,7 @@ type NetworkPassphrase = typeof testnetNetworkPassphrase | typeof mainnetNetwork
 
 class ContractClient {
     private sourceKeys: Keypair;
-	private defaultOptions = { timeoutInSeconds: 60, fee: 100000000, restore: true };
+	private defaultOptions = { timeoutInSeconds: 60, fee: '100000000', restore: true };
 	private network: Network;
 	private horizonUrl: HorizonUrl;
 	private rpcUrl: RpcUrl;
@@ -86,87 +86,30 @@ class ContractClient {
 		}
 	}
 
-	// Old methods removed - no longer in new contract:
-	// - setEntry (entries are now created via create_entry)
-	// - removeEntry (not supported in new contract)
-
 	public getEntry = async (entry_id: string) => {
 		const tx = await this.contract.get_entry({ entry_id }, this.defaultOptions);
 		
-		// Handle Option<Entry> return type - manually parse the raw result
-		// The TypeScript bindings struggle with Option types, so we parse the XDR directly
-		try {
-			const simulation = tx.simulation as any;
-			const rawResult = simulation?.result?.retval;
-			
-			if (!rawResult || rawResult._value === undefined) {
-				throw new Error(`Entry ${entry_id} not found`);
-			}
-			
-			// If it's a map (Some(Entry)), extract the values
-			if (rawResult._arm === 'map' && Array.isArray(rawResult._value)) {
-				const entryMap = rawResult._value;
-				const getValue = (key: string) => {
-					const item = entryMap.find((e: any) => {
-						const keyBuffer = e._attributes?.key?._value;
-						if (keyBuffer && keyBuffer.type === 'Buffer') {
-							const keyStr = Buffer.from(keyBuffer.data).toString('utf-8');
-							return keyStr === key;
-						}
-						return false;
-					});
-					
-					if (!item) return 0;
-					
-					const val = item._attributes?.val;
-					if (val?._arm === 'u64') {
-						return Number(val._value._value);
-					} else if (val?._arm === 'i128') {
-						return Number(val._value._attributes.lo._value);
-					}
-					return 0;
-				};
-				
-				return {
-					created_at: getValue('created_at'),
-					escrow_xlm: getValue('escrow_xlm'),
-					tvl_xlm: getValue('tvl_xlm'),
-					// For backwards compatibility
-					escrow: getValue('escrow_xlm'),
-					tvl: getValue('tvl_xlm'),
-				};
-			}
-			
-			// If None (void), entry doesn't exist
+		// SDK handles Option<Entry> - returns Entry | null
+		if (!tx.result) {
 			throw new Error(`Entry ${entry_id} not found`);
-			
-		} catch (e) {
-			console.error(`Error parsing entry ${entry_id}:`, (e as any)?.message);
-			throw e;
 		}
+		
+		return tx.result;
 	};
-
-	// Old methods removed - replaced by new contract methods:
-	// - claimEarnings → use claimRewards instead
-	// - sellShares → use unstake instead
-	// - mergeEntries → not in new contract (admin can still merge via backend)
-	// - cleanEmptyEntries → not needed in new contract
-	// - cleanEmptyEntriesBatch → not needed in new contract
 
     /**
      * Initialize the contract (admin-only, one-time)
-     * New signature: (admin, treasury, hitz_token, xlm_token, base_fee)
+     * New signature: (admin, treasury, hitz_token, base_fee)
      */
 	public init = async (
 		admin: string,
 		treasury: string,
 		hitz_token: string,
-		xlm_token: string,
 		base_fee: bigint
 	) => {
-        console.log('init', { admin, treasury, hitz_token, xlm_token, base_fee });
+        console.log('init', { admin, treasury, hitz_token, base_fee });
 		const tx = await this.contract.init(
-            { admin, treasury, hitz_token, xlm_token, base_fee },
+            { admin, treasury, hitz_token, base_fee },
 			this.defaultOptions
 		);
 		console.log(tx);
@@ -183,14 +126,14 @@ class ContractClient {
 		return res;
 	};
 
-	public recordAction = async (secret: string, entryId: string, kind: 'stream' | 'like' | 'download' | 'mine' | 'invest', amountXlm?: number) => {
+	public recordAction = async (secret: string, entryId: string, kind: 'stream' | 'like' | 'download' | 'mine' | 'invest', amount?: number) => {
 		const userKeys = Keypair.fromSecret(secret);
 		const tx = await this.contract.record_action(
 			{
 				caller: userKeys.publicKey(),
 				entry_id: entryId,
 				kind,
-				amount_xlm: amountXlm !== undefined ? BigInt(amountXlm) : undefined,
+				amount: amount !== undefined ? BigInt(amount) : undefined,
 			},
 			this.defaultOptions
 		);
@@ -533,15 +476,15 @@ class ContractClient {
 
 	/**
 	 * Get entry stats
-	 * Returns: [tvl_xlm, escrow_xlm, total_staked, reward_pool, apr]
+	 * Returns: [tvl, escrow, total_staked, reward_pool, apr]
 	 */
 	public getEntryStats = async (entryId: string) => {
 		const tx = await this.contract.get_entry_stats({ entry_id: entryId }, this.defaultOptions);
-		// Result is a tuple: [tvl_xlm, escrow_xlm, total_staked, reward_pool, apr]
-		const [tvl_xlm, escrow_xlm, total_staked, reward_pool, apr] = tx.result;
+		// Result is a tuple: [tvl, escrow, total_staked, reward_pool, apr]
+		const [tvl, escrow, total_staked, reward_pool, apr] = tx.result;
 		return {
-			tvlXlm: Number(tvl_xlm),
-			escrowXlm: Number(escrow_xlm),
+			tvl: Number(tvl),
+			escrow: Number(escrow),
 			totalStaked: Number(total_staked),
 			rewardPool: Number(reward_pool),
 			apr: Number(apr),
@@ -585,6 +528,12 @@ class ContractClient {
 	/**
 	 * Get oracle data (price and last update timestamp)
 	 * Returns [price_in_stroops, last_update_timestamp]
+	 */
+	/**
+	 * Get oracle data (price and last update timestamp)
+	 * Returns the current HITZ/USDC market price from the contract
+	 * @returns Tuple of [priceInStroops, lastUpdateTimestamp]
+	 *          Price is in USDC stroops per HITZ (e.g., 1,000,000 = $0.10 USDC per HITZ)
 	 */
 	public getOracleData = async (): Promise<readonly [bigint, bigint]> => {
 		const tx = await this.contract.get_oracle_data(this.defaultOptions);
@@ -630,8 +579,9 @@ class ContractClient {
 
 	/**
 	 * Update oracle price (treasury-only)
-	 * This is called by the treasury bot to update market price
-	 * Requires Treasury keypair for auth entry signing
+	 * Updates the HITZ/USDC market price used for staking calculations
+	 * @param treasurySecret - Treasury account secret key
+	 * @param newPriceStroops - New HITZ/USDC price in stroops (e.g., 1,000,000 = $0.10 USDC per HITZ)
 	 */
 	public updateOraclePrice = async (treasurySecret: string, newPriceStroops: bigint) => {
 		const treasuryKeys = Keypair.fromSecret(treasurySecret);

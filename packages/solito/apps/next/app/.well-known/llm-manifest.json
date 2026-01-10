@@ -2,7 +2,7 @@
   "version": "1.0",
   "name": "Skyhitz",
   "short_name": "Skyhitz",
-  "description": "Decentralized music NFT marketplace built on Stellar blockchain. Discover, collect, stream, and invest in curated music NFTs. Features fractional ownership, staking rewards, free downloads, and interactive charts.",
+  "description": "Music DeFi Protocol built on Stellar blockchain. Discover, collect, stream, and invest in curated music NFTs. Features fractional ownership, staking rewards, free downloads, and interactive charts.",
   "url": "https://skyhitz.io",
   "icon": "https://skyhitz.io/icon-128.png",
   "capabilities": {

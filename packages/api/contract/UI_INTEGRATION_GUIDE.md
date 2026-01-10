@@ -6,7 +6,7 @@ This guide provides a comprehensive list of all changes needed to integrate the 
 ## Contract Changes Summary
 
 ### New Contract Interface
-- `record_action(caller, entry_id, kind, amount_xlm?)` - Unified action handler for stream/like/download/mine/invest
+- `record_action(caller, entry_id, kind, amount?)` - Unified action handler for stream/like/download/mine/invest
 - `claim_rewards(entry_id, claimer)` - Claims HITZ rewards from entry pool
 - `create_entry(entry_id)` - Creates new entry in contract
 - `get_stake(entry_id, owner)` - Gets user's stake in entry
@@ -28,8 +28,8 @@ This guide provides a comprehensive list of all changes needed to integrate the 
 ```typescript
 interface Entry {
   created_at: u64;
-  escrow_xlm: i128;  // NEW: Escrow for non-staking actions
-  tvl_xlm: i128;     // CHANGED: Total Value Locked (staking actions)
+  escrow: i128;  // Escrow for non-staking actions (in HITZ stroops)
+  tvl: i128;     // Total Value Locked (staking actions) (in HITZ stroops)
 }
 ```
 
@@ -41,7 +41,7 @@ interface Entry {
 
 #### packages/api/contract/index.ts
 - [x] Added `createEntry(entryId: string)`
-- [x] Added `recordAction(secret, entryId, kind, amountXlm?)`
+- [x] Added `recordAction(secret, entryId, kind, amount?)`
 - [x] Added `getStake(entryId, owner)`
 - [x] Added `getStakeTotal(entryId)`
 - [x] Added `getClaimableRewards(entryId, user)`
@@ -73,8 +73,8 @@ const sorobanEntry = await contract.getEntry(id);
 const stats = await contract.getEntryStats(id);
 
 await algolia.partialUpdateEntry({
-  tvl: sorobanEntry.tvl_xlm,
-  escrow: sorobanEntry.escrow_xlm,
+    tvl: sorobanEntry.tvl,
+    escrow: sorobanEntry.escrow,
   apr: stats.apr,
   objectID: id,
 });

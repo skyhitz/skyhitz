@@ -23,7 +23,7 @@ class StellarClient {
 		return account;
 	}
 
-	async accountCredits(publicAddress: string) {
+	async getXlmBalance(publicAddress: string) {
 		const { balances, subentry_count, num_sponsoring, num_sponsored }: any = await this.getAccountData(publicAddress);
 
 		const [currentBalance] = balances.filter((balance: any) => balance.asset_type === 'native');
@@ -31,10 +31,10 @@ class StellarClient {
 			const floatBalance = parseFloat(currentBalance.balance);
 			const minBalance = (2 + subentry_count + num_sponsoring - num_sponsored) * 0.5;
 
-			const availableCredits = floatBalance - minBalance;
-			return { credits: floatBalance, availableCredits };
+			const availableXlmBalance = floatBalance - minBalance;
+			return { xlmBalance: floatBalance, availableXlmBalance };
 		}
-		return { credits: 0, availableCredits: 0 };
+		return { xlmBalance: 0, availableXlmBalance: 0 };
 	}
 
 	async loadSkyhitzAssets(sourcePublicKey: string): Promise<string[]> {

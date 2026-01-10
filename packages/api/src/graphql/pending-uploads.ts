@@ -174,16 +174,16 @@ export const approvePendingUploadResolver = async (
   try {
     // Check user balance
     const stellar = new StellarClient(env);
-    const { availableCredits } = await stellar.accountCredits(originalUser.publicKey);
+    const { availableXlmBalance } = await stellar.getXlmBalance(originalUser.publicKey);
     const requiredBalance = mintCost + 0.2; // mint cost + buffer for fees
 
-    if (availableCredits < requiredBalance) {
+    if (availableXlmBalance < requiredBalance) {
       throw new GraphQLError('INSUFFICIENT_FUNDS', {
         extensions: {
           code: 'INSUFFICIENT_FUNDS',
           required: requiredBalance,
-          available: availableCredits,
-          message: `User has insufficient balance. Required: ${requiredBalance} XLM, Available: ${availableCredits} XLM`,
+          available: availableXlmBalance,
+          message: `User has insufficient balance. Required: ${requiredBalance} XLM, Available: ${availableXlmBalance} XLM`,
         },
       });
     }

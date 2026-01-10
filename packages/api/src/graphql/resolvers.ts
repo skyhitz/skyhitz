@@ -2,30 +2,26 @@ import { entryByIdResolver } from './entry';
 import { entryLikesResolver } from './entry-likes';
 import { requestTokenResolver } from './request-token';
 import { signInWithTokenResolver } from './sign-in-with-token';
-import { userCreditsResolver } from './user-credits';
 import { userEntriesResolver } from './user-entries';
 import { userLikesResolver } from './user-likes';
-import { XLMPriceResolver } from './xlm-price';
 import { investEntryResolver } from './invest-entry';
 import { createUserWithEmailResolver } from './create-user-with-email';
 import { setLastPlayedEntryResolver } from './set-last-played-entry';
 import { updateUserResolver } from './update-user';
 import { likeEntryResolver } from './like-entry';
 import { removeEntryResolver } from './remove-entry';
-import { withdrawToExternalAddressResolver } from './withdraw-to-external-wallet';
 import { processEntryResolver } from './process-entry';
 import { submitLinkResolver } from './submit-link';
 import { createPaymentIntentResolver } from './create-payment-intent';
 import { checkPendingWithdrawalsResolver } from './check-pending-withdrawals';
-import { claimEarningsResolver } from './claim-earnings';
+import { claimEarningsResolver, claimEarningsPreviewResolver } from './claim-earnings';
 import { searchExternalMusicResolver, externalAudioUrlResolver } from './search-external-music';
-import { claimEarningsPreviewResolver } from './xlm-price';
 import { mineExternalEntryResolver } from './mine-external-entry';
 import { mergeEntriesResolver } from './merge-entries';
 import { unstakeEntryResolver } from './unstake-entry';
 import { recordActionResolver } from './record-action';
 import { userHitzBalanceResolver } from './user-hitz-balance';
-import { hitzPriceXlmResolver } from './hitz-price-xlm';
+import { hitzPriceUsdcResolver } from './hitz-price-usdc';
 import { withdrawHitzResolver } from './withdraw-hitz';
 import { pendingMinesResolver, pendingMineResolver, rejectPendingMineResolver } from './pending-mines';
 import { approvePendingMineResolver } from './approve-pending-mine';
@@ -49,12 +45,10 @@ import {
 const Query = {
 	entry: entryByIdResolver,
 	entryLikes: entryLikesResolver,
-	userCredits: userCreditsResolver,
 	userHitzBalance: userHitzBalanceResolver,
-	hitzPriceXlm: hitzPriceXlmResolver,
+	hitzPriceUsdc: hitzPriceUsdcResolver,
 	userEntries: userEntriesResolver,
 	userLikes: userLikesResolver,
-	xlmPrice: XLMPriceResolver,
 	searchExternalMusic: searchExternalMusicResolver,
 	externalAudioUrl: externalAudioUrlResolver,
 	claimableEarningsPreview: claimEarningsPreviewResolver,
@@ -94,7 +88,6 @@ const Mutation = {
 	addCurator: addCuratorResolver,
 	removeCurator: removeCuratorResolver,
 	updateUser: updateUserResolver,
-	withdrawToExternalWallet: withdrawToExternalAddressResolver,
 };
 
 export const resolvers = {

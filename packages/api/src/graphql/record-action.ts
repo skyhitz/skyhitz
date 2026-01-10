@@ -9,7 +9,7 @@ import { AlgoliaClient } from 'src/algolia/algolia';
  * Record Action Resolver - NEW CONTRACT INTERFACE
  * 
  * Records user actions on entries: stream, like, download
- * Charges a small XLM fee and tracks engagement
+ * Charges a small HITZ fee and tracks engagement
  * 
  * Actions:
  * - stream: User plays a track (called on playback completion)
@@ -45,7 +45,7 @@ export const recordActionResolver = async (_: any, args: any, context: Context) 
         };
         const difficulty = difficultyMap[action] || 1;
         const feeStroops = baseFee * difficulty;
-        const feeXLM = feeStroops / 10_000_000; // Convert stroops to XLM
+        const feeHITZ = feeStroops / 10_000_000; // Convert stroops to HITZ
 
         // 3. Call the NEW recordAction function in the contract
         const result = await contract.recordAction(
@@ -54,7 +54,7 @@ export const recordActionResolver = async (_: any, args: any, context: Context) 
             action
         );
 
-        console.log('✅ Record action result:', result?.status, 'fee:', feeXLM, 'XLM');
+        console.log('✅ Record action result:', result?.status, 'fee:', feeHITZ, 'HITZ');
 
         // 4. Get updated entry data from contract
         const sorobanEntry = await contract.getEntry(id);
@@ -81,7 +81,7 @@ export const recordActionResolver = async (_: any, args: any, context: Context) 
         return {
             success: result?.status === 'SUCCESS',
             message: `${action} recorded successfully`,
-            fee: feeXLM,
+            fee: feeHITZ,
         };
 
     } catch (error) {

@@ -7,11 +7,9 @@ import {
   REQUEST_TOKEN,
   SIGN_IN_WITH_TOKEN,
   CREATE_USER_WITH_EMAIL,
-  USER_CREDITS,
   USER_COLLECTION,
   USER_LIKES,
   UPDATE_USER,
-  WITHDRAW_TO_EXTERNAL_WALLET,
   CREATE_PAYMENT_INTENT,
   ENTRIES_SEARCH,
   USERS_SEARCH,
@@ -59,11 +57,6 @@ export type UpdateUserMutationVariables = {
   backgroundUrl?: string
   twitter?: string
   instagram?: string
-}
-
-export type WithdrawToExternalWalletMutationVariables = {
-  address: string
-  amount: number
 }
 
 export type CreatePaymentIntentMutationVariables = {
@@ -119,13 +112,6 @@ export function useCreateUserWithEmailMutation() {
 
 
 // User data queries
-export function useUserCreditsQuery() {
-  return useQuery(USER_CREDITS, {
-    fetchPolicy: 'network-only',
-    notifyOnNetworkStatusChange: true,
-  })
-}
-
 export function useUserCollectionQuery(userId: string) {
   return useQuery(USER_COLLECTION, {
     variables: { userId },
@@ -144,10 +130,6 @@ export function useUserLikesQuery() {
 // User update mutations
 export function useUpdateUserMutation() {
   return useMutation(UPDATE_USER)
-}
-
-export function useWithdrawToExternalWalletMutation() {
-  return useMutation(WITHDRAW_TO_EXTERNAL_WALLET)
 }
 
 // Claim earnings mutation

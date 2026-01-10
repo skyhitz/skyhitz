@@ -44,9 +44,9 @@ export const mineExternalEntryResolver = async (_: any, { input }: { input: Exte
   const mailer = new Mailer(env);
 
   // 1) Balance check: require >= 1 XLM + fees available
-  const { availableCredits } = await stellar.accountCredits(user.publicKey);
-  // Require: base reserve (handled in availableCredits) + 1 XLM mine + ~0.2 buffer
-  if (availableCredits < ONE_XLM + 0.2) {
+  const { availableXlmBalance } = await stellar.getXlmBalance(user.publicKey);
+  // Require: base reserve (handled in availableXlmBalance) + 1 XLM mine + ~0.2 buffer
+  if (availableXlmBalance < ONE_XLM + 0.2) {
     throw new GraphQLError('INSUFFICIENT_FUNDS');
   }
 
@@ -308,8 +308,8 @@ export const mineExternalEntryResolver = async (_: any, { input }: { input: Exte
     // Update entry metrics in Algolia
     await algolia.partialUpdateEntry({
       objectID: metaCid,
-      tvl: Number(chainEntry.tvl_xlm) / 10_000_000,      // NEW: tvl_xlm field
-      escrow: Number(chainEntry.escrow_xlm) / 10_000_000, // NEW: escrow_xlm field
+      tvl: Number(chainEntry.tvl_xlm) / 10_000_000,      // NEW: tvl field
+      escrow: Number(chainEntry.escrow_xlm) / 10_000_000, // NEW: escrow field
       apr: Number(stats.apr) / 100,                        // APR in basis points -> percentage
       totalStaked: Number(stats.totalStaked) / 10_000_000, // Total HITZ staked
     });

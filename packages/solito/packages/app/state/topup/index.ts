@@ -1,12 +1,12 @@
 'use client'
 import { create } from 'zustand'
 
-type TopUpAction = 'mine' | 'download' | 'like' | 'playback'
+type TopUpAction = 'mine' | 'download' | 'like' | 'playback' | 'search'
 
 type TopUpContext = {
   action: TopUpAction
-  requiredXLM: number
-  availableXLM: number
+  requiredHITZ: number
+  availableHITZ: number
   message?: string
 }
 
@@ -23,5 +23,3 @@ export const useTopUpModalStore = create<TopUpModalState>((set) => ({
   openTopUpModal: (context) => set({ visible: true, context }),
   closeTopUpModal: () => set({ visible: false, context: null }),
 }))
-
-

@@ -4,7 +4,7 @@ import { View, FlatList, ScrollView } from 'react-native'
 import { ActivityIndicator, P } from 'app/design/typography'
 import { entriesIndex, usersIndex } from 'app/api/algolia'
 import { useLazyQuery } from '@apollo/client'
-import { SEARCH_EXTERNAL_MUSIC, EXTERNAL_AUDIO_URL } from 'app/api/graphql/operations'
+import { SEARCH_EXTERNAL_MUSIC, EXTERNAL_AUDIO_URL, USER_HITZ_BALANCE } from 'app/api/graphql/operations'
 import Pickaxe from 'app/ui/icons/pickaxe'
 import { Pressable } from 'react-native'
 import { Entry, User } from 'app/api/graphql/types'
@@ -14,7 +14,7 @@ import { UserAvatar } from 'app/ui/user-avatar'
 import { usePlayback } from 'app/hooks/usePlayback'
 import { SolitoImage } from 'app/design/solito-image'
 import { useMutation, useQuery } from '@apollo/client'
-import { MINE_EXTERNAL_ENTRY, USER_CREDITS } from 'app/api/graphql/operations'
+import { MINE_EXTERNAL_ENTRY } from 'app/api/graphql/operations'
 import { useRouter } from 'solito/navigation'
 import { useTopUpModalStore } from 'app/state/topup'
 import { H1 } from 'app/design/typography'
@@ -90,7 +90,7 @@ export function CombinedSearchResultList({
   const [resolveAudioUrl] = useLazyQuery(EXTERNAL_AUDIO_URL)
   const { playEntry } = usePlayback()
   const [mineExternal] = useMutation(MINE_EXTERNAL_ENTRY)
-  const { data: creditsData } = useQuery(USER_CREDITS, { fetchPolicy: 'network-only' })
+  const { data: hitzBalanceData } = useQuery(USER_HITZ_BALANCE, { fetchPolicy: 'network-only' })
   const { push } = useRouter()
 
   // Debounce search phrase to avoid too many API calls
@@ -334,7 +334,7 @@ type ExternalTrack = {
 }
 
 function ExternalTrackRow({ track, onSelect }: { track: ExternalTrack; onSelect: () => void }) {
-  const { data: creditsData, refetch: refetchCredits } = useQuery(USER_CREDITS, { fetchPolicy: 'network-only' })
+  const { data: hitzBalanceData, refetch: refetchHitzBalance } = useQuery(USER_HITZ_BALANCE, { fetchPolicy: 'network-only' })
   const [mineExternal] = useMutation(MINE_EXTERNAL_ENTRY)
   const { push } = useRouter()
   const openTopUpModal = useTopUpModalStore((s) => s.openTopUpModal)
@@ -377,11 +377,11 @@ function ExternalTrackRow({ track, onSelect }: { track: ExternalTrack; onSelect:
             disabled={mining}
             onPress={async () => {
               if (!isAuthed) return push('/sign-in')
-              // Ensure user has >= 1 XLM available, or prompt top-up
-              const available = Number(creditsData?.userCredits ?? 0)
-              const required = 1.2 // 1 XLM + ~0.2 XLM fees; reserve already excluded in userCredits
+              // Ensure user has >= 1 HITZ available, or prompt top-up
+              const available = Number(hitzBalanceData?.userHitzBalance ?? 0)
+              const required = 1.2 // 1 HITZ + ~0.2 HITZ fees
               if (!available || available < required) {
-                openTopUpModal({ action: 'mine', requiredXLM: required, availableXLM: available })
+                openTopUpModal({ action: 'mine', requiredHITZ: required, availableHITZ: available })
                 return
               }
               try {
@@ -397,9 +397,9 @@ function ExternalTrackRow({ track, onSelect }: { track: ExternalTrack; onSelect:
                 // Track mine event
                 trackMine(track.id, track.title, track.artist)
                 
-                const refreshed = await refetchCredits()
-                const newBal = Number(refreshed?.data?.userCredits ?? 0).toFixed(2)
-                toast.show(`Mined successfully. Balance: ${newBal} XLM`, { type: 'success' })
+                const refreshed = await refetchHitzBalance()
+                const newBal = Number(refreshed?.data?.userHitzBalance ?? 0).toFixed(2)
+                toast.show(`Mined successfully. Balance: ${newBal} HITZ`, { type: 'success' })
                 // Optional: give quick feedback
                 // Re-play from our stored copy
                 // no-op here; search list will show indexed version later

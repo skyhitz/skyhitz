@@ -2,12 +2,10 @@ export const Schema = `
 type Query {
   entry(id: String!, bypassCache: Boolean): EntryDetails!
   entryLikes(id: String!): EntryLikes!
-  userCredits: Float!
   userHitzBalance: Float!
-  hitzPriceXlm: Float!
+  hitzPriceUsdc: Float!
   userEntries(userId: String!): [Entry!]!
   userLikes: [Entry!]!
-  xlmPrice: String!
   searchExternalMusic(query: String!, limit: Int, offset: Int): [ExternalTrack!]!
   externalAudioUrl(id: String!): String
   claimableEarningsPreview: ClaimEarningsResponse!
@@ -50,7 +48,6 @@ type Mutation {
     twitter: String
     instagram: String
   ): User!
-  withdrawToExternalWallet(address: String!, amount: Float!): Boolean!
   submitLink(link: String!, email: String!): SubmitLinkResponse!
   claimEarnings: ClaimEarningsResponse!
   mineExternalEntry(input: ExternalTrackInput!): Entry!
@@ -193,10 +190,6 @@ type ConditionalXDR {
 type ConditionalUser {
   user: User
   message: String!
-}
-
-type AccountCredits {
-  credits: Float!
 }
 
 type Offer {
