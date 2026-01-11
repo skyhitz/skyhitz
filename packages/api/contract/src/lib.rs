@@ -1,6 +1,6 @@
 #![no_std]
 
-//! Skyhitz Core V2 - Soroban Smart Contract (Post-Exhaustion Model)
+//! Skyhitz Core V3 - Soroban Smart Contract (Post-Exhaustion Model + Security Hardened)
 //!
 //! Purpose: Record user actions for music entries, manage HITZ staking,
 //! and distribute rewards from treasury to entry reward pools.
@@ -121,6 +121,15 @@ pub struct Entry {
 pub struct ArtistEquityClaim {
     pub equity_bps: u32,    // Artist's equity share in basis points (100 = 1%)
     pub claimed: i128,      // HITZ already claimed by this artist
+}
+
+/// User stake data with 24-hour timelock to prevent arbitrage
+/// Timelock resets on each deposit to prevent flash-loan style exploits
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct UserStake {
+    pub amount: i128,       // Staked amount in stroops
+    pub unlock_time: u64,   // Timestamp when stake can be withdrawn
 }
 
 #[contract]
@@ -411,12 +420,25 @@ impl SkyhitzCore {
             safe_transfer(&e, &hitz_token, &caller, &contract_addr, &fee, "stake deposit");
 
             // Record stake (stake = fee, simple 1:1)
+            // SECURITY: 24-hour timelock to prevent arbitrage attacks
             let stake_key = DataKey::Stake((entry_id.clone(), caller.clone()));
-            let current_stake: i128 = e.storage().persistent().get(&stake_key).unwrap_or(0);
-            let new_stake = current_stake
+            
+            // Load or initialize UserStake struct
+            let mut user_stake = e.storage().persistent()
+                .get::<DataKey, UserStake>(&stake_key)
+                .unwrap_or(UserStake { amount: 0, unlock_time: 0 });
+            
+            let new_stake = user_stake.amount
                 .checked_add(fee)
                 .unwrap_or_else(|| panic!("User stake overflow for entry"));
-            e.storage().persistent().set(&stake_key, &new_stake);
+            
+            // TIMELOCK: Reset unlock time to 24 hours from now on every deposit
+            // This prevents flash-loan style arbitrage by ensuring intentionality
+            let now = e.ledger().timestamp();
+            user_stake.amount = new_stake;
+            user_stake.unlock_time = now.saturating_add(86_400); // 24 hours in seconds
+            
+            e.storage().persistent().set(&stake_key, &user_stake);
             e.storage().persistent().extend_ttl(&stake_key, STORAGE_LIFETIME_THRESHOLD, STORAGE_BUMP_AMOUNT);
 
             let total_key = DataKey::StakeTotal(entry_id.clone());
@@ -495,7 +517,19 @@ impl SkyhitzCore {
     /// Get user's stake for an entry
     pub fn get_stake(e: Env, entry_id: String, owner: Address) -> i128 {
         let key = DataKey::Stake((entry_id, owner));
-        e.storage().persistent().get(&key).unwrap_or(0)
+        let user_stake: UserStake = e.storage().persistent()
+            .get::<DataKey, UserStake>(&key)
+            .unwrap_or(UserStake { amount: 0, unlock_time: 0 });
+        user_stake.amount
+    }
+
+    /// Get unlock time for user's stake (0 if no stake or can unstake immediately)
+    pub fn get_stake_unlock_time(e: Env, entry_id: String, owner: Address) -> u64 {
+        let key = DataKey::Stake((entry_id, owner));
+        let user_stake: UserStake = e.storage().persistent()
+            .get::<DataKey, UserStake>(&key)
+            .unwrap_or(UserStake { amount: 0, unlock_time: 0 });
+        user_stake.unlock_time
     }
 
     /// Get total stake for an entry
@@ -921,7 +955,10 @@ impl SkyhitzCore {
 
         // Get user's stake
         let stake_key = DataKey::Stake((entry_id.clone(), claimer.clone()));
-        let user_stake: i128 = e.storage().persistent().get(&stake_key).unwrap_or(0);
+        let user_stake_data: UserStake = e.storage().persistent()
+            .get::<DataKey, UserStake>(&stake_key)
+            .unwrap_or(UserStake { amount: 0, unlock_time: 0 });
+        let user_stake = user_stake_data.amount;
 
         if user_stake == 0 {
             panic!("No stake in this entry");
@@ -1007,6 +1044,7 @@ impl SkyhitzCore {
     /// - If user has no stake
     /// - If amount exceeds user's stake
     /// - If amount <= 0
+    /// - If stake is still timelocked (24-hour lock after deposit)
     pub fn unstake(e: Env, entry_id: String, caller: Address, amount: i128) -> i128 {
         caller.require_auth();
         
@@ -1015,27 +1053,41 @@ impl SkyhitzCore {
             panic!("Amount must be positive");
         }
         
-        // Get user's current stake
+        // Get user's current stake (now a UserStake struct with timelock)
         let stake_key = DataKey::Stake((entry_id.clone(), caller.clone()));
-        let user_stake: i128 = e.storage().persistent().get(&stake_key).unwrap_or(0);
+        let user_stake: UserStake = e.storage().persistent()
+            .get::<DataKey, UserStake>(&stake_key)
+            .unwrap_or(UserStake { amount: 0, unlock_time: 0 });
         
-        if user_stake == 0 {
+        if user_stake.amount == 0 {
             panic!("No stake in this entry");
         }
         
-        if amount > user_stake {
+        if amount > user_stake.amount {
             panic!("Amount exceeds stake");
+        }
+        
+        // SECURITY: Enforce 24-hour timelock
+        // This prevents flash-loan style arbitrage attacks
+        let now = e.ledger().timestamp();
+        if now < user_stake.unlock_time {
+            panic!("Stake locked until timestamp: {}. Current time: {}", user_stake.unlock_time, now);
         }
         
         e.storage().persistent().extend_ttl(&stake_key, STORAGE_LIFETIME_THRESHOLD, STORAGE_BUMP_AMOUNT);
         
         // Update user's stake
-        let new_user_stake = user_stake.saturating_sub(amount);
-        if new_user_stake == 0 {
+        let new_user_amount = user_stake.amount.saturating_sub(amount);
+        if new_user_amount == 0 {
             // Remove stake entry if going to zero
             e.storage().persistent().remove(&stake_key);
         } else {
-            e.storage().persistent().set(&stake_key, &new_user_stake);
+            // Preserve unlock_time (don't reset on partial unstake)
+            let updated_stake = UserStake {
+                amount: new_user_amount,
+                unlock_time: user_stake.unlock_time,
+            };
+            e.storage().persistent().set(&stake_key, &updated_stake);
         }
         
         // Update total stake
@@ -1065,7 +1117,10 @@ impl SkyhitzCore {
     /// Get claimable HITZ rewards for a staker (accounts for artist equity)
     pub fn get_claimable_rewards(e: Env, entry_id: String, user: Address) -> i128 {
         let stake_key = DataKey::Stake((entry_id.clone(), user.clone()));
-        let user_stake: i128 = e.storage().persistent().get(&stake_key).unwrap_or(0);
+        let user_stake_data: UserStake = e.storage().persistent()
+            .get::<DataKey, UserStake>(&stake_key)
+            .unwrap_or(UserStake { amount: 0, unlock_time: 0 });
+        let user_stake = user_stake_data.amount;
 
         if user_stake == 0 {
             return 0;
@@ -1369,11 +1424,20 @@ impl SkyhitzCore {
         let mut migrated_stake_total: i128 = 0;
         for user in stakers.iter() {
             let from_stake_key = DataKey::Stake((from_id.clone(), user.clone()));
-            if let Some(stake_amount) = e.storage().persistent().get::<DataKey, i128>(&from_stake_key) {
-                // Move stake to new entry
+            if let Some(from_user_stake) = e.storage().persistent().get::<DataKey, UserStake>(&from_stake_key) {
+                let stake_amount = from_user_stake.amount;
+                // Move stake to new entry, preserving timelock
                 let into_stake_key = DataKey::Stake((into_id.clone(), user.clone()));
-                let current_into_stake: i128 = e.storage().persistent().get(&into_stake_key).unwrap_or(0);
-                e.storage().persistent().set(&into_stake_key, &current_into_stake.saturating_add(stake_amount));
+                let current_into_stake = e.storage().persistent()
+                    .get::<DataKey, UserStake>(&into_stake_key)
+                    .unwrap_or(UserStake { amount: 0, unlock_time: 0 });
+                
+                // Merge stakes: add amounts, take the later unlock_time
+                let new_stake = UserStake {
+                    amount: current_into_stake.amount.saturating_add(stake_amount),
+                    unlock_time: core::cmp::max(current_into_stake.unlock_time, from_user_stake.unlock_time),
+                };
+                e.storage().persistent().set(&into_stake_key, &new_stake);
                 
                 // Also migrate claimed amounts
                 let from_claimed_key = DataKey::Claimed((from_id.clone(), user.clone()));
@@ -1502,8 +1566,9 @@ impl SkyhitzCore {
             
             for user in stakers.iter() {
                 let stake_key = DataKey::Stake((entry_id.clone(), user.clone()));
-                if let Some(stake_amount) = e.storage().persistent().get::<DataKey, i128>(&stake_key) {
-                    // SECURITY FIX H2: Return stake to user with verification
+                if let Some(user_stake) = e.storage().persistent().get::<DataKey, UserStake>(&stake_key) {
+                    let stake_amount = user_stake.amount;
+                    // SECURITY FIX H2: Return stake to user with verification (admin bypasses timelock)
                     safe_transfer(&e, &hitz_token, &contract_addr, &user, &stake_amount, "stake refund");
                     returned_total = returned_total.saturating_add(stake_amount);
                     
@@ -1661,3 +1726,5 @@ fn get_action_params(e: &Env, kind: &Symbol, amount: Option<i128>) -> (i128, i12
 #[cfg(test)]
 mod tests;
 
+#[cfg(test)]
+mod test_atomic_attack;

@@ -735,6 +735,9 @@ fn test_unstake_partial() {
 
     let user_balance_before = hitz_balance_client.balance(&user);
 
+    // Advance ledger time past 24-hour timelock (86400 seconds)
+    e.ledger().with_mut(|li| li.timestamp = 86_401);
+
     // Unstake 10M stroops (1/3 of 30M stake)
     let unstaked = client.unstake(&entry_id, &user, &10_000_000i128);
     assert_eq!(unstaked, 10_000_000);
@@ -775,6 +778,9 @@ fn test_unstake_full() {
 
     let user_stake_before = client.get_stake(&entry_id, &user);
     assert_eq!(user_stake_before, 30_000_000); // 3 HITZ stake
+
+    // Advance ledger time past 24-hour timelock (86400 seconds)
+    e.ledger().with_mut(|li| li.timestamp = 86_401);
 
     // Unstake ALL HITZ
     let unstaked = client.unstake(&entry_id, &user, &30_000_000i128);
@@ -902,6 +908,9 @@ fn test_unstake_multiple_users() {
     let total_stake_before = client.get_stake_total(&entry_id);
     assert_eq!(total_stake_before, 150_000_000);
 
+    // Advance ledger time past 24-hour timelock (86400 seconds)
+    e.ledger().with_mut(|li| li.timestamp = 86_401);
+
     // User1 unstakes half of their stake (25M stroops)
     client.unstake(&entry_id, &user, &25_000_000i128);
 
@@ -934,6 +943,9 @@ fn test_unstake_then_reinvest() {
     // POST-EXHAUSTION: User invests 3 HITZ (30M stroops), stake = fee (1:1)
     client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(30_000_000i128));
     assert_eq!(client.get_stake(&entry_id, &user), 30_000_000); // 3 HITZ stake
+
+    // Advance ledger time past 24-hour timelock (86400 seconds)
+    e.ledger().with_mut(|li| li.timestamp = 86_401);
 
     // User unstakes all
     client.unstake(&entry_id, &user, &30_000_000i128);
@@ -1498,3 +1510,88 @@ fn test_incremental_artist_claims() {
     assert_eq!(total_claimed, 100_000_000);
 }
 
+// ========================================================================
+// V3 Security Model: 24-Hour Timelock Tests
+// ========================================================================
+
+#[test]
+#[should_panic(expected = "Stake locked until timestamp:")]
+fn test_timelock_prevents_early_unstake() {
+    let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
+
+    let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+    let hitz_admin = token::StellarAssetClient::new(&e, &hitz_addr);
+    hitz_admin.mint(&contract_id, &10_000_000_000i128);
+    hitz_admin.mint(&user, &10_000_000_000i128);
+
+    client.init(&admin, &treasury, &hitz_addr, &100_000i128);
+
+    let entry_id = String::from_str(&e, "song123");
+    client.create_entry(&entry_id);
+
+    // User stakes at time 0
+    client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(30_000_000i128));
+    
+    // Try to unstake at time 100 (before 86400) - should panic
+    e.ledger().with_mut(|li| li.timestamp = 100);
+    client.unstake(&entry_id, &user, &15_000_000i128);
+}
+
+#[test]
+fn test_timelock_allows_unstake_after_24h() {
+    let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
+
+    let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+    let hitz_admin = token::StellarAssetClient::new(&e, &hitz_addr);
+    hitz_admin.mint(&contract_id, &10_000_000_000i128);
+    hitz_admin.mint(&user, &10_000_000_000i128);
+
+    client.init(&admin, &treasury, &hitz_addr, &100_000i128);
+
+    let entry_id = String::from_str(&e, "song123");
+    client.create_entry(&entry_id);
+
+    // Stake at time 0, unlock at 86400
+    client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(30_000_000i128));
+    let stake = client.get_stake(&entry_id, &user);
+    
+    // Verify unlock time is set to 86400
+    let unlock_time = client.get_stake_unlock_time(&entry_id, &user);
+    assert_eq!(unlock_time, 86_400);
+    
+    // Advance to exactly 86400 - should work
+    e.ledger().with_mut(|li| li.timestamp = 86_400);
+    let unstaked = client.unstake(&entry_id, &user, &stake);
+    assert_eq!(unstaked, stake);
+}
+
+#[test]
+fn test_timelock_reset_on_topup() {
+    let (e, admin, treasury, user, hitz_addr, contract_id) = setup_test_with_contract();
+
+    let client = SkyhitzCoreClient::new(&e, &contract_id);
+
+    let hitz_admin = token::StellarAssetClient::new(&e, &hitz_addr);
+    hitz_admin.mint(&contract_id, &10_000_000_000i128);
+    hitz_admin.mint(&user, &10_000_000_000i128);
+
+    client.init(&admin, &treasury, &hitz_addr, &100_000i128);
+
+    let entry_id = String::from_str(&e, "song123");
+    client.create_entry(&entry_id);
+
+    // First stake at time 0, unlock at 86400
+    client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(30_000_000i128));
+    let unlock1 = client.get_stake_unlock_time(&entry_id, &user);
+    assert_eq!(unlock1, 86_400);
+    
+    // Advance time to 50000 (still locked)
+    e.ledger().with_mut(|li| li.timestamp = 50_000);
+    
+    // Top up stake - this should reset unlock to 50000 + 86400 = 136400
+    client.record_action(&user, &entry_id, &symbol_short!("invest"), &Some(30_000_000i128));
+    let unlock2 = client.get_stake_unlock_time(&entry_id, &user);
+    assert_eq!(unlock2, 136_400); // 50000 + 86400
+}
