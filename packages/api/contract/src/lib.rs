@@ -68,10 +68,7 @@ const MAX_ENTRIES: u32 = 10_000;
 const STORAGE_LIFETIME_THRESHOLD: u32 = 100;
 const STORAGE_BUMP_AMOUNT: u32 = 535_680; // ~60 days
 
-// AUDIT SECURITY FIXES
-const MIN_ORACLE_PRICE: i128 = 10_000;           // 0.001 USDC minimum (dust protection)
-const MAX_ORACLE_PRICE: i128 = 100_000_000_000;  // $10,000 maximum (sanity cap)
-const MAX_ORACLE_CHANGE_PCT: i128 = 50;          // 50% max change per update
+// Safety constants
 const MAX_REWARD_PER_ACTION: i128 = 10_000_000;  // 1 HITZ max per action
 
 // ============================================================================
@@ -89,9 +86,6 @@ pub enum DataKey {
     EmissionStartTs,                    // LEGACY: u64 halving start timestamp
     EmissionIntervalSec,                // LEGACY: u64 seconds per halving epoch
     EmissionEpoch0UnitReward,           // LEGACY: i128 initial unit reward in stroops
-    // Oracle price (informational only post-exhaustion, not used for staking calculations)
-    OraclePrice,                        // i128: HITZ/USDC price in stroops (informational)
-    OracleLastUpdate,                   // u64: Last oracle price update timestamp
     
     // Persistent storage
     Entry(String),                      // Entry data
@@ -176,8 +170,6 @@ impl SkyhitzCore {
         e.storage().instance().remove(&DataKey::EmissionStartTs);
         e.storage().instance().remove(&DataKey::EmissionIntervalSec);
         e.storage().instance().remove(&DataKey::EmissionEpoch0UnitReward);
-        e.storage().instance().remove(&DataKey::OraclePrice);
-        e.storage().instance().remove(&DataKey::OracleLastUpdate);
         
         log!(&e, "Instance storage reset. Contract must be re-initialized with init()");
     }
@@ -258,9 +250,6 @@ impl SkyhitzCore {
         e.storage().instance().set(&DataKey::HitzToken, &hitz_token);
         e.storage().instance().set(&DataKey::BaseFee, &base_fee);
         
-        // Initialize oracle price to 1,000,000 stroops ($0.10 USDC per HITZ = 1 HITZ costs $0.10)
-        e.storage().instance().set(&DataKey::OraclePrice, &1_000_000i128);
-        e.storage().instance().set(&DataKey::OracleLastUpdate, &e.ledger().timestamp());
         
         // SECURITY FIX C3: Store EntryCount in persistent storage to prevent desync on upgrade
         e.storage().persistent().set(&DataKey::EntryCount, &0u32);
@@ -295,69 +284,7 @@ impl SkyhitzCore {
     }
 
     /// NOTE: withdraw_xlm_to_treasury() removed - no longer needed in HITZ-only economy
-
-    /// Update oracle price (treasury-only)
-    ///
-    /// Treasury bot calls this after fetching current market price from DEX.
-    /// This price is used for dynamic staking calculations.
-    ///
-    /// # Arguments
-    /// * `caller` - Treasury address (must be the configured Treasury)
-    /// * `new_price` - New HITZ/USDC price in stroops (e.g., 1,000,000 = $0.10 USDC per HITZ)
-    pub fn update_oracle_price(e: Env, caller: Address, new_price: i128) {
-        caller.require_auth();
-        
-        // Verify caller is the Treasury
-        let treasury: Address = e.storage().instance().get(&DataKey::Treasury).unwrap();
-        if caller != treasury {
-            panic!("Only Treasury can update oracle price");
-        }
-        
-        // AUDIT FIX: Min/Max Price Bounds
-        if new_price < MIN_ORACLE_PRICE {
-            panic!("Oracle price {} below minimum {}", new_price, MIN_ORACLE_PRICE);
-        }
-        if new_price > MAX_ORACLE_PRICE {
-            panic!("Oracle price {} above maximum {}", new_price, MAX_ORACLE_PRICE);
-        }
-        
-        // AUDIT FIX: Rate of Change Limit
-        let current_price: i128 = e.storage().instance()
-            .get(&DataKey::OraclePrice)
-            .unwrap_or(1_000_000);
-        
-        let max_change = (current_price * MAX_ORACLE_CHANGE_PCT) / 100;
-        let price_diff = if new_price > current_price {
-            new_price - current_price
-        } else {
-            current_price - new_price
-        };
-        
-        if price_diff > max_change {
-            panic!("Oracle price change too large (limit {}%)", MAX_ORACLE_CHANGE_PCT);
-        }
-
-        // Store new price and timestamp
-        e.storage().instance().set(&DataKey::OraclePrice, &new_price);
-        e.storage().instance().set(&DataKey::OracleLastUpdate, &e.ledger().timestamp());
-        
-        log!(&e, "Oracle price updated to {} stroops per HITZ", new_price);
-    }
-
-    /// Get oracle data (price and last update timestamp)
-    ///
-    /// Returns (price_in_stroops, last_update_timestamp)
-    /// Price is in USDC stroops per HITZ (e.g., 1,000,000 = $0.10 USDC per HITZ)
-    pub fn get_oracle_data(e: Env) -> (i128, u64) {
-        let price: i128 = e.storage().instance()
-            .get(&DataKey::OraclePrice)
-            .unwrap_or(1_000_000); // Default: $0.10 USDC per HITZ
-        let last_update: u64 = e.storage().instance()
-            .get(&DataKey::OracleLastUpdate)
-            .unwrap_or(0);
-        
-        (price, last_update)
-    }
+    /// NOTE: update_oracle_price() and get_oracle_data() removed - oracle unused in Post-Exhaustion model
 
     /// Get current base fee
     pub fn get_base_fee(e: Env) -> i128 {
