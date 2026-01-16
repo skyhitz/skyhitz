@@ -1,6 +1,7 @@
 import { Keypair } from '@stellar/stellar-sdk';
 import ContractClient from '../../contract';
 import { syncAllAPRsToAlgolia } from './sync-aprs';
+import { SmartWalletWrapper } from '../util/smart-wallet';
 
 function ensureEnv(env: Env, key: keyof Env) {
 	if (!env[key]) {
@@ -17,30 +18,14 @@ export interface TreasuryRunResult {
 }
 
 // Bitcoin-like distribution rate: 0.05% of treasury balance per day
-// This creates a 12+ year emission curve similar to Bitcoin's halving schedule:
-//   - Year 4:  ~52% distributed
-//   - Year 8:  ~77% distributed  
-//   - Year 12: ~88% distributed
-// Prevents liquidity drain while providing sustainable long-term rewards
 const DAILY_DISTRIBUTION_RATE_BPS = 5; // 0.05% = 5 basis points
 
 /**
  * Treasury Bot - Bitcoin-Like Distribution Mode
  * 
- * Since the HITZ supply is fully issued, this bot:
- * 1. Checks treasury HITZ balance (from fees or recovered funds)
- * 2. Calculates 0.05% of balance to distribute (Bitcoin-like rate limiting)
- * 3. Distributes to entry reward pools proportionally by escrow
- * 4. Syncs APRs to Algolia
- * 
- * RATE LIMITING: Only 0.05% of treasury distributed per day
- * This matches Bitcoin's ~12 year emission curve and ensures:
- * - Sustainable rewards for 12+ years
- * - No market flooding that could crash the price
- * - Gradual decline mimicking Bitcoin's halving
- * 
- * NO oracle updates - price stays fixed to prevent manipulation.
- * NO minting - supply is exhausted.
+ * Supports:
+ * - Standard Keypair Treasury (Legacy)
+ * - Smart Wallet Treasury (New, Secure)
  */
 export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
 	try {
@@ -49,33 +34,65 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
 		console.log('================================================');
 		console.log('Timestamp:', new Date().toISOString());
 		console.log('');
+
+		let signer: string | SmartWalletWrapper;
+		let treasuryAddress: string;
+		let useSmartWallet = false;
+
+		// Initialize Signer (Smart Wallet or Keypair)
+		if (env.TREASURY_SMART_WALLET_ID && env.TREASURY_RELAYER_SEED) {
+			console.log('🔒 Using Smart Wallet Treasury');
+			const wrapper = new SmartWalletWrapper(
+				env.TREASURY_SMART_WALLET_ID as string,
+				env.TREASURY_RELAYER_SEED as string
+			);
+			signer = wrapper;
+			treasuryAddress = wrapper.getContractId();
+			useSmartWallet = true;
+
+			ensureEnv(env, 'HITZ_TOKEN_ID'); // Required for balance check on Smart Wallet
+		} else {
+			console.log('🔑 Using Standard Keypair Treasury');
+			ensureEnv(env, 'TREASURY_SEED');
+			signer = env.TREASURY_SEED as string;
+			treasuryAddress = Keypair.fromSecret(signer).publicKey();
+		}
+
+		console.log(`info: Treasury Address: ${treasuryAddress}`);
 		console.log('ℹ️  Supply fully issued - distribution only mode');
 		console.log('ℹ️  No oracle updates (price fixed for safety)');
 		console.log(`ℹ️  Distribution rate: 0.05% of treasury per day (12-year curve)`);
 		console.log('');
-		
-		ensureEnv(env, 'TREASURY_SEED');
-		const treasuryKeys = Keypair.fromSecret(env.TREASURY_SEED as string);
-		const treasuryAddress = treasuryKeys.publicKey();
 
 		const contract = new ContractClient(env);
 
 		// Step 1: Check treasury HITZ balance
 		console.log('📊 Checking treasury HITZ balance...');
-		const currentHitzBalance = await contract.getHitzBalance(treasuryAddress);
-		const currentHitzBalanceBigInt = BigInt(currentHitzBalance);
-		const hitzDisplay = Number(currentHitzBalance) / 10_000_000;
-		
+		let currentHitzBalance: number = 0;
+
+		if (useSmartWallet) {
+			// Check balance via Contract (C-address)
+			currentHitzBalance = await contract.getTokenBalance(
+				env.HITZ_TOKEN_ID as string,
+				treasuryAddress
+			);
+		} else {
+			// Check balance via Horizon (G-address)
+			currentHitzBalance = await contract.getHitzBalance(treasuryAddress);
+		}
+
+		const currentHitzBalanceBigInt = BigInt(Math.floor(currentHitzBalance)); // stroops
+		const hitzDisplay = currentHitzBalance / 10_000_000;
+
 		console.log(`   Treasury balance: ${hitzDisplay.toLocaleString()} HITZ`);
 
 		// Step 2: Calculate rate-limited distribution amount (0.05% of balance)
-		// 0.05% = 5 basis points = 5/10000
 		const MIN_DISTRIBUTION_AMOUNT = BigInt(10_000_000); // 1 HITZ minimum
 		const amountToDistribute = currentHitzBalanceBigInt * BigInt(DAILY_DISTRIBUTION_RATE_BPS) / BigInt(10000);
 		const distributeDisplay = Number(amountToDistribute) / 10_000_000;
-		
+
 		console.log(`   Today's distribution (0.05%): ${distributeDisplay.toLocaleString()} HITZ`);
-		
+
 		if (amountToDistribute < MIN_DISTRIBUTION_AMOUNT) {
 			console.log('');
 			console.log('⏭️  SKIPPING: Distribution amount below minimum (1 HITZ)');
@@ -86,18 +103,17 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
 				reason: `Distribution amount ${distributeDisplay} HITZ below minimum (need at least 1 HITZ)`
 			};
 		}
-		
+
 		console.log('');
 		console.log(`💰 Distributing ${distributeDisplay.toLocaleString()} HITZ to entries...`);
 		console.log(`   (${hitzDisplay.toLocaleString()} HITZ will remain in treasury)`);
-		
-		// Use 3-phase batched distribution for scalability
-		// Pass the rate-limited amount, not the full balance
+
+		// Use 3-phase batched distribution
 		const distResult = await contract.distributeRewardsBatch(
-			env.TREASURY_SEED as string,
-			amountToDistribute  // Rate-limited amount, not full balance
+			signer,
+			amountToDistribute
 		);
-		
+
 		console.log('');
 		console.log('✅ Distribution complete!');
 		console.log(`   Entries with escrow: ${distResult.totalEntries}`);
@@ -121,7 +137,7 @@ export async function runTreasuryBot(env: Env): Promise<TreasuryRunResult> {
 		console.log(`   To entries: ${distResult.totalEntries}`);
 		console.log(`   Remaining in treasury: ${(hitzDisplay - distributeDisplay).toLocaleString()} HITZ`);
 		console.log('');
-		
+
 		return {
 			status: 'submitted',
 			hitzDistributed: amountToDistribute.toString(),

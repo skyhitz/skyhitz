@@ -68,6 +68,12 @@ const MAX_ENTRIES: u32 = 10_000;
 const STORAGE_LIFETIME_THRESHOLD: u32 = 100;
 const STORAGE_BUMP_AMOUNT: u32 = 535_680; // ~60 days
 
+// AUDIT SECURITY FIXES
+const MIN_ORACLE_PRICE: i128 = 10_000;           // 0.001 USDC minimum (dust protection)
+const MAX_ORACLE_PRICE: i128 = 100_000_000_000;  // $10,000 maximum (sanity cap)
+const MAX_ORACLE_CHANGE_PCT: i128 = 50;          // 50% max change per update
+const MAX_REWARD_PER_ACTION: i128 = 10_000_000;  // 1 HITZ max per action
+
 // ============================================================================
 // Data Types
 // ============================================================================
@@ -121,6 +127,15 @@ pub struct Entry {
 pub struct ArtistEquityClaim {
     pub equity_bps: u32,    // Artist's equity share in basis points (100 = 1%)
     pub claimed: i128,      // HITZ already claimed by this artist
+}
+
+/// User stake data with 24-hour timelock to prevent arbitrage
+/// Timelock resets on each deposit to prevent flash-loan style exploits
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct UserStake {
+    pub amount: i128,       // Staked amount in stroops
+    pub unlock_time: u64,   // Timestamp when stake can be withdrawn
 }
 
 #[contract]
@@ -298,10 +313,30 @@ impl SkyhitzCore {
             panic!("Only Treasury can update oracle price");
         }
         
-        if new_price <= 0 {
-            panic!("Price must be positive");
+        // AUDIT FIX: Min/Max Price Bounds
+        if new_price < MIN_ORACLE_PRICE {
+            panic!("Oracle price {} below minimum {}", new_price, MIN_ORACLE_PRICE);
+        }
+        if new_price > MAX_ORACLE_PRICE {
+            panic!("Oracle price {} above maximum {}", new_price, MAX_ORACLE_PRICE);
         }
         
+        // AUDIT FIX: Rate of Change Limit
+        let current_price: i128 = e.storage().instance()
+            .get(&DataKey::OraclePrice)
+            .unwrap_or(1_000_000);
+        
+        let max_change = (current_price * MAX_ORACLE_CHANGE_PCT) / 100;
+        let price_diff = if new_price > current_price {
+            new_price - current_price
+        } else {
+            current_price - new_price
+        };
+        
+        if price_diff > max_change {
+            panic!("Oracle price change too large (limit {}%)", MAX_ORACLE_CHANGE_PCT);
+        }
+
         // Store new price and timestamp
         e.storage().instance().set(&DataKey::OraclePrice, &new_price);
         e.storage().instance().set(&DataKey::OracleLastUpdate, &e.ledger().timestamp());
