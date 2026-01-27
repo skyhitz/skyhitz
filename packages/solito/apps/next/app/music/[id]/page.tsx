@@ -1,8 +1,15 @@
-import { generateEntryMetadata, EntryPageComponent } from '../../_shared/entry-page'
+import {
+  generateEntryMetadata,
+  EntryPageComponent,
+  revalidate as sharedRevalidate,
+} from '../../_shared/entry-page'
 
 type Props = {
   params: Promise<{ id: string }>
 }
+
+// Re-export revalidation setting from shared module
+export const revalidate = sharedRevalidate
 
 // Re-export the shared metadata generation
 export async function generateMetadata(props: Props) {
